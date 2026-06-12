@@ -1,0 +1,10 @@
+services:
+  home-stack:
+    build:
+      context: .
+    command: pnpm start
+    environment:
+      NODE_ENV: production
+      PORT: 4173
+    ports:
+      - "4173:4173"

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createDefaultState } from "../src/lib/demo-state";
 import { baseOffers } from "../src/lib/offers";
 import { extractPriceFromHtml } from "../src/lib/price-scraper";
+import { extractSearchCandidatesFromHtml } from "../src/lib/product-search";
 import { buildReplenishmentQueue, calculateDaysLeft, getRecommendedOffers, getUrgency } from "../src/lib/replenishment";
 import type { AppState } from "../src/lib/types";
 
@@ -72,5 +73,28 @@ describe("replenishment domain logic", () => {
     `);
 
     expect(extracted).toMatchObject({ price: 698, currency: "JPY", source: "json-ld", title: "Test detergent" });
+  });
+
+  it("extracts product search candidates from marketplace HTML", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/123" title="ライオン ニオイをとる砂 5L">ライオン ニオイをとる砂 5L</a>
+          <span>送料無料</span>
+          <strong>¥748</strong>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/cat-litter/",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      source: "rakuten",
+      title: "ライオン ニオイをとる砂 5L",
+      price: 748,
+      currency: "JPY",
+      shipping: "送料無料候補",
+    });
+    expect(candidates[0]?.url).toBe("https://search.rakuten.co.jp/item/123");
   });
 });

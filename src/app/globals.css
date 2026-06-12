@@ -679,6 +679,7 @@ h3 {
 
 .price-trust-panel,
 .comparison-panel,
+.product-search-panel,
 .live-price-panel {
   background: #ffffff;
   border: 1px solid var(--line);
@@ -697,6 +698,7 @@ h3 {
 
 .price-trust-panel p,
 .comparison-panel p,
+.product-search-panel p,
 .live-price-panel p {
   color: var(--muted);
   line-height: 1.65;
@@ -735,6 +737,141 @@ h3 {
 .live-price-panel {
   display: grid;
   gap: 1rem;
+}
+
+.product-search-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.inventory-search-chips {
+  border: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+}
+
+.market-search-box {
+  color: var(--muted);
+  display: grid;
+  font-size: 0.84rem;
+  font-weight: 900;
+  gap: 0.45rem;
+}
+
+.market-search-box div {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.market-search-box input {
+  background: #fbfaf8;
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  color: var(--ink);
+  min-width: 0;
+  padding: 0.8rem;
+}
+
+.market-results {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.market-summary {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.market-summary div {
+  background: #f7f3ea;
+  border: 1px solid #e8dcc7;
+  border-radius: 0.7rem;
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.8rem;
+}
+
+.market-summary span,
+.source-pill,
+.source-tag,
+.market-card small {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.market-summary strong {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.source-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.source-pill {
+  background: #fff7f1;
+  border: 1px solid #f0cfb6;
+  border-radius: 999px;
+  padding: 0.32rem 0.65rem;
+}
+
+.source-pill.is-ok {
+  background: #eef6f3;
+  border-color: #c9ded6;
+  color: #23614f;
+}
+
+.market-candidates {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.market-card {
+  background: #fbfaf8;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.95rem;
+}
+
+.market-card > div {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.market-card strong {
+  color: var(--red);
+  font-size: 1.15rem;
+  white-space: nowrap;
+}
+
+.market-card h4 {
+  font-size: 0.96rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.market-card p {
+  font-size: 0.84rem;
+  margin: 0;
+}
+
+.market-card a {
+  color: var(--blue);
+  font-size: 0.85rem;
+  font-weight: 900;
 }
 
 .url-scan-box {
@@ -1090,6 +1227,7 @@ h3 {
   .analytics-card,
   .privacy-card,
   .price-trust-panel,
+  .market-search-box div,
   .comparison-panel__header {
     grid-template-columns: 1fr;
   }
@@ -1097,6 +1235,7 @@ h3 {
   .steps,
   .offers,
   .comparison-grid,
+  .market-candidates,
   .live-price-results {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1123,6 +1262,8 @@ h3 {
   .metric-grid,
   .radar-strip,
   .comparison-grid,
+  .market-summary,
+  .market-candidates,
   .live-price-results,
   .offer-details div,
   .queue-actions {

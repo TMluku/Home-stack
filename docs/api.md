@@ -19,6 +19,42 @@ Future API handlers should return a consistent envelope:
 
 Errors should return `ok: false`, an HTTP-aligned `status`, and `error.message` plus optional `error.details`.
 
+## Current API Routes
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/product-search` | Search marketplace sources for a product query and return normalized price candidates. Uses official API credentials when configured, otherwise tries public search-result HTML extraction. |
+| `POST` | `/api/price-scan` | Fetch specific product page URLs and extract price candidates from JSON-LD, meta tags, or HTML text. |
+
+### `POST /api/product-search`
+
+Request:
+
+```json
+{
+  "query": "猫砂 ライオン 5L"
+}
+```
+
+Response includes the normalized query, searched sources, candidate titles, prices, links, match scores, source labels, and evidence notes. Optional environment variables:
+
+- `RAKUTEN_APPLICATION_ID`
+- `YAHOO_SHOPPING_APP_ID`
+
+Without credentials, the route still attempts public search-page extraction, but results can be blocked or change when marketplace HTML changes.
+
+### `POST /api/price-scan`
+
+Request:
+
+```json
+{
+  "urls": ["https://example.com/product"]
+}
+```
+
+Response includes per-URL extraction status, price, title, source type, and fetch timestamp.
+
 ## Planned Resources
 
 | Method | Path | Purpose |

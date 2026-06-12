@@ -95,3 +95,38 @@ export type LivePriceResult = {
   fetchedAt: string;
   error?: string;
 };
+
+export type ProductSearchSource = "rakuten" | "yahoo-shopping" | "direct-url";
+
+export type ProductSearchCandidate = {
+  id: string;
+  source: ProductSearchSource;
+  sourceLabel: string;
+  title: string;
+  url: string;
+  price?: number;
+  currency?: string;
+  shipping?: string;
+  imageUrl?: string;
+  unitPrice?: string;
+  matchScore: number;
+  confidence: "high" | "medium" | "low";
+  fetchedAt: string;
+  evidence: string[];
+  error?: string;
+};
+
+export type ProductSearchResult = {
+  query: string;
+  normalizedQuery: string;
+  searchedAt: string;
+  candidates: ProductSearchCandidate[];
+  sources: Array<{
+    source: ProductSearchSource;
+    label: string;
+    ok: boolean;
+    searchedUrl?: string;
+    error?: string;
+    count: number;
+  }>;
+};

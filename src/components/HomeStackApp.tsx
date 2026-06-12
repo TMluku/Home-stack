@@ -13,6 +13,7 @@ import type {
   LivePriceResult,
   Offer,
   OfferFilter,
+  ProductSearchResult,
   QueueDecision,
 } from "@/lib/types";
 
@@ -47,6 +48,9 @@ export function HomeStackApp() {
   const [livePriceUrls, setLivePriceUrls] = useState("");
   const [livePriceResults, setLivePriceResults] = useState<LivePriceResult[]>([]);
   const [livePriceStatus, setLivePriceStatus] = useState("商品ページURLを貼ると、サーバー側でHTMLを取得して価格候補を探します。");
+  const [productSearchQuery, setProductSearchQuery] = useState("");
+  const [productSearchResult, setProductSearchResult] = useState<ProductSearchResult | null>(null);
+  const [productSearchStatus, setProductSearchStatus] = useState("在庫名から複数ECサイトの価格候補を検索できます。");
 
   useEffect(() => {
     try {
@@ -214,6 +218,35 @@ export function HomeStackApp() {
       setLivePriceStatus(payload.ok ? "取得しました。抽出元と取得時刻を確認できます。" : (payload.error ?? "取得に失敗しました。"));
     } catch (error) {
       setLivePriceStatus(error instanceof Error ? error.message : "取得に失敗しました。");
+    }
+  }
+
+  async function searchMarketPrices(nextQuery = productSearchQuery) {
+    const query = nextQuery.trim();
+    if (!query) {
+      setProductSearchStatus("商品名、ブランド、容量を入力してください。");
+      return;
+    }
+
+    setProductSearchQuery(query);
+    setProductSearchStatus("楽天市場 / Yahoo!ショッピングを検索中です...");
+    setProductSearchResult(null);
+
+    try {
+      const response = await fetch("/api/product-search", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      const payload = (await response.json()) as ({ ok: true } & ProductSearchResult) | { ok: false; error?: string };
+      if (!payload.ok) {
+        setProductSearchStatus(payload.error ?? "商品検索に失敗しました。");
+        return;
+      }
+      setProductSearchResult(payload);
+      setProductSearchStatus(`${payload.candidates.length}件の価格候補を見つけました。価格・一致度・取得元を確認してください。`);
+    } catch (error) {
+      setProductSearchStatus(error instanceof Error ? error.message : "商品検索に失敗しました。");
     }
   }
 
@@ -445,6 +478,16 @@ export function HomeStackApp() {
               <li>自動購入では広告商品へ勝手に変更しない</li>
             </ul>
           </div>
+
+          <ProductSearchPanel
+            inventory={state.inventory}
+            query={productSearchQuery}
+            result={productSearchResult}
+            status={productSearchStatus}
+            onQueryChange={setProductSearchQuery}
+            onSearch={() => searchMarketPrices()}
+            onSearchInventory={(item) => searchMarketPrices(`${item.name} ${item.category} ${item.note}`)}
+          />
 
           <LivePriceScanner
             urls={livePriceUrls}
@@ -739,6 +782,110 @@ export function HomeStackApp() {
         <p>Home Stack MVP - 家庭内在庫と価格透明性のリテールメディア</p>
       </footer>
     </>
+  );
+}
+
+function ProductSearchPanel({
+  inventory,
+  query,
+  result,
+  status,
+  onQueryChange,
+  onSearch,
+  onSearchInventory,
+}: {
+  inventory: InventoryItem[];
+  query: string;
+  result: ProductSearchResult | null;
+  status: string;
+  onQueryChange: (value: string) => void;
+  onSearch: () => void;
+  onSearchInventory: (item: InventoryItem) => void;
+}) {
+  const bestCandidate = result?.candidates[0];
+
+  return (
+    <section className="product-search-panel" aria-label="商品価格横断検索">
+      <div className="product-search-copy">
+        <p className="eyebrow">Price Search Lab</p>
+        <h3>商品名から複数サイトを検索して価格候補を集める</h3>
+        <p>
+          バックエンドで検索結果ページまたは公式APIを取得し、商品名、価格、リンクを正規化します。
+          APIキーが設定されているサイトは公式APIを優先し、未設定なら公開検索ページから候補抽出を試します。
+        </p>
+      </div>
+
+      <fieldset className="inventory-search-chips">
+        <legend className="visually-hidden">在庫から検索</legend>
+        {inventory.map((item) => (
+          <button className="chip" type="button" key={item.id} onClick={() => onSearchInventory(item)}>
+            {item.name}
+          </button>
+        ))}
+      </fieldset>
+
+      <label className="market-search-box">
+        検索キーワード
+        <div>
+          <input type="search" value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="例: 猫砂 ライオン 5L" />
+          <button className="button button--primary" type="button" onClick={onSearch}>
+            横断検索
+          </button>
+        </div>
+      </label>
+
+      <p className="state-message" role="status">
+        {status}
+      </p>
+
+      {result ? (
+        <div className="market-results">
+          <div className="market-summary">
+            <div>
+              <span>検索語</span>
+              <strong>{result.normalizedQuery}</strong>
+            </div>
+            <div>
+              <span>最安候補</span>
+              <strong>{bestCandidate?.price ? yenFormatter.format(bestCandidate.price) : "未検出"}</strong>
+            </div>
+            <div>
+              <span>検索元</span>
+              <strong>
+                {result.sources.filter((source) => source.ok).length}/{result.sources.length}
+              </strong>
+            </div>
+          </div>
+
+          <div className="source-strip">
+            {result.sources.map((source) => (
+              <span className={source.ok ? "source-pill is-ok" : "source-pill"} key={source.source}>
+                {source.label}: {source.ok ? `${source.count}件` : (source.error ?? "失敗")}
+              </span>
+            ))}
+          </div>
+
+          <div className="market-candidates">
+            {result.candidates.map((candidate) => (
+              <article className="market-card" key={candidate.id}>
+                <div>
+                  <span className="source-tag">{candidate.sourceLabel}</span>
+                  <strong>{candidate.price ? yenFormatter.format(candidate.price) : "価格未検出"}</strong>
+                </div>
+                <h4>{candidate.title}</h4>
+                <p>
+                  一致度 {candidate.matchScore}% / {candidate.confidence} / {candidate.shipping ?? "送料条件は要確認"}
+                </p>
+                <small>{candidate.evidence.join("・")}</small>
+                <a href={candidate.url} target="_blank" rel="noreferrer">
+                  商品ページを見る
+                </a>
+              </article>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </section>
   );
 }
 

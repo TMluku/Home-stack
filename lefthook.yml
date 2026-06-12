@@ -1,0 +1,11 @@
+pre-commit:
+  parallel: true
+  commands:
+    biome:
+      run: pnpm exec biome check .
+    static-check:
+      run: pnpm run check:static
+pre-push:
+  commands:
+    test:
+      run: pnpm test

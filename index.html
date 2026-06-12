@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="家のストックをスマホで見せるだけ。切れる前に最安候補とキャンペーンを知らせる無料の消耗品補充アシスタント。"
+    />
+    <meta name="theme-color" content="#1f6feb" />
+    <title>Home Stack | 無料の消耗品補充アシスタント</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <nav class="nav" aria-label="メインナビゲーション">
+        <a class="logo" href="#top" aria-label="Home Stack ホーム">Home Stack</a>
+        <a class="nav__link" href="#flow">使い方</a>
+        <a class="nav__link" href="#offers">最安提案</a>
+        <a class="nav__link" href="#household">世帯設定</a>
+        <a class="nav__link" href="#replenishment">補充キュー</a>
+        <a class="nav__link" href="#autopilot">自動購入</a>
+        <a class="nav__cta" href="#scan">無料で試す</a>
+      </nav>
+
+      <section id="top" class="hero__grid">
+        <div class="hero__copy">
+          <p class="eyebrow">スマホWeb MVP</p>
+          <h1>家のストックを見せるだけ。切れる前に、実質最安で補充。</h1>
+          <p class="hero__lead">
+            トイレットペーパー、洗剤、ペット用品、おむつなどの在庫を写真から登録。
+            補充タイミングに、最安候補・クーポン・代替キャンペーンを無料でお知らせします。
+          </p>
+          <div class="hero__actions">
+            <a class="button button--primary" href="#scan">収納写真をアップロード</a>
+            <a class="button button--ghost" href="#business">広告モデルを見る</a>
+          </div>
+          <ul class="trust-list" aria-label="サービスの約束">
+            <li>最安候補は広告より優先表示</li>
+            <li>写真は解析後に削除可能</li>
+            <li>LINE/メール通知から開始</li>
+          </ul>
+        </div>
+
+        <aside class="phone-card" aria-label="補充通知のプレビュー">
+          <div class="phone-card__status">今日の補充候補</div>
+          <article class="notice-card">
+            <span class="notice-card__tag">あと5日</span>
+            <h2>猫砂が少なくなりそうです</h2>
+            <p>いつもの商品は楽天が実質最安。スポンサー商品は120円安いキャンペーン中です。</p>
+            <button class="mini-button">比較して購入</button>
+          </article>
+          <article class="notice-card notice-card--quiet">
+            <span class="notice-card__tag">来週</span>
+            <h2>洗濯洗剤の補充目安</h2>
+            <p>前回購入から23日。家族人数ベースで残量25%想定です。</p>
+          </article>
+        </aside>
+      </section>
+    </header>
+
+    <main>
+      <section id="flow" class="section">
+        <div class="section__heading">
+          <p class="eyebrow">MVP Flow</p>
+          <h2>アプリ不要。まずはスマホWebで検証。</h2>
+          <p>インストールの壁をなくし、写真登録から購入リンククリックまでを最短で検証します。</p>
+        </div>
+        <div class="steps">
+          <article class="step-card">
+            <span>1</span>
+            <h3>収納を撮影</h3>
+            <p>洗面所、トイレ、洗濯機周辺、ペット用品置き場などをスマホで撮影します。</p>
+          </article>
+          <article class="step-card">
+            <span>2</span>
+            <h3>在庫を確認</h3>
+            <p>AI候補をユーザーが確認。カテゴリ、ブランド、残量、家族人数から消費ペースを仮置きします。</p>
+          </article>
+          <article class="step-card">
+            <span>3</span>
+            <h3>補充通知</h3>
+            <p>LINEまたはメールで、切れる前に最安候補・クーポン・代替商品を通知します。</p>
+          </article>
+          <article class="step-card">
+            <span>4</span>
+            <h3>購入リンクへ送客</h3>
+            <p>Amazon、楽天、Yahoo!などへ遷移。アフィリエイトと広告キャンペーンで収益化します。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="scan" class="section section--split">
+        <div>
+          <p class="eyebrow">Try it</p>
+          <h2>収納写真アップロードのプロトタイプ</h2>
+          <p>
+            実運用では画像解析に送ります。このMVPでは、アップロード体験と在庫候補生成のUIを確認できます。
+          </p>
+          <label class="upload-box" for="stock-photo">
+            <input id="stock-photo" type="file" accept="image/*" capture="environment" />
+            <span class="upload-box__icon">📷</span>
+            <strong>写真を選択 / 撮影</strong>
+            <small>JPG・PNGなど。デモでは端末内プレビューのみ行います。</small>
+          </label>
+          <div id="photo-preview" class="photo-preview" hidden></div>
+        </div>
+
+        <div class="inventory-panel" aria-live="polite">
+          <div class="panel-header">
+            <h3>検出された在庫候補</h3>
+            <span id="scan-state">サンプル</span>
+          </div>
+          <div id="inventory-list" class="inventory-list"></div>
+          <form id="add-item-form" class="add-item-form">
+            <h4>手動で在庫を追加</h4>
+            <div class="form-grid">
+              <label>
+                商品名
+                <input id="item-name" name="name" type="text" placeholder="例: おしりふき" required />
+              </label>
+              <label>
+                カテゴリ
+                <select id="item-category" name="category">
+                  <option>ペット用品</option>
+                  <option>ベビー用品</option>
+                  <option>洗濯・掃除</option>
+                  <option>紙用品</option>
+                  <option>食品・飲料</option>
+                </select>
+              </label>
+              <label>
+                残量 %
+                <input id="item-stock" name="stock" type="number" min="5" max="100" value="50" />
+              </label>
+              <label>
+                1日消費 %
+                <input id="item-usage" name="dailyUsage" type="number" min="1" max="30" value="5" />
+              </label>
+            </div>
+            <button class="button button--ghost button--full" type="submit">在庫に追加</button>
+          </form>
+          <button id="generate-plan" class="button button--primary button--full" type="button">
+            補充提案を更新
+          </button>
+        </div>
+      </section>
+
+      <section id="household" class="section section--split section--tight">
+        <div>
+          <p class="eyebrow">Household Rules</p>
+          <h2>世帯ごとの消費ペースと通知ルールを保存。</h2>
+          <p>
+            人数・ペット有無・通知先・広告許容度を端末内に保存し、補充タイミングと提案表示を調整します。
+          </p>
+        </div>
+        <form id="household-form" class="settings-card">
+          <div class="form-grid">
+            <label>
+              大人
+              <input id="adult-count" name="adults" type="number" min="1" max="8" value="2" />
+            </label>
+            <label>
+              子ども
+              <input id="child-count" name="children" type="number" min="0" max="8" value="1" />
+            </label>
+            <label>
+              ペット
+              <input id="pet-count" name="pets" type="number" min="0" max="8" value="1" />
+            </label>
+            <label>
+              通知方法
+              <select id="notify-channel" name="channel">
+                <option value="line">LINE</option>
+                <option value="email">メール</option>
+                <option value="webpush">Web Push</option>
+              </select>
+            </label>
+          </div>
+          <label class="checkbox-row">
+            <input id="ad-toggle" name="allowSponsored" type="checkbox" checked />
+            最安より安い、または差額が明確なスポンサー提案だけ表示する
+          </label>
+          <label class="checkbox-row">
+            <input id="privacy-toggle" name="deletePhoto" type="checkbox" checked />
+            写真は解析後に保存せず削除する前提で扱う
+          </label>
+          <button class="button button--primary button--full" type="submit">世帯ルールを保存</button>
+          <p id="settings-state" class="state-message" role="status">未保存</p>
+        </form>
+      </section>
+
+      <section id="offers" class="section">
+        <div class="section__heading">
+          <p class="eyebrow">Lowest + Ads</p>
+          <h2>広告でも「最安の信頼」を崩さない表示。</h2>
+          <p>本当の最安を必ず表示し、広告商品はキャンペーンとして明示します。</p>
+        </div>
+        <div class="offer-toolbar" aria-label="提案フィルター">
+          <button class="chip is-active" type="button" data-filter="all">すべて</button>
+          <button class="chip" type="button" data-filter="lowest">実質最安</button>
+          <button class="chip" type="button" data-filter="sponsored">広告/キャンペーン</button>
+        </div>
+        <div id="offer-list" class="offers"></div>
+      </section>
+
+      <section class="section analytics-card" aria-label="MVP検証KPI">
+        <div>
+          <p class="eyebrow">Validation Metrics</p>
+          <h2>広告収益型MVPの検証値を可視化。</h2>
+          <p>購入リンククリック、スポンサー提案クリック、登録在庫数を端末内でカウントします。</p>
+        </div>
+        <div class="metric-grid">
+          <div><strong id="metric-items">0</strong><span>登録在庫</span></div>
+          <div><strong id="metric-clicks">0</strong><span>購入クリック</span></div>
+          <div><strong id="metric-sponsored">0</strong><span>広告クリック</span></div>
+          <div><strong id="metric-revenue">¥0</strong><span>推定送客収益</span></div>
+        </div>
+      </section>
+
+      <section id="replenishment" class="section section--split">
+        <div>
+          <p class="eyebrow">Replenishment Queue</p>
+          <h2>切れる前の商品を、承認前提の補充キューにまとめる。</h2>
+          <p>
+            まだ自動購入ではなく、通知→確認→外部ECへの送客までをMVP範囲にします。
+            各候補には実質価格、送料、ポイント、広告理由を表示します。
+          </p>
+          <div id="notification-preview" class="notification-preview" aria-live="polite"></div>
+        </div>
+        <div class="queue-card">
+          <div class="panel-header">
+            <h3>次回の補充候補</h3>
+            <span>承認制</span>
+          </div>
+          <div id="replenishment-list" class="queue-list"></div>
+        </div>
+      </section>
+
+      <section id="autopilot" class="section section--split">
+        <div>
+          <p class="eyebrow">Auto Purchase Roadmap</p>
+          <h2>将来の自動購入に向けて、上限・猶予・ブランド変更ルールを先に設計。</h2>
+          <p>
+            MVPでは実決済を行わず、自動購入予約のシミュレーションまでに留めます。
+            許可済み商品だけ、購入前キャンセル猶予つきで、広告商品への勝手な変更を防ぎます。
+          </p>
+          <div id="autopilot-summary" class="notification-preview" aria-live="polite"></div>
+        </div>
+        <form id="autopilot-form" class="settings-card">
+          <div class="form-grid">
+            <label>
+              1回の購入上限
+              <input id="autopilot-max-amount" name="maxAmount" type="number" min="500" max="50000" step="500" value="5000" />
+            </label>
+            <label>
+              キャンセル猶予
+              <select id="autopilot-cancel-window" name="cancelWindowHours">
+                <option value="6">6時間</option>
+                <option value="12">12時間</option>
+                <option value="24">24時間</option>
+                <option value="48">48時間</option>
+              </select>
+            </label>
+            <label>
+              ブランド変更
+              <select id="autopilot-brand-policy" name="brandPolicy">
+                <option value="never">勝手に変更しない</option>
+                <option value="cheaper-confirm">安い場合も確認必須</option>
+                <option value="allow-same-spec">同容量・同等品のみ許可</option>
+              </select>
+            </label>
+            <label>
+              配送速度
+              <select id="autopilot-delivery-policy" name="deliveryPolicy">
+                <option value="standard">標準配送で最安優先</option>
+                <option value="fast">切れそうなら早い配送優先</option>
+              </select>
+            </label>
+          </div>
+          <label class="checkbox-row">
+            <input id="autopilot-enabled" name="enabled" type="checkbox" />
+            自動購入予約のシミュレーションを有効にする
+          </label>
+          <label class="checkbox-row">
+            <input id="autopilot-require-approval" name="requireApprovalForSponsored" type="checkbox" checked />
+            広告/スポンサー商品は必ず購入前確認にする
+          </label>
+          <button class="button button--primary button--full" type="submit">自動購入ルールを保存</button>
+          <p id="autopilot-state" class="state-message" role="status">未保存</p>
+        </form>
+      </section>
+
+      <section id="privacy" class="section privacy-card">
+        <div>
+          <p class="eyebrow">Privacy & Ops</p>
+          <h2>写真を扱うサービスとして、確認・削除・持ち出しを用意。</h2>
+          <p>このデモでは端末内保存のみです。実サービスでは解析後削除、同意管理、広告セグメントの透明化が必要です。</p>
+        </div>
+        <div class="privacy-actions">
+          <button id="export-state" class="button button--ghost" type="button">デモデータを書き出す</button>
+          <button id="reset-state" class="button button--ghost danger-button" type="button">端末内データをリセット</button>
+          <p id="privacy-state" class="state-message" role="status">操作待ち</p>
+        </div>
+      </section>
+
+      <section id="business" class="section business-card">
+        <div>
+          <p class="eyebrow">Business Model</p>
+          <h2>主収益は購買直前の送客広告。</h2>
+          <p>
+            月額課金ではなく、補充タイミングのアフィリエイト、クーポン掲載、スポンサー代替商品、
+            小売送客で収益化します。
+          </p>
+        </div>
+        <dl class="metrics">
+          <div>
+            <dt>重点カテゴリ</dt>
+            <dd>ペット用品・ベビー用品・洗剤</dd>
+          </div>
+          <div>
+            <dt>初期通知</dt>
+            <dd>LINE / メール</dd>
+          </div>
+          <div>
+            <dt>検証KPI</dt>
+            <dd>クリック率・購入率・世帯あたり広告収益</dd>
+          </div>
+        </dl>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>Home Stack MVP — 無料で始める家庭内在庫リテールメディア</p>
+    </footer>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

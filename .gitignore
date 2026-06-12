@@ -1,0 +1,7 @@
+node_modules/
+.next/
+.turbo/
+.tools/
+.next-dev*.log
+pnpm-lock.yaml.tmp
+tsconfig.tsbuildinfo

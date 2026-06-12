@@ -1,124 +1,97 @@
-# Home Stack 要件まとめ
+# Home Stack Requirements
 
-## 1. サービスコンセプト
+## 1. Concept
 
-Home Stack は、同じ消耗品を切らしたくない家庭向けに、家の中のストックをスマホで見せるだけで在庫を把握し、切れる前に実質最安候補・クーポン・代替キャンペーンを提示する補充アシスタントです。
+Home Stack is a mobile web assistant for household consumables. Users register household stock from a phone, track estimated days left, and receive replenishment suggestions before items run out.
 
-長期的には、ユーザーが許可した商品だけを、購入前キャンセル猶予つきで自動購入できる状態を目指します。
+Long term, the product can support permission-based auto-purchase reservations with cancellation windows. The MVP stops at approval-based queueing and purchase-link clicks.
 
-## 2. 事業方針
+## 2. Business Direction
 
-- ユーザー課金は主軸にしない。
-- 無料利用を前提に、購買直前の送客・広告・アフィリエイトで収益化する。
-- バナー広告ではなく、補充タイミングに合わせた購買提案として広告を出す。
-- 「最安」を歪めない。実質最安は必ず表示し、広告商品は明示する。
+- Do not rely on user subscription revenue in the first MVP.
+- Monetize through affiliate links, retailer referrals, coupons, and clearly labeled sponsored alternatives.
+- Preserve trust by always showing the true lowest eligible offer before sponsored placements.
+- Sponsored offers must show why they are displayed, such as lower price, same category, same capacity, or a campaign benefit.
 
-## 3. 初期MVP方針
+## 3. MVP Scope
 
-- ネイティブアプリではなく、スマホWeb/PWAで開始する。
-- インストール不要で、LPから写真アップロード・在庫確認・購入リンククリックまで検証する。
-- 通知は最初からネイティブPushにせず、LINE/メール/Web Pushの設定だけを持つ。
-- 実決済・実自動購入はまだ行わず、承認制の補充キューと自動購入予約シミュレーションまでに留める。
+- Build as a Next.js + TypeScript mobile web app.
+- Store MVP state in `localStorage`.
+- Support photo-upload simulation, manual inventory entry, stock adjustment, replenishment suggestions, offer filtering, KPI counters, household settings, and auto-purchase simulation rules.
+- Do not process real payments.
+- Do not send real notifications yet; render LINE/email/Web Push preview text.
+- Do not upload images to a server in the MVP.
 
-## 4. ユーザー機能要件
+## 4. User Features
 
-### 4.1 在庫登録
+### Inventory
 
-- 収納写真アップロード/撮影導線を提供する。
-- デモでは端末内プレビューのみ行い、擬似的に在庫候補を追加する。
-- 手動で商品名、カテゴリ、残量、1日消費率を追加できる。
-- 在庫ごとに残量を `-10%` / `+10%` で調整できる。
-- 在庫ごとに自動補充ON/OFFを切り替えられる。
+- Upload or capture a photo and generate demo inventory candidates.
+- Manually add inventory with name, category, stock percentage, and daily usage.
+- Adjust stock by `-10%` and `+10%`.
+- Toggle auto-replenish eligibility per item.
+- Delete inventory items.
 
-### 4.2 世帯設定
+### Household Settings
 
-- 大人、子ども、ペット数を保存する。
-- 通知方法を LINE / メール / Web Push から選択できる。
-- スポンサー提案の表示可否を設定できる。
-- 写真を解析後に削除する前提のプライバシー設定を持つ。
+- Save adult, child, and pet counts.
+- Choose notification channel: LINE, email, or Web Push.
+- Toggle sponsored-offer visibility.
+- Toggle the privacy assumption that photos are deleted after analysis.
 
-### 4.3 補充予測
+### Replenishment Prediction
 
-- 残量、1日消費率、世帯人数、ペット数から「あと何日で切れるか」を推定する。
-- 14日以内に切れそうな商品を補充候補として扱う。
-- 在庫は補充優先度順に表示する。
+- Estimate days left from stock, daily usage, household size, children, and pets.
+- Treat items under 14 days as replenishment candidates.
+- Sort inventory by replenishment urgency.
 
-### 4.4 最安/広告提案
+### Offers
 
-- 商品候補には価格、購入先、単価、送料、ポイント/クーポン、表示理由を表示する。
-- 実質最安と広告/キャンペーンをラベルで区別する。
-- 広告商品は、同カテゴリ・同容量・価格メリットなどの理由を明示する。
-- フィルターで「すべて」「実質最安」「広告/キャンペーン」を切り替えられる。
+- Show price, retailer, unit price, shipping, points, reason, and label.
+- Label offers as either `実質最安` or `キャンペーン / 広告`.
+- Filter offers by all, lowest, or sponsored.
+- Count offer clicks and estimated referral revenue.
 
-### 4.5 補充キュー
+### Queue
 
-- 14日以内に切れそうな商品を承認制キューに表示する。
-- キューでは「承認」「自動予約」「3日後」「今回は不要」を選べる。
-- 承認や自動予約は購入クリック相当としてKPIに反映する。
-- 「3日後」は一時的に残量を戻すことでスヌーズを表現する。
+- Show urgent items in an approval-based replenishment queue.
+- Support approve, auto-reserve simulation, snooze, and cancel decisions.
+- Count approvals and auto-reservation simulations.
+- Snooze should temporarily increase stock to represent delayed action.
 
-### 4.6 将来の自動購入
+### Auto-Purchase Roadmap
 
-- MVPでは実決済を行わない。
-- 自動購入予約ルールとして以下を保存する。
-  - 自動購入予約の有効/無効
-  - 1回の購入上限金額
-  - キャンセル猶予時間
-  - ブランド変更ポリシー
-  - 配送速度ポリシー
-  - スポンサー商品は必ず確認するか
-- 自動予約できるのは、自動補充ONの商品かつ上限金額内かつルールを満たす候補のみ。
-- 広告商品への勝手なブランド変更は禁止または明示確認を必須とする。
+- Save enabled/disabled state.
+- Save per-purchase maximum amount.
+- Save cancellation window.
+- Save brand-change policy.
+- Save delivery-speed policy.
+- Require approval for sponsored products by default.
+- Only allow auto-reserve when item-level auto-replenish is enabled, the price is within the limit, and policy checks pass.
 
-### 4.7 プライバシー/運用
+### Privacy and Operations
 
-- デモデータをクリップボードに書き出せる。
-- 端末内データをリセットできる。
-- 実サービスでは、写真の解析後削除、同意管理、広告セグメントの説明、購入履歴の扱いを明示する。
+- Export current demo state to clipboard.
+- Reset local demo state.
+- Make it clear that the MVP uses local browser storage.
 
-## 5. 収益/KPI要件
+## 5. Technical Requirements
 
-- 登録在庫数を計測する。
-- 購入リンククリック数を計測する。
-- 広告/スポンサー提案クリック数を計測する。
-- 推定送客収益を計測する。
-- 将来的には承認率、自動予約率、キャンセル率、実購入率、世帯あたり月間送客収益も追う。
+- Use Next.js App Router under `src/app`.
+- Use React client state for the interactive MVP surface.
+- Keep reusable domain logic in pure TypeScript modules under `src/lib`.
+- Keep static assets in `public`.
+- Use Biome for formatting/linting.
+- Use TypeScript strict mode.
+- Use Docker Compose as an optional local production runtime.
 
-## 6. 優先カテゴリ
+## 6. Future Roadmap
 
-- ペット用品: 猫砂、ペットフード、ペットシート。
-- ベビー用品: おむつ、おしりふき、粉ミルク。
-- 洗濯・掃除: 洗濯洗剤、柔軟剤、食器用洗剤。
-- 紙用品: トイレットペーパー、ティッシュ。
-- 食品・飲料: 水、米など重い定番品。
-
-## 7. 技術要件
-
-- 静的Webアプリとして動作する。
-- PWA manifest と Service Worker を持つ。
-- コアアセットをオフラインキャッシュする。
-- 状態はMVPでは `localStorage` に保存する。
-- UIからの状態変更は REST Adapter を経由し、将来のサーバーAPIへ差し替えやすくする。
-- `server/api-server.mjs` で HTTP API server を提供し、`/api` prefix のRESTエンドポイントと静的PWA配信を同一プロセスで検証できるようにする。
-- 補充予測、オファー選定、自動予約判定は pure domain modules として分離し、UIなしでテストできるようにする。
-- 初期状態、検出候補、オファーマスタは Demo data modules として分離し、商品/カテゴリ追加時の変更範囲を限定する。
-- `pnpm run check` で必須ファイル・必須文言・manifest JSONを検証し、REST Adapter の主要リソースは自動テストで検証する。
-- pnpm/turbo/biome/lefthook/Docker Compose を標準ツールチェーンとして使い、CI・ローカル・コンテナ実行の入口を揃える。
-
-## 8. 今後の実装ロードマップ
-
-1. 実画像認識APIとの接続。
-2. 商品マスタ、JAN/バーコード、カテゴリ辞書の整備。
-3. EC価格取得と送料・ポイント込み実質価格計算。
-4. LINE/メール通知の実送信。
-5. アフィリエイトリンク生成とクリック計測のサーバー保存。
-6. Local REST Adapter を Remote REST API に差し替え、サーバー永続化する。
-7. 小売API連携によるカート投入。
-8. 決済トークン・購入上限・キャンセル猶予を備えた自動購入。
-9. 広告商品審査、表示理由ログ、監査可能なランキングルール。
-
-## 9. UIトーン
-
-- Notion のように、白〜薄いベージュの静かなキャンバス、薄い罫線、角丸のドキュメントブロックで構成する。
-- 派手なグラデーションや強い影を避け、情報の階層・余白・ラベルで信頼感を出す。
-- CTA は黒/白ベースで、広告提案もプロダクト内の比較ブロックとして自然に見せる。
+1. Connect real image recognition.
+2. Add product master data, JAN/barcode support, and category dictionaries.
+3. Integrate retailer pricing, shipping, and point calculations.
+4. Send real LINE/email notifications.
+5. Persist inventory, households, queue decisions, clicks, and consent records server-side.
+6. Add API routes under `/api`.
+7. Add ranking policy logs for sponsored-offer auditability.
+8. Add purchase intent and cancellation-window flows for safe auto-purchase.

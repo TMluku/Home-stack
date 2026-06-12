@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
   <title id="title">Home Stack icon</title>
-  <rect width="512" height="512" rx="112" fill="#1f6feb"/>
+  <rect width="512" height="512" rx="112" fill="#252525"/>
   <path d="M116 244 256 132l140 112v144a28 28 0 0 1-28 28h-72v-96h-80v96h-72a28 28 0 0 1-28-28V244Z" fill="#fff"/>
-  <path d="M164 258h184" stroke="#dff6e6" stroke-width="28" stroke-linecap="round"/>
-  <path d="M164 306h120" stroke="#dff6e6" stroke-width="28" stroke-linecap="round"/>
+  <path d="M164 258h184" stroke="#f7f6f3" stroke-width="28" stroke-linecap="round"/>
+  <path d="M164 306h120" stroke="#f7f6f3" stroke-width="28" stroke-linecap="round"/>
 </svg>

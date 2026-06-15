@@ -266,6 +266,30 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["購入条件あり"]));
   });
 
+  it("skips discount amounts before product totals on direct product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Discount product</title></head>
+        <body>
+          <span>クーポン 300円OFF</span>
+          <strong>販売価格 1,280円</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1280,
+      source: "html-text",
+      effectivePriceQuote: {
+        listPrice: 1280,
+        couponValue: 300,
+        effectivePrice: 980,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["クーポン適用"]));
+  });
+
   it("skips tax-excluded prices before tax-included totals on direct product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -742,6 +766,32 @@ describe("replenishment domain logic", () => {
       },
     });
     expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["購入条件あり"]));
+  });
+
+  it("skips discount amounts before product totals in marketplace HTML", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/discount" title="Discount detergent">Discount detergent</a>
+          <span>coupon 300円OFF</span>
+          <strong>販売価格 1,280円</strong>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/detergent/",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Discount detergent",
+      price: 1280,
+      effectivePriceQuote: {
+        listPrice: 1280,
+        couponValue: 300,
+        effectivePrice: 980,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["クーポン適用"]));
   });
 
   it("skips tax-excluded prices before tax-included totals in marketplace HTML", () => {

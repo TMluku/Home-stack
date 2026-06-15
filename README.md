@@ -61,6 +61,15 @@ pnpm.cmd run build
 - Biome lint
 - Vitest tests
 
+## GitHub Pages
+
+The repository includes a GitHub Pages deployment workflow at `.github/workflows/pages.yml`.
+
+- CI builds the normal Next.js app.
+- Pages builds with `NEXT_OUTPUT_EXPORT=true` and publishes the static `out/` directory.
+- The Pages build uses `/Home-stack` as the base path.
+- Because GitHub Pages is static hosting, product search and URL price scan fall back to local demo candidates, JAN lookup, and external marketplace search links until a server API is connected.
+
 ## Optional Marketplace API Keys
 
 The app can search marketplace candidates without credentials by attempting public HTML extraction, but official APIs are preferred when available.
@@ -77,3 +86,4 @@ pnpm.cmd run dev
 - Photo upload does not send images to a server in the MVP.
 - Price candidates are for validation and can differ from live checkout totals.
 - Conditional prices must always expose the conditions that make the effective price true.
+- Post-MVP panels now show condition audit rows, notification adapter readiness, and account/server-save migration contracts.

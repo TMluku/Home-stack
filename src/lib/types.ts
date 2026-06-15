@@ -104,7 +104,7 @@ export type LivePriceResult = {
   error?: string;
 };
 
-export type ProductSearchSource = "rakuten" | "yahoo-shopping" | "direct-url";
+export type ProductSearchSource = "rakuten" | "yahoo-shopping" | "direct-url" | "demo-catalog" | "marketplace-link";
 
 export type ProductSearchCandidate = {
   id: string;

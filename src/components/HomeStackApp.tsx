@@ -6,6 +6,7 @@ import { flushSync } from "react-dom";
 import { categories, createDefaultState, detectedInventoryCandidates, normalizeState, STORAGE_KEY } from "@/lib/demo-state";
 import { recordOutboundClick, recordQueueDecision } from "@/lib/metrics";
 import { baseOffers } from "@/lib/offers";
+import { buildStaticPriceScanResults, buildStaticProductSearchResult, isValidJanCode, resolveJanProduct } from "@/lib/post-mvp";
 import {
   buildReplenishmentQueue,
   buildShoppingListSummary,
@@ -45,6 +46,8 @@ const filterLabels: Record<OfferFilter, string> = {
   conditions: "条件あり",
 };
 
+const isStaticExport = process.env.NEXT_PUBLIC_STATIC_EXPORT === "true";
+
 export function HomeStackApp() {
   const [state, setState] = useState<AppState>(() => createDefaultState());
   const [loaded, setLoaded] = useState(false);
@@ -60,6 +63,7 @@ export function HomeStackApp() {
   const [livePriceResults, setLivePriceResults] = useState<LivePriceResult[]>([]);
   const [livePriceStatus, setLivePriceStatus] = useState("商品ページURLを貼ると、サーバー側で価格候補を抽出します。");
   const [productSearchQuery, setProductSearchQuery] = useState("");
+  const [janCode, setJanCode] = useState("");
   const [productSearchResult, setProductSearchResult] = useState<ProductSearchResult | null>(null);
   const [productSearchStatus, setProductSearchStatus] = useState("商品名から複数ECサイトの価格候補を検索できます。");
 
@@ -88,6 +92,21 @@ export function HomeStackApp() {
   const atRiskCount = state.inventory.filter((item) => calculateDaysLeft(item, state.household) <= 10).length;
   const allowedCount = state.inventory.filter((item) => item.autoReplenish).length;
   const reservableCount = queue.filter((entry) => entry.autoReservable).length;
+  const conditionAuditRows = useMemo(
+    () =>
+      offers
+        .flatMap((offer) =>
+          offer.competitors.map((competitor) => ({
+            offer: offer.title,
+            retailer: competitor.retailer,
+            effectivePrice: competitor.effectivePrice,
+            conditionCount: competitor.conditions.length,
+            conditionSummary: competitor.conditions.map((condition) => `${condition.label}: ${condition.detail}`).join(" / ") || "条件なし",
+          })),
+        )
+        .slice(0, 8),
+    [offers],
+  );
   const bestConditionSavings = useMemo(
     () =>
       baseOffers.reduce((total, offer) => {
@@ -236,6 +255,13 @@ export function HomeStackApp() {
     setLivePriceStatus("価格ページを取得中です...");
     setLivePriceResults([]);
 
+    if (isStaticExport) {
+      const results = buildStaticPriceScanResults(livePriceUrls);
+      setLivePriceResults(results);
+      setLivePriceStatus("GitHub Pages版ではサーバー側価格取得は未接続です。API接続後に自動抽出します。");
+      return;
+    }
+
     try {
       const response = await fetch("/api/price-scan", {
         method: "POST",
@@ -261,6 +287,15 @@ export function HomeStackApp() {
     setProductSearchStatus("楽天市場 / Yahoo!ショッピングを検索中です...");
     setProductSearchResult(null);
 
+    if (isStaticExport) {
+      const result = buildStaticProductSearchResult(query, baseOffers);
+      setProductSearchResult(result);
+      setProductSearchStatus(
+        `${result.candidates.length}件の静的候補を表示しました。GitHub Pagesでは外部検索リンクとデモ価格台帳を使います。`,
+      );
+      return;
+    }
+
     try {
       const response = await fetch("/api/product-search", {
         method: "POST",
@@ -277,6 +312,15 @@ export function HomeStackApp() {
     } catch (error) {
       setProductSearchStatus(error instanceof Error ? error.message : "商品検索に失敗しました。");
     }
+  }
+
+  function searchJanProduct() {
+    if (!isValidJanCode(janCode)) {
+      setProductSearchStatus("JANコードは13桁とチェックデジットを確認してください。");
+      return;
+    }
+    const product = resolveJanProduct(janCode);
+    searchMarketPrices(product ? `${product.name} ${product.unitHint}` : janCode);
   }
 
   function updateQueue(itemId: string, action: QueueDecision, estimatedRevenue = 0) {
@@ -518,10 +562,13 @@ export function HomeStackApp() {
           <ProductSearchPanel
             inventory={state.inventory}
             query={productSearchQuery}
+            janCode={janCode}
             result={productSearchResult}
             status={productSearchStatus}
             onQueryChange={setProductSearchQuery}
+            onJanCodeChange={setJanCode}
             onSearch={() => searchMarketPrices()}
+            onSearchJan={searchJanProduct}
             onSearchInventory={(item) => searchMarketPrices(item.name)}
           />
 
@@ -839,6 +886,12 @@ export function HomeStackApp() {
             </p>
           </div>
         </section>
+
+        <PostMvpOpsPanel
+          conditionAuditRows={conditionAuditRows}
+          queueItemCount={queueSummary.itemCount}
+          queueTotal={queueSummary.totalEffectivePrice}
+        />
       </main>
 
       <footer className="footer">
@@ -851,18 +904,24 @@ export function HomeStackApp() {
 function ProductSearchPanel({
   inventory,
   query,
+  janCode,
   result,
   status,
   onQueryChange,
+  onJanCodeChange,
   onSearch,
+  onSearchJan,
   onSearchInventory,
 }: {
   inventory: InventoryItem[];
   query: string;
+  janCode: string;
   result: ProductSearchResult | null;
   status: string;
   onQueryChange: (value: string) => void;
+  onJanCodeChange: (value: string) => void;
   onSearch: () => void;
+  onSearchJan: () => void;
   onSearchInventory: (item: InventoryItem) => void;
 }) {
   const bestCandidate = result?.candidates[0];
@@ -890,6 +949,21 @@ function ProductSearchPanel({
           <input type="search" value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="例: 猫砂 5L" />
           <button className="button button--primary" type="button" onClick={onSearch}>
             横断検索
+          </button>
+        </div>
+      </label>
+
+      <label className="market-search-box">
+        JAN / Barcode
+        <div>
+          <input
+            inputMode="numeric"
+            value={janCode}
+            onChange={(event) => onJanCodeChange(event.target.value)}
+            placeholder="4900000000016"
+          />
+          <button className="button button--ghost" type="button" onClick={onSearchJan}>
+            JAN Search
           </button>
         </div>
       </label>
@@ -1075,6 +1149,89 @@ function LivePriceScanner({
           ))}
         </div>
       ) : null}
+    </section>
+  );
+}
+
+function PostMvpOpsPanel({
+  conditionAuditRows,
+  queueItemCount,
+  queueTotal,
+}: {
+  conditionAuditRows: Array<{
+    offer: string;
+    retailer: string;
+    effectivePrice: number;
+    conditionCount: number;
+    conditionSummary: string;
+  }>;
+  queueItemCount: number;
+  queueTotal: number;
+}) {
+  return (
+    <section id="post-mvp" className="section post-mvp-panel">
+      <div className="section__heading">
+        <p className="eyebrow">Post MVP Ops</p>
+        <h2>MVP後の接続準備を、静的サイト上でも確認する。</h2>
+        <p>
+          実EC価格取得、JAN入力、条件付き価格の監査、通知、アカウント/サーバー保存はGitHub Pagesでも設計状態を見える化します。
+          実送信や実保存は、API接続後にこの画面の契約へ差し替えます。
+        </p>
+      </div>
+
+      <div className="ops-grid">
+        <section className="ops-panel" aria-label="条件付き価格監査ログ">
+          <h3>条件付き価格の監査ログ</h3>
+          <div className="audit-table">
+            {conditionAuditRows.map((row) => (
+              <article key={`${row.offer}-${row.retailer}`}>
+                <span>{row.retailer}</span>
+                <strong>{yenFormatter.format(row.effectivePrice)}</strong>
+                <small>{row.conditionCount > 0 ? `${row.conditionCount}条件` : "条件なし"}</small>
+                <p>{row.conditionSummary}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="ops-panel" aria-label="通知接続準備">
+          <h3>通知接続準備</h3>
+          <dl className="ops-list">
+            <div>
+              <dt>通知候補</dt>
+              <dd>{queueItemCount}件</dd>
+            </div>
+            <div>
+              <dt>通知金額</dt>
+              <dd>{yenFormatter.format(queueTotal)}</dd>
+            </div>
+            <div>
+              <dt>送信先</dt>
+              <dd>LINE / Email / Web Push adapter</dd>
+            </div>
+          </dl>
+          <p>次の実装では通知ジョブ、送信前プレビュー、失敗時リトライ、配信停止状態をサーバー側に保存します。</p>
+        </section>
+
+        <section className="ops-panel" aria-label="アカウントとサーバー保存準備">
+          <h3>アカウント / サーバー保存</h3>
+          <dl className="ops-list">
+            <div>
+              <dt>保存方式</dt>
+              <dd>localStorageからREST同期へ移行</dd>
+            </div>
+            <div>
+              <dt>同期単位</dt>
+              <dd>inventory / household / queue / metrics</dd>
+            </div>
+            <div>
+              <dt>認証</dt>
+              <dd>メールリンクまたはOAuthを想定</dd>
+            </div>
+          </dl>
+          <p>GitHub Pages版は静的フロントとして動作し、将来のAPI endpointへ同じ状態構造を送れるように保ちます。</p>
+        </section>
+      </div>
     </section>
   );
 }

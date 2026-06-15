@@ -58,9 +58,14 @@ This checklist defines the current acceptance target for the Home Stack MVP.
 
 ## Known Follow-Up After MVP
 
-- [ ] Add server-side persistence and user accounts.
-- [ ] Add real image recognition and barcode/JAN support.
+- [x] Add GitHub Pages deployment workflow for the static front end.
+- [x] Add JAN/barcode input and known-code lookup for demo product search.
+- [x] Add condition audit rows for effective-price ranking decisions.
+- [x] Add notification adapter readiness panel.
+- [x] Add account/server-save migration contract panel.
+- [ ] Add production server-side persistence and user accounts.
+- [ ] Add production image recognition and barcode/JAN master data.
 - [ ] Add official retailer API integrations with normalized shipping, point, and coupon windows.
 - [ ] Add real notification delivery.
 - [ ] Add purchase intent confirmation and cancellation-window flows.
-- [ ] Add audit logs for effective-price conditions and ranking decisions.
+- [ ] Add server-side audit logs for effective-price conditions and ranking decisions.

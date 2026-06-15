@@ -1311,6 +1311,74 @@ h3 {
   text-align: center;
 }
 
+.post-mvp-panel {
+  background: var(--surface);
+}
+
+.ops-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1.2fr 0.9fr 0.9fr;
+}
+
+.ops-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.ops-panel h3 {
+  margin: 0 0 0.75rem;
+}
+
+.audit-table {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.audit-table article {
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 0.25rem;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  padding-bottom: 0.65rem;
+}
+
+.audit-table article:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.audit-table p {
+  color: var(--muted);
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.ops-list {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0 0 1rem;
+}
+
+.ops-list div {
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding-bottom: 0.5rem;
+}
+
+.ops-list dt {
+  color: var(--muted);
+}
+
+.ops-list dd {
+  font-weight: 800;
+  margin: 0;
+  text-align: right;
+}
+
 @media (max-width: 860px) {
   .nav__link {
     display: none;
@@ -1323,7 +1391,8 @@ h3 {
   .privacy-card,
   .price-trust-panel,
   .market-search-box div,
-  .comparison-panel__header {
+  .comparison-panel__header,
+  .ops-grid {
     grid-template-columns: 1fr;
   }
 

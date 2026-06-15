@@ -1,12 +1,13 @@
-import type { ProductSearchCandidate, ProductSearchResult, ProductSearchSource } from "./types";
+import type { ProductSearchCandidate, ProductSearchResult } from "./types";
 
 const MAX_HTML_BYTES = 1_500_000;
 const USER_AGENT = "HomeStackPriceRadar/0.1 (+https://github.com/TMluku/Home-stack)";
 
 type SearchSourceReport = ProductSearchResult["sources"][number];
 type RawCandidate = Omit<ProductSearchCandidate, "id" | "matchScore" | "confidence" | "fetchedAt">;
+type MarketplaceSearchSource = "rakuten" | "yahoo-shopping";
 
-const SOURCE_LABELS: Record<ProductSearchSource, string> = {
+const SOURCE_LABELS = {
   rakuten: "楽天市場",
   "yahoo-shopping": "Yahoo!ショッピング",
   "direct-url": "指定URL",
@@ -33,11 +34,7 @@ export async function searchProductPrices(query: string): Promise<ProductSearchR
   };
 }
 
-export function extractSearchCandidatesFromHtml(
-  html: string,
-  source: Exclude<ProductSearchSource, "direct-url">,
-  baseUrl: string,
-): RawCandidate[] {
+export function extractSearchCandidatesFromHtml(html: string, source: MarketplaceSearchSource, baseUrl: string): RawCandidate[] {
   const decoded = decodeEntities(html);
   const snippets = splitIntoProductSnippets(decoded);
 
@@ -212,7 +209,7 @@ async function searchYahooShoppingApi(
 }
 
 async function searchHtmlSource(
-  source: Exclude<ProductSearchSource, "direct-url">,
+  source: MarketplaceSearchSource,
   searchedUrl: string,
 ): Promise<{ candidates: RawCandidate[]; report: SearchSourceReport }> {
   try {

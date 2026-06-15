@@ -43,6 +43,9 @@ jobs:
       - name: Run browser E2E
         run: pnpm run test:e2e:browser
 
+      - name: Validate mobile QA evidence
+        run: pnpm run check:mobile-qa-evidence
+
       - name: Upload mobile QA evidence
         if: always()
         uses: actions/upload-artifact@v6

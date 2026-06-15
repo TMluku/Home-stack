@@ -64,6 +64,7 @@ pnpm.cmd run build:pages
 pnpm.cmd run check:pages
 pnpm.cmd run test:e2e
 pnpm.cmd run test:e2e:browser
+pnpm.cmd run check:mobile-qa-evidence
 ```
 
 `check` runs:
@@ -74,7 +75,7 @@ pnpm.cmd run test:e2e:browser
 
 `test:e2e` checks the published GitHub Pages URL and the visual asset used by the price-search UI by default. Override it with `HOME_STACK_PAGES_URL` when validating another deployment.
 
-`test:e2e:browser` builds the static Pages export, serves it locally, and verifies the price-search flow in mobile and desktop Chromium. Install the browser once with:
+`test:e2e:browser` builds the static Pages export, serves it locally, and verifies the price-search flow in mobile and desktop Chromium. `check:mobile-qa-evidence` validates the generated screenshot and metrics JSON before those files are used for manual QA. Install the browser once with:
 
 ```powershell
 pnpm.cmd exec playwright install chromium
@@ -124,6 +125,7 @@ Use this checklist when changing price extraction, condition labels, static Page
    pnpm.cmd run check:pages
    pnpm.cmd run test:e2e
    pnpm.cmd run test:e2e:browser
+   pnpm.cmd run check:mobile-qa-evidence
    ```
 
 2. Publish through `main`; `.github/workflows/pages-branch.yml` updates `gh-pages` automatically.

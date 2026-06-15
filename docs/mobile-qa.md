@@ -14,6 +14,7 @@ Before manual QA, confirm these gates are green:
 - `pnpm.cmd run check:pages`
 - `pnpm.cmd run test:e2e`
 - `pnpm.cmd run test:e2e:browser`
+- `pnpm.cmd run check:mobile-qa-evidence`
 - GitHub Actions: `CI`, `Browser E2E`, `Publish GitHub Pages Branch`, and `pages build and deployment`
 
 `test:e2e:browser` covers the price-search flow in mobile and desktop Chromium, including:
@@ -31,6 +32,8 @@ The `Browser E2E` GitHub Actions workflow uploads a `mobile-qa-evidence` artifac
 - Playwright report files, when generated
 
 Use that artifact as automated display evidence before running the real-device checklist below.
+
+Run `pnpm.cmd run check:mobile-qa-evidence` after `pnpm.cmd run test:e2e:browser` to confirm the screenshot and metrics JSON exist, the mobile viewport has no horizontal overflow, the condition detail rows are open, and the seller/search link is present.
 
 Automated evidence is not a substitute for the real-device rows below. Treat the objective as incomplete until at least one physical phone/browser pass is recorded with the published URL.
 

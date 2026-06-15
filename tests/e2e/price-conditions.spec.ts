@@ -28,6 +28,8 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(conditionalProof).toContainText("クーポン条件:");
   await expect(conditionalProof.locator(".effective-proof__formula")).toContainText(/表示.*送料.*ポイント.*クーポン.*実質/);
   await expect(conditionalProof.locator(".effective-proof__notice")).toContainText("条件成立時の見込み");
+  await expect(conditionalProof.locator(".effective-proof__checklist")).toContainText("数量・定期・初回条件");
+  await expect(conditionalProof.locator(".effective-proof__checklist")).toContainText("対象者・併用可否");
   await expect(conditionalProof.locator(".effective-proof__details li")).toHaveCount(6);
   const conditionLink = conditionalProof.getByRole("link", { name: "販売ページで条件を見る" });
   await expect(conditionLink).toHaveAttribute("href", /^https?:\/\//);

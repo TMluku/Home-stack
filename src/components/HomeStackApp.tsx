@@ -1439,6 +1439,7 @@ function EffectivePriceProof({
   const rawProofEvidence = [...new Set([...(evidence ?? []), ...quote.evidence])].filter(Boolean);
   const proofEvidence = prioritizeConditionEvidence([...new Set(rawProofEvidence.map(formatPriceEvidence))]).slice(0, 6);
   const proofCount = rawProofEvidence.length;
+  const checkItems = buildConditionCheckItems(quote.conditionLabels);
   const priceFormula = `表示 ${yenFormatter.format(quote.listPrice)} + 送料 ${yenFormatter.format(quote.shippingFee ?? 0)} - ポイント ${yenFormatter.format(
     quote.pointValue ?? 0,
   )} - クーポン ${yenFormatter.format(quote.couponValue ?? 0)} = 実質 ${yenFormatter.format(quote.effectivePrice)}`;
@@ -1483,6 +1484,13 @@ function EffectivePriceProof({
           ? "この実質価格は条件成立時の見込みです。購入前に販売ページで対象者・期間・併用可否を確認してください。"
           : "この候補は検出できた範囲ではクーポン・ポイント控除条件なしで比較しています。"}
       </p>
+      {checkItems.length > 0 ? (
+        <ul className="effective-proof__checklist" aria-label="購入前に確認する条件">
+          {checkItems.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      ) : null}
       <small>根拠 {proofCount}件 / 条件は購入前に販売サイトで再確認</small>
       <details className="effective-proof__details" open={quote.conditionRequired}>
         <summary>{quote.conditionRequired ? "価格条件を確認" : "価格根拠を確認"}</summary>
@@ -1550,6 +1558,18 @@ function prioritizeConditionEvidence(entries: string[]) {
 
 function isConditionEvidence(entry: string) {
   return /条件|期間/.test(entry);
+}
+
+function buildConditionCheckItems(labels: string[]) {
+  const items = labels.flatMap((label) => {
+    if (/購入条件|購入|定期|初回|セット/.test(label)) return ["数量・定期・初回条件"];
+    if (/送料/.test(label)) return ["送料無料ライン・配送条件"];
+    if (/ポイント/.test(label)) return ["付与時期・利用先"];
+    if (/クーポン/.test(label)) return ["対象者・併用可否"];
+    if (/期間/.test(label)) return ["キャンペーン期間"];
+    return [];
+  });
+  return [...new Set(items)].slice(0, 4);
 }
 
 function ProductSearchPanel({

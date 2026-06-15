@@ -191,6 +191,82 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("extracts structured shipping, point, and coupon evidence from product JSON-LD", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Structured product</title>
+          <script type="application/ld+json">
+            {
+              "@type": "Product",
+              "name": "Structured product",
+              "offers": {
+                "@type": "Offer",
+                "price": "2,000",
+                "priceCurrency": "JPY",
+                "shippingDetails": { "shippingRate": { "value": "300", "currency": "JPY" } },
+                "additionalProperty": [
+                  { "name": "points", "value": "100" },
+                  { "name": "coupon", "value": "250" }
+                ]
+              }
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2000,
+      source: "json-ld",
+      effectivePriceQuote: {
+        shippingFee: 300,
+        pointValue: 100,
+        couponValue: 250,
+        effectivePrice: 1950,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining([
+        "shipping fee from JSON-LD: 300 JPY",
+        "point value from JSON-LD: 100 JPY",
+        "coupon value from JSON-LD: 250 JPY",
+      ]),
+    );
+  });
+
+  it("extracts meta tag price condition evidence from product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Meta product</title>
+          <meta property="product:price:amount" content="1,980" />
+          <meta property="product:shipping:amount" content="330" />
+          <meta name="product:points" content="120" />
+          <meta name="product:coupon" content="200" />
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1980,
+      source: "meta",
+      effectivePriceQuote: {
+        shippingFee: 330,
+        pointValue: 120,
+        couponValue: 200,
+        effectivePrice: 1990,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining([
+        "shipping fee from meta tag: 330 JPY",
+        "point value from meta tag: 120 JPY",
+        "coupon value from meta tag: 200 JPY",
+      ]),
+    );
+  });
+
   it("extracts product search candidates from marketplace HTML", () => {
     const candidates = extractSearchCandidatesFromHtml(
       `

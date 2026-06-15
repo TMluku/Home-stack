@@ -94,7 +94,7 @@ Request:
 }
 ```
 
-Response includes per-URL extraction status, price, effective-price quote, title, source type, and fetch timestamp. HTML text around the detected price is inspected for shipping, point, and coupon signals when present.
+Response includes per-URL extraction status, price, effective-price quote, title, source type, and fetch timestamp. JSON-LD, meta tags, and HTML text around the detected price are inspected for shipping, point, and coupon signals when present, with evidence strings preserved on the effective-price quote.
 
 ## Offer Resource Direction
 
@@ -153,7 +153,7 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 - Never rank a conditional effective price without exposing the conditions that make that price true.
 - Product search candidates should carry an `effectivePriceQuote` so sorting can use normalized price rather than raw extracted price.
 - Product search extraction should preserve evidence for inferred shipping fees, point value, and coupon value so condition banners can explain why an effective price changed.
-- Product URL scans should also return `effectivePriceQuote` so direct product pages and marketplace search candidates can share the same ranking and audit contract.
+- Product URL scans should also return `effectivePriceQuote` so direct product pages and marketplace search candidates can share the same ranking and audit contract. Prefer structured JSON-LD/meta condition evidence before falling back to nearby page text.
 - JAN/barcode input should preserve the raw input, normalized digits, validation result, and suggested check-digit correction before searching marketplaces.
 - JAN/barcode lookup should expose the active master provider and be able to hand off valid codes to an external HTTP JAN master through `HOME_STACK_BARCODE_MASTER_URL`.
 - Notification preparation must keep delivery as a separate adapter step. Missing LINE/email/Web Push destinations should produce blocked jobs, not silent drops.

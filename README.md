@@ -120,5 +120,5 @@ Set `HOME_STACK_BARCODE_MASTER_URL` to hand valid JAN codes to an external HTTP 
 - Price candidates are for validation and can differ from live checkout totals.
 - Conditional prices must always expose the conditions that make the effective price true.
 - Product search candidates include effective-price quotes when shipping, point, or coupon assumptions are available, including inferred values from marketplace HTML/API results.
-- Product URL scans also return effective-price quotes when page text exposes shipping, point, or coupon signals.
+- Product URL scans also return effective-price quotes when JSON-LD, meta tags, or page text expose shipping, point, or coupon signals.
 - Post-MVP panels now show price fetch plans, condition audit logs, notification drafts, and account/server-save contracts.

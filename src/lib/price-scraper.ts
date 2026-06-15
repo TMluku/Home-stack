@@ -3,6 +3,20 @@ import type { LivePriceResult } from "./types";
 
 const MAX_HTML_BYTES = 1_500_000;
 
+type PriceAdjustments = {
+  shippingFee?: number;
+  pointValue?: number;
+  couponValue?: number;
+  evidence: string[];
+};
+
+type ExtractedPrice = {
+  price?: number;
+  currency?: string;
+  adjustments?: Partial<PriceAdjustments>;
+  evidence?: string[];
+};
+
 export async function scrapePriceUrl(url: string): Promise<LivePriceResult> {
   const fetchedAt = new Date().toISOString();
 
@@ -96,7 +110,7 @@ function extractJsonLdPrice(html: string) {
   return {};
 }
 
-function findPriceInJsonLd(value: unknown): { price?: number; currency?: string } {
+function findPriceInJsonLd(value: unknown): ExtractedPrice {
   if (Array.isArray(value)) {
     for (const item of value) {
       const found = findPriceInJsonLd(item);
@@ -115,7 +129,15 @@ function findPriceInJsonLd(value: unknown): { price?: number; currency?: string 
 
   const rawPrice = record.price ?? record.lowPrice ?? record.highPrice;
   const price = parsePrice(rawPrice);
-  if (price) return { price, currency: typeof record.priceCurrency === "string" ? record.priceCurrency : undefined };
+  if (price) {
+    const adjustments = extractStructuredAdjustments(record);
+    return {
+      price,
+      currency: typeof record.priceCurrency === "string" ? record.priceCurrency : undefined,
+      adjustments,
+      evidence: adjustments.evidence,
+    };
+  }
 
   for (const nested of Object.values(record)) {
     const found = findPriceInJsonLd(nested);
@@ -136,7 +158,10 @@ function extractMetaPrice(html: string) {
   for (const pattern of candidates) {
     const value = matchContent(html, pattern);
     const price = parsePrice(value);
-    if (price) return { price, currency: inferCurrency(value) };
+    if (price) {
+      const adjustments = extractMetaAdjustments(html);
+      return { price, currency: inferCurrency(value), adjustments, evidence: adjustments.evidence };
+    }
   }
 
   return {};
@@ -156,29 +181,164 @@ function extractTextPrice(html: string) {
 }
 
 function withEffectivePriceQuote<T extends Pick<LivePriceResult, "title" | "price" | "currency" | "source">>(
-  result: T,
+  result: T & { adjustments?: Partial<PriceAdjustments>; evidence?: string[] },
   html: string,
 ): T & Pick<LivePriceResult, "effectivePriceQuote"> {
   if (!result.price) return result;
-  const adjustments = inferPriceAdjustments(html, result.price);
+  const inferredAdjustments = inferPriceAdjustments(html, result.price);
+  const adjustments = mergeAdjustments(result.adjustments, inferredAdjustments);
+  const { adjustments: _adjustments, evidence: _evidence, ...visibleResult } = result;
   return {
-    ...result,
-    effectivePriceQuote: buildEffectivePriceQuote({
-      listPrice: result.price,
-      shippingFee: adjustments.shippingFee,
-      pointValue: adjustments.pointValue,
-      couponValue: adjustments.couponValue,
-    }),
+    ...(visibleResult as T),
+    effectivePriceQuote: appendAdjustmentEvidence(
+      buildEffectivePriceQuote({
+        listPrice: result.price,
+        shippingFee: adjustments.shippingFee,
+        pointValue: adjustments.pointValue,
+        couponValue: adjustments.couponValue,
+      }),
+      adjustments.evidence,
+    ),
   };
 }
 
-function inferPriceAdjustments(html: string, listPrice: number) {
+function mergeAdjustments(structured: Partial<PriceAdjustments> | undefined, inferred: PriceAdjustments): PriceAdjustments {
+  return {
+    shippingFee: structured?.shippingFee ?? inferred.shippingFee,
+    pointValue: structured?.pointValue ?? inferred.pointValue,
+    couponValue: structured?.couponValue ?? inferred.couponValue,
+    evidence: [...(structured?.evidence ?? []), ...inferred.evidence],
+  };
+}
+
+function appendAdjustmentEvidence(
+  quote: NonNullable<LivePriceResult["effectivePriceQuote"]>,
+  evidence: string[],
+): NonNullable<LivePriceResult["effectivePriceQuote"]> {
+  return {
+    ...quote,
+    evidence: [...quote.evidence, ...evidence],
+  };
+}
+
+function extractStructuredAdjustments(record: Record<string, unknown>): PriceAdjustments {
+  const shippingFee = extractJsonLdAmount(record.shippingDetails ?? record.shippingRate, ["shippingRate", "price", "value", "amount"]);
+  const pointValue = extractAdditionalPropertyAmount(record, ["point", "points", "ポイント"]);
+  const couponValue = extractAdditionalPropertyAmount(record, ["coupon", "discount", "クーポン", "値引"]);
+  return {
+    shippingFee,
+    pointValue,
+    couponValue,
+    evidence: [
+      typeof shippingFee === "number" ? `shipping fee from JSON-LD: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
+      pointValue ? `point value from JSON-LD: ${pointValue.toLocaleString("ja-JP")} JPY` : "",
+      couponValue ? `coupon value from JSON-LD: ${couponValue.toLocaleString("ja-JP")} JPY` : "",
+    ].filter(Boolean),
+  };
+}
+
+function extractJsonLdAmount(value: unknown, keys: string[]): number | undefined {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = extractJsonLdAmount(item, keys);
+      if (typeof found === "number") return found;
+    }
+    return undefined;
+  }
+
+  if (!value || typeof value !== "object") return parsePrice(value);
+  const record = value as Record<string, unknown>;
+  for (const key of keys) {
+    const amount = parsePrice(record[key]);
+    if (amount) return amount;
+  }
+  for (const nested of Object.values(record)) {
+    const amount = extractJsonLdAmount(nested, keys);
+    if (typeof amount === "number") return amount;
+  }
+  return undefined;
+}
+
+function extractAdditionalPropertyAmount(record: Record<string, unknown>, labels: string[]): number | undefined {
+  const properties = [record.additionalProperty, record.additionalProperties, record.priceSpecification].filter(Boolean);
+  for (const property of properties) {
+    const found = findNamedAmount(property, labels);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function findNamedAmount(value: unknown, labels: string[]): number | undefined {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findNamedAmount(item, labels);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  const name = String(record.name ?? record.propertyID ?? record["@type"] ?? "").toLowerCase();
+  if (labels.some((label) => name.includes(label.toLowerCase()))) {
+    return parsePrice(record.value ?? record.price ?? record.amount);
+  }
+
+  for (const nested of Object.values(record)) {
+    const found = findNamedAmount(nested, labels);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function extractMetaAdjustments(html: string): PriceAdjustments {
+  const shippingFee = extractMetaAmount(html, ["shipping", "postage", "送料"]);
+  const pointValue = extractMetaAmount(html, ["point", "points", "ポイント"]);
+  const couponValue = extractMetaAmount(html, ["coupon", "discount", "クーポン", "値引"]);
+  return {
+    shippingFee,
+    pointValue,
+    couponValue,
+    evidence: [
+      typeof shippingFee === "number" ? `shipping fee from meta tag: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
+      pointValue ? `point value from meta tag: ${pointValue.toLocaleString("ja-JP")} JPY` : "",
+      couponValue ? `coupon value from meta tag: ${couponValue.toLocaleString("ja-JP")} JPY` : "",
+    ].filter(Boolean),
+  };
+}
+
+function extractMetaAmount(html: string, keys: string[]) {
+  const metaTags = [...html.matchAll(/<meta\b[^>]*>/gi)].map((match) => match[0]);
+  for (const tag of metaTags) {
+    const descriptor = [
+      matchContent(tag, /\b(?:property|name|itemprop)=["']([^"']+)["']/i),
+      matchContent(tag, /\bcontent=["']([^"']+)["']/i),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    if (!keys.some((key) => descriptor.includes(key.toLowerCase()))) continue;
+    const amount = parsePrice(matchContent(tag, /\bcontent=["']([^"']+)["']/i));
+    if (typeof amount === "number") return amount;
+  }
+  return undefined;
+}
+
+function inferPriceAdjustments(html: string, listPrice: number): PriceAdjustments {
   const text = extractPlainText(html);
   const freeShipping = /送料無料|送料\s*0|free shipping/i.test(text);
+  const shippingFee = freeShipping ? 0 : extractAmountAroundLabel(text, ["送料", "shipping", "postage"]);
+  const pointValue = extractPointValue(text, listPrice);
+  const couponValue = extractCouponValue(text, listPrice);
   return {
-    shippingFee: freeShipping ? 0 : extractAmountAroundLabel(text, ["送料", "shipping", "postage"]),
-    pointValue: extractPointValue(text, listPrice),
-    couponValue: extractCouponValue(text, listPrice),
+    shippingFee,
+    pointValue,
+    couponValue,
+    evidence: [
+      typeof shippingFee === "number" ? `shipping fee from page text: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
+      pointValue ? `point value from page text: ${pointValue.toLocaleString("ja-JP")} JPY` : "",
+      couponValue ? `coupon value from page text: ${couponValue.toLocaleString("ja-JP")} JPY` : "",
+    ].filter(Boolean),
   };
 }
 

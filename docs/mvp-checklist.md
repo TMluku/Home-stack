@@ -67,6 +67,7 @@ This checklist defines the current acceptance target for the Home Stack MVP.
 - [x] Add effective-price quotes to product search candidates and sort by normalized effective price.
 - [x] Infer shipping, point, and coupon values from marketplace search candidates when present.
 - [x] Add effective-price quotes to direct product URL scans.
+- [x] Infer direct product page shipping, point, and coupon evidence from JSON-LD and meta tags before text fallback.
 - [x] Add condition audit rows for effective-price ranking decisions.
 - [x] Add API-ready condition audit log entries with evidence and ranking basis.
 - [x] Add append/list APIs for server-side condition-price audit events.

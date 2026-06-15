@@ -109,7 +109,7 @@ export type LivePriceResult = {
     evidence: string[];
   };
   currency?: string;
-  source: "json-ld" | "meta" | "html-text" | "none";
+  source: "json-ld" | "meta" | "embedded-json" | "data-attribute" | "html-text" | "none";
   fetchedAt: string;
   error?: string;
 };

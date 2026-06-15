@@ -71,6 +71,12 @@ export function extractPriceFromHtml(
   const metaPrice = extractMetaPrice(html);
   if (metaPrice.price) return withEffectivePriceQuote({ title, ...metaPrice, source: "meta" }, html);
 
+  const embeddedJsonPrice = extractEmbeddedJsonPrice(html);
+  if (embeddedJsonPrice.price) return withEffectivePriceQuote({ title, ...embeddedJsonPrice, source: "embedded-json" }, html);
+
+  const attributePrice = extractAttributePrice(html);
+  if (attributePrice.price) return withEffectivePriceQuote({ title, ...attributePrice, source: "data-attribute" }, html);
+
   const textPrice = extractTextPrice(html);
   if (textPrice.price) return withEffectivePriceQuote({ title, ...textPrice, source: "html-text" }, html);
 
@@ -167,6 +173,73 @@ function extractMetaPrice(html: string) {
   return {};
 }
 
+function extractEmbeddedJsonPrice(html: string) {
+  const scripts = [...html.matchAll(/<script\b(?![^>]+type=["']application\/ld\+json["'])[^>]*>([\s\S]*?)<\/script>/gi)]
+    .map((match) => decodeEntities(match[1].trim()))
+    .filter((script) => script.startsWith("{") || script.startsWith("["));
+
+  for (const script of scripts) {
+    try {
+      const parsed = JSON.parse(script);
+      const result = findPriceInEmbeddedJson(parsed);
+      if (result.price) return result;
+    } catch {
+      // Embedded app-state scripts are often not plain JSON. Fall back to attribute/text extraction.
+    }
+  }
+
+  return {};
+}
+
+function findPriceInEmbeddedJson(value: unknown): ExtractedPrice {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findPriceInEmbeddedJson(item);
+      if (found.price) return found;
+    }
+    return {};
+  }
+
+  if (!value || typeof value !== "object") return {};
+  const record = value as Record<string, unknown>;
+
+  const offerLike = record.offers ?? record.offer ?? record.priceSpecification;
+  if (offerLike) {
+    const found = findPriceInEmbeddedJson(offerLike);
+    if (found.price) return found;
+  }
+
+  const price = extractFirstAmountForKeys(record, ["salePrice", "currentPrice", "itemPrice", "taxIncludedPrice", "price"]);
+  if (price && isEmbeddedProductRecord(record)) {
+    const adjustments = extractEmbeddedAdjustments(record);
+    return {
+      price,
+      currency: inferCurrency(String(record.currency ?? record.priceCurrency ?? "")),
+      adjustments,
+      evidence: adjustments.evidence,
+    };
+  }
+
+  for (const nested of Object.values(record)) {
+    const found = findPriceInEmbeddedJson(nested);
+    if (found.price) return found;
+  }
+
+  return {};
+}
+
+function extractAttributePrice(html: string) {
+  const tags = [...html.matchAll(/<[^>]+>/g)].map((match) => match[0]);
+  const priceAttributePattern = /\b(?:data-(?:sale-)?price|data-item-price|data-current-price)=["']([^"']+)["']/i;
+
+  for (const tag of tags) {
+    const price = parsePrice(matchContent(tag, priceAttributePattern));
+    if (price) return { price, currency: inferCurrency(tag) };
+  }
+
+  return {};
+}
+
 function extractTextPrice(html: string) {
   const text = decodeEntities(
     html
@@ -237,6 +310,22 @@ function extractStructuredAdjustments(record: Record<string, unknown>): PriceAdj
   };
 }
 
+function extractEmbeddedAdjustments(record: Record<string, unknown>): PriceAdjustments {
+  const shippingFee = extractFirstAmountForKeys(record, ["shippingFee", "shipping", "postage", "deliveryFee"]);
+  const pointValue = extractFirstAmountForKeys(record, ["pointValue", "pointAmount", "points", "rewardPoint"]);
+  const couponValue = extractFirstAmountForKeys(record, ["couponValue", "couponAmount", "coupon", "discount", "discountAmount"]);
+  return {
+    shippingFee,
+    pointValue,
+    couponValue,
+    evidence: [
+      typeof shippingFee === "number" ? `shipping fee from embedded JSON: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
+      pointValue ? `point value from embedded JSON: ${pointValue.toLocaleString("ja-JP")} JPY` : "",
+      couponValue ? `coupon value from embedded JSON: ${couponValue.toLocaleString("ja-JP")} JPY` : "",
+    ].filter(Boolean),
+  };
+}
+
 function extractJsonLdAmount(value: unknown, keys: string[]): number | undefined {
   if (Array.isArray(value)) {
     for (const item of value) {
@@ -289,6 +378,46 @@ function findNamedAmount(value: unknown, labels: string[]): number | undefined {
     if (found) return found;
   }
   return undefined;
+}
+
+function extractFirstAmountForKeys(value: unknown, keys: string[]): number | undefined {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = extractFirstAmountForKeys(item, keys);
+      if (typeof found === "number") return found;
+    }
+    return undefined;
+  }
+
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  for (const [key, rawValue] of Object.entries(record)) {
+    if (keys.some((candidate) => key.toLowerCase() === candidate.toLowerCase())) {
+      const amount = parseAmountPayload(rawValue);
+      if (amount) return amount;
+    }
+  }
+
+  for (const nested of Object.values(record)) {
+    const found = extractFirstAmountForKeys(nested, keys);
+    if (typeof found === "number") return found;
+  }
+  return undefined;
+}
+
+function parseAmountPayload(value: unknown) {
+  const direct = parsePrice(value);
+  if (direct) return direct;
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  return parsePrice(record.amount ?? record.value ?? record.price);
+}
+
+function isEmbeddedProductRecord(record: Record<string, unknown>) {
+  const productKeys = ["name", "title", "productName", "itemName", "sku", "janCode"];
+  const hasProductIdentity = productKeys.some((key) => typeof record[key] === "string" && String(record[key]).trim().length > 0);
+  const currency = String(record.currency ?? record.priceCurrency ?? "").toUpperCase();
+  return hasProductIdentity || currency === "JPY";
 }
 
 function extractMetaAdjustments(html: string): PriceAdjustments {

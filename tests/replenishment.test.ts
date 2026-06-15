@@ -267,6 +267,73 @@ describe("replenishment domain logic", () => {
     );
   });
 
+  it("extracts effective quotes from embedded app-state JSON", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Embedded product</title>
+          <script id="__NEXT_DATA__" type="application/json">
+            {
+              "props": {
+                "pageProps": {
+                  "product": {
+                    "productName": "Embedded detergent",
+                    "currentPrice": "2,400",
+                    "currency": "JPY",
+                    "shippingFee": { "amount": "300" },
+                    "points": { "amount": "120" },
+                    "coupon": { "amount": "200" }
+                  }
+                }
+              }
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2400,
+      source: "embedded-json",
+      effectivePriceQuote: {
+        shippingFee: 300,
+        pointValue: 120,
+        couponValue: 200,
+        effectivePrice: 2380,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining([
+        "shipping fee from embedded JSON: 300 JPY",
+        "point value from embedded JSON: 120 JPY",
+        "coupon value from embedded JSON: 200 JPY",
+      ]),
+    );
+  });
+
+  it("extracts prices from data attributes before broad page text", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Data attribute product</title></head>
+        <body>
+          <div data-price="1,580" data-currency="JPY">Cart price</div>
+          <span>shipping 220</span>
+          <span>points 80</span>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1580,
+      source: "data-attribute",
+      effectivePriceQuote: {
+        shippingFee: 220,
+        pointValue: 80,
+        effectivePrice: 1720,
+      },
+    });
+  });
+
   it("extracts product search candidates from marketplace HTML", () => {
     const candidates = extractSearchCandidatesFromHtml(
       `

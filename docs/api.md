@@ -41,7 +41,7 @@ Current MVP routes still return a lightweight shape so the client can stay simpl
 | `POST` | `/api/barcode/resolve` | Normalize JAN/barcode input, validate check digits, suggest correction candidates, and return static search candidates. |
 | `POST` | `/api/barcode/status` | Report whether barcode lookup uses the demo catalog or an external JAN master endpoint. |
 | `POST` | `/api/product-search` | Search marketplace sources for a product query and return normalized price candidates. Uses official API credentials when configured, otherwise tries public search-result HTML extraction. |
-| `POST` | `/api/price-scan` | Fetch specific product page URLs and extract price candidates plus effective-price quotes from JSON-LD, meta tags, or HTML text. |
+| `POST` | `/api/price-scan` | Fetch specific product page URLs and extract price candidates plus effective-price quotes from JSON-LD, meta tags, embedded JSON, data attributes, or HTML text. |
 | `POST` | `/api/state/export` | Build a server-sync payload from demo or posted account state, including condition audit logs and notification drafts. |
 | `POST` | `/api/state/save` | Save a server-sync payload for an account in the configured server state store. |
 | `POST` | `/api/state/load` | Load saved account state from the configured server state store. |
@@ -95,7 +95,7 @@ Request:
 }
 ```
 
-Response includes per-URL extraction status, price, effective-price quote, title, source type, and fetch timestamp. JSON-LD, meta tags, and HTML text around the detected price are inspected for shipping, point, and coupon signals when present, with evidence strings preserved on the effective-price quote.
+Response includes per-URL extraction status, price, effective-price quote, title, source type, and fetch timestamp. JSON-LD, meta tags, embedded app-state JSON, data attributes, and HTML text around the detected price are inspected for shipping, point, and coupon signals when present, with evidence strings preserved on the effective-price quote.
 
 ## Offer Resource Direction
 
@@ -155,7 +155,7 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 - Never rank a conditional effective price without exposing the conditions that make that price true.
 - Product search candidates should carry an `effectivePriceQuote` so sorting can use normalized price rather than raw extracted price.
 - Product search extraction should preserve evidence for inferred shipping fees, point value, and coupon value so condition banners can explain why an effective price changed.
-- Product URL scans should also return `effectivePriceQuote` so direct product pages and marketplace search candidates can share the same ranking and audit contract. Prefer structured JSON-LD/meta condition evidence before falling back to nearby page text.
+- Product URL scans should also return `effectivePriceQuote` so direct product pages and marketplace search candidates can share the same ranking and audit contract. Prefer structured JSON-LD/meta condition evidence, then embedded app-state JSON or data attributes, before falling back to nearby page text.
 - JAN/barcode input should preserve the raw input, normalized digits, validation result, and suggested check-digit correction before searching marketplaces.
 - JAN/barcode lookup should expose the active master provider and be able to hand off valid codes to an external HTTP JAN master through `HOME_STACK_BARCODE_MASTER_URL`. Normalize common response key variants such as `jan_code`, `product_name`, `itemName`, `category_name`, and `capacity`.
 - Notification preparation must keep delivery as a separate adapter step. Missing LINE/email/Web Push destinations should produce blocked jobs, not silent drops.

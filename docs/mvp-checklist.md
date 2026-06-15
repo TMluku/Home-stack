@@ -77,6 +77,7 @@ This checklist defines the current acceptance target for the Home Stack MVP.
 - [x] Add notification job preparation that queues configured destinations and blocks missing destinations.
 - [x] Add dry-run notification dispatch API behind a provider adapter boundary.
 - [x] Add notification provider readiness API and non-dry-run adapter-ready dispatch contract.
+- [x] Connect Post-MVP notification panel to provider status, job preparation, and dry-run dispatch routes.
 - [x] Add account/server-save migration contract panel.
 - [x] Add account profile resolution for email-link/OAuth handoff without storing raw email addresses.
 - [x] Add `/api/state/export` sync payload for server-side account persistence handoff.

@@ -109,6 +109,7 @@ The Post-MVP panel can call these routes from a Next.js server build to save, lo
 Condition audit routes append and list effective-price condition events so ranking decisions can be inspected later, including product-search candidate quotes and direct URL scan quotes.
 Notification preparation builds queued or blocked jobs, status reports configured providers, and dispatch can dry-run provider handoff or mark adapter-ready providers as sent without calling external services yet.
 Set `HOME_STACK_LINE_CHANNEL_ACCESS_TOKEN`, `HOME_STACK_EMAIL_FROM` plus `HOME_STACK_EMAIL_TRANSPORT`, or the Web Push VAPID env values to move a channel from dry-run-only to adapter-ready.
+The Post-MVP panel can check provider status, prepare jobs, and run a dry-run dispatch when the app is running on a Next.js server.
 Barcode resolution validates JAN check digits, suggests corrected candidates, and returns search candidates without needing a production barcode master yet.
 Set `HOME_STACK_BARCODE_MASTER_URL` to hand valid JAN codes to an external HTTP master endpoint; otherwise the demo catalog remains the fallback.
 

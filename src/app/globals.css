@@ -1379,6 +1379,10 @@ h3 {
   text-align: right;
 }
 
+.ops-list--compact {
+  margin-top: 0.85rem;
+}
+
 .ops-panel input {
   background: var(--white);
   border: 1px solid var(--line);

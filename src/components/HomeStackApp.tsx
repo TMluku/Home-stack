@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 import { categories, createDefaultState, detectedInventoryCandidates, normalizeState, STORAGE_KEY } from "@/lib/demo-state";
 import { recordOutboundClick, recordQueueDecision } from "@/lib/metrics";
-import type { NotificationJobSummary } from "@/lib/notification-jobs";
+import type { NotificationDispatchSummary, NotificationJobSummary, NotificationProviderReadiness } from "@/lib/notification-jobs";
 import { buildNotificationJobs, summarizeNotificationJobs } from "@/lib/notification-jobs";
 import { baseOffers } from "@/lib/offers";
 import type { ConditionAuditLogEntry, NotificationDraft, PriceFetchPlanStep, ServerSyncPayload } from "@/lib/post-mvp";
@@ -96,6 +96,13 @@ export function HomeStackApp() {
   const [serverSyncMessage, setServerSyncMessage] = useState(
     isStaticExport ? "GitHub Pages版ではAPI保存は未接続です。" : "Next.jsサーバー起動時に保存・読込できます。",
   );
+  const [notificationDestination, setNotificationDestination] = useState("");
+  const [notificationOpsBusy, setNotificationOpsBusy] = useState(false);
+  const [notificationOpsMessage, setNotificationOpsMessage] = useState(
+    isStaticExport ? "GitHub Pages版では通知APIは未接続です。" : "通知provider状態と送信前ジョブを確認できます。",
+  );
+  const [notificationProviderReadiness, setNotificationProviderReadiness] = useState<NotificationProviderReadiness | null>(null);
+  const [notificationDispatchSummary, setNotificationDispatchSummary] = useState<NotificationDispatchSummary | null>(null);
 
   useEffect(() => {
     try {
@@ -512,6 +519,97 @@ export function HomeStackApp() {
       setServerSyncMessage(error instanceof Error ? error.message : "保存済み状態を削除できませんでした。");
     } finally {
       setServerSyncBusy(false);
+    }
+  }
+
+  async function refreshNotificationStatus() {
+    if (isStaticExport) {
+      setNotificationOpsMessage("GitHub Pages版では通知provider状態APIは未接続です。Next.jsサーバーで有効になります。");
+      return;
+    }
+
+    setNotificationOpsBusy(true);
+    try {
+      const response = await fetch("/api/notifications/status", { method: "POST" });
+      const payload = (await response.json()) as { ok?: boolean; readiness?: NotificationProviderReadiness; error?: string };
+      if (!response.ok || !payload.ok || !payload.readiness) throw new Error(payload.error ?? "通知provider状態を取得できませんでした。");
+      setNotificationProviderReadiness(payload.readiness);
+      const activeStatus = payload.readiness.providers[state.household.channel];
+      setNotificationOpsMessage(
+        `${channelLabels[state.household.channel]} provider: ${activeStatus.mode}${activeStatus.configured ? "" : " / env未設定"}`,
+      );
+    } catch (error) {
+      setNotificationOpsMessage(error instanceof Error ? error.message : "通知provider状態を取得できませんでした。");
+    } finally {
+      setNotificationOpsBusy(false);
+    }
+  }
+
+  async function prepareNotificationJobs() {
+    if (isStaticExport) {
+      setNotificationOpsMessage("GitHub Pages版では通知ジョブ準備APIは未接続です。Next.jsサーバーで有効になります。");
+      return;
+    }
+
+    setNotificationOpsBusy(true);
+    try {
+      const response = await fetch("/api/notifications/prepare", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          payload: serverSyncPayload,
+          contactPoints: buildNotificationContactPoints(state.household.channel, notificationDestination),
+        }),
+      });
+      const payload = (await response.json()) as {
+        ok?: boolean;
+        readiness?: NotificationProviderReadiness;
+        summary?: NotificationJobSummary;
+        error?: string;
+      };
+      if (!response.ok || !payload.ok || !payload.summary) throw new Error(payload.error ?? "通知ジョブを準備できませんでした。");
+      setNotificationProviderReadiness(payload.readiness ?? null);
+      setNotificationOpsMessage(`通知ジョブ: queued ${payload.summary.queued} / blocked ${payload.summary.blocked}`);
+    } catch (error) {
+      setNotificationOpsMessage(error instanceof Error ? error.message : "通知ジョブを準備できませんでした。");
+    } finally {
+      setNotificationOpsBusy(false);
+    }
+  }
+
+  async function dispatchNotificationDryRun() {
+    if (isStaticExport) {
+      setNotificationOpsMessage("GitHub Pages版では通知dispatch APIは未接続です。Next.jsサーバーで有効になります。");
+      return;
+    }
+
+    setNotificationOpsBusy(true);
+    try {
+      const response = await fetch("/api/notifications/dispatch", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          payload: serverSyncPayload,
+          contactPoints: buildNotificationContactPoints(state.household.channel, notificationDestination),
+          dryRun: true,
+        }),
+      });
+      const payload = (await response.json()) as {
+        ok?: boolean;
+        readiness?: NotificationProviderReadiness;
+        summary?: NotificationDispatchSummary;
+        error?: string;
+      };
+      if (!response.ok || !payload.ok || !payload.summary) throw new Error(payload.error ?? "通知dry-run dispatchに失敗しました。");
+      setNotificationProviderReadiness(payload.readiness ?? null);
+      setNotificationDispatchSummary(payload.summary);
+      setNotificationOpsMessage(
+        `dry-run: ${payload.summary.dryRun} / skipped ${payload.summary.skipped} / failed ${payload.summary.failed}`,
+      );
+    } catch (error) {
+      setNotificationOpsMessage(error instanceof Error ? error.message : "通知dry-run dispatchに失敗しました。");
+    } finally {
+      setNotificationOpsBusy(false);
     }
   }
 
@@ -1049,7 +1147,12 @@ export function HomeStackApp() {
         <PostMvpOpsPanel
           conditionAuditLog={conditionAuditLog}
           notificationDrafts={notificationDrafts}
+          notificationDestination={notificationDestination}
+          notificationDispatchSummary={notificationDispatchSummary}
           notificationJobSummary={notificationJobSummary}
+          notificationOpsBusy={notificationOpsBusy}
+          notificationOpsMessage={notificationOpsMessage}
+          notificationProviderReadiness={notificationProviderReadiness}
           priceFetchPlan={priceFetchPlan}
           queueItemCount={queueSummary.itemCount}
           queueTotal={queueSummary.totalEffectivePrice}
@@ -1058,8 +1161,12 @@ export function HomeStackApp() {
           serverSyncBusy={serverSyncBusy}
           serverSyncMessage={serverSyncMessage}
           serverSyncPayload={serverSyncPayload}
+          onDispatchNotificationDryRun={dispatchNotificationDryRun}
           onLoadServerState={loadServerState}
+          onNotificationDestinationChange={setNotificationDestination}
+          onPrepareNotificationJobs={prepareNotificationJobs}
           onRefreshServerAccounts={refreshServerAccounts}
+          onRefreshNotificationStatus={refreshNotificationStatus}
           onResetServerState={resetServerSavedState}
           onSaveServerState={saveServerState}
           onServerAccountIdChange={setServerAccountId}
@@ -1344,7 +1451,12 @@ function LivePriceScanner({
 function PostMvpOpsPanel({
   conditionAuditLog,
   notificationDrafts,
+  notificationDestination,
+  notificationDispatchSummary,
   notificationJobSummary,
+  notificationOpsBusy,
+  notificationOpsMessage,
+  notificationProviderReadiness,
   priceFetchPlan,
   queueItemCount,
   queueTotal,
@@ -1353,15 +1465,24 @@ function PostMvpOpsPanel({
   serverSyncBusy,
   serverSyncMessage,
   serverSyncPayload,
+  onDispatchNotificationDryRun,
   onLoadServerState,
+  onNotificationDestinationChange,
+  onPrepareNotificationJobs,
   onRefreshServerAccounts,
+  onRefreshNotificationStatus,
   onResetServerState,
   onSaveServerState,
   onServerAccountIdChange,
 }: {
   conditionAuditLog: ConditionAuditLogEntry[];
   notificationDrafts: NotificationDraft[];
+  notificationDestination: string;
+  notificationDispatchSummary: NotificationDispatchSummary | null;
   notificationJobSummary: NotificationJobSummary;
+  notificationOpsBusy: boolean;
+  notificationOpsMessage: string;
+  notificationProviderReadiness: NotificationProviderReadiness | null;
   priceFetchPlan: PriceFetchPlanStep[];
   queueItemCount: number;
   queueTotal: number;
@@ -1370,8 +1491,12 @@ function PostMvpOpsPanel({
   serverSyncBusy: boolean;
   serverSyncMessage: string;
   serverSyncPayload: ServerSyncPayload;
+  onDispatchNotificationDryRun: () => void;
   onLoadServerState: () => void;
+  onNotificationDestinationChange: (value: string) => void;
+  onPrepareNotificationJobs: () => void;
   onRefreshServerAccounts: () => void;
+  onRefreshNotificationStatus: () => void;
   onResetServerState: () => void;
   onSaveServerState: () => void;
   onServerAccountIdChange: (value: string) => void;
@@ -1380,6 +1505,7 @@ function PostMvpOpsPanel({
   const latestDraft = notificationDrafts[0];
   const officialSourceCount = priceFetchPlan.filter((step) => step.extractionPriority[0] === "official-api").length;
   const directPageCount = priceFetchPlan.filter((step) => step.source === "direct-page").length;
+  const activeNotificationProvider = notificationProviderReadiness?.providers[serverSyncPayload.state.household.channel];
 
   return (
     <section id="post-mvp" className="section post-mvp-panel">
@@ -1449,6 +1575,48 @@ function PostMvpOpsPanel({
           <p>
             {latestDraft?.message ?? "次の実装では通知ジョブ、送信前プレビュー、失敗時リトライ、配信停止状態をサーバー側に保存します。"}
           </p>
+          <label className="field-label" htmlFor="notification-destination">
+            通知先
+          </label>
+          <input
+            id="notification-destination"
+            type="text"
+            value={notificationDestination}
+            onChange={(event) => onNotificationDestinationChange(event.target.value)}
+            placeholder="user@example.test / LINE user id / push endpoint"
+          />
+          <div className="ops-actions">
+            <button className="button button--ghost" type="button" onClick={onRefreshNotificationStatus} disabled={notificationOpsBusy}>
+              provider確認
+            </button>
+            <button className="button button--ghost" type="button" onClick={onPrepareNotificationJobs} disabled={notificationOpsBusy}>
+              ジョブ準備
+            </button>
+            <button className="button button--primary" type="button" onClick={onDispatchNotificationDryRun} disabled={notificationOpsBusy}>
+              dry-run
+            </button>
+          </div>
+          <p className="state-message" role="status">
+            {notificationOpsMessage}
+          </p>
+          <dl className="ops-list ops-list--compact">
+            <div>
+              <dt>provider</dt>
+              <dd>{activeNotificationProvider?.mode ?? "未確認"}</dd>
+            </div>
+            <div>
+              <dt>env</dt>
+              <dd>{activeNotificationProvider?.configured ? "ready" : "missing"}</dd>
+            </div>
+            <div>
+              <dt>dry-run結果</dt>
+              <dd>
+                {notificationDispatchSummary
+                  ? `dry ${notificationDispatchSummary.dryRun} / skip ${notificationDispatchSummary.skipped}`
+                  : "未実行"}
+              </dd>
+            </div>
+          </dl>
         </section>
 
         <section className="ops-panel" aria-label="アカウントとサーバー保存準備">
@@ -1521,6 +1689,11 @@ function clampNumber(value: FormDataEntryValue | null, min: number, max: number,
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(max, Math.max(min, parsed));
+}
+
+function buildNotificationContactPoints(channel: Channel, destination: string) {
+  const trimmed = destination.trim();
+  return trimmed ? { [channel]: trimmed } : {};
 }
 
 async function copyText(text: string) {

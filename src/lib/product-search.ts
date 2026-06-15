@@ -388,6 +388,7 @@ function extractPrice(snippet: string) {
     if (isUnitPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isPackComponentPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isRewardAmountContext(text, match.index ?? 0, match[0].length)) continue;
+    if (isConditionThresholdAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isDiscountAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isShippingConditionAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isTaxExcludedContext(text, match.index ?? 0, match[0].length)) continue;
@@ -870,9 +871,14 @@ function isDiscountAmountContext(text: string, index: number, length: number) {
   const before = text.slice(Math.max(0, index - 24), index);
   const after = text.slice(index + length, index + length + 28);
   const nearestBeforeToken = before.trimEnd().match(/(?:^|\s)(\S{0,24})$/)?.[1] ?? "";
-  const labelPrefix = `${nearestBeforeToken}${text.slice(index, index + length).replace(/[0-9０-９].*$/, "")}`;
+  const matchedText = text.slice(index, index + length);
+  const labelPrefix = `${nearestBeforeToken}${matchedText.replace(/[0-9０-９].*$/, "")}`;
   const words = /(?:クーポン|値引き|値引|割引|割引額|off|discount|coupon|cashback)/i;
-  return words.test(labelPrefix) || /^\s*(?:OFF|off|引き|値引き|値引|割引|割引額|discount|cashback)(?:\b|$)/i.test(after);
+  return (
+    words.test(labelPrefix) ||
+    /^\s*(?:OFF|off|引き|値引き|値引|割引|割引額|discount|cashback)(?:\b|$)/i.test(after) ||
+    (/円\s*$/i.test(matchedText) && /^\s*クーポン/.test(after))
+  );
 }
 
 function isRewardAmountContext(text: string, index: number, length: number) {
@@ -882,6 +888,16 @@ function isRewardAmountContext(text: string, index: number, length: number) {
   const labelPrefix = `${nearestBeforeToken}${text.slice(index, index + length).replace(/[0-9０-９].*$/, "")}`;
   const words = /(?:ポイント|還元|付与|獲得|PayPay|楽天ポイント|point|points|reward|cashback)/i;
   return words.test(labelPrefix) || /^\s*(?:分|相当|pt|pts)(?:\b|$)/i.test(after);
+}
+
+function isConditionThresholdAmountContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 24), index);
+  const after = text.slice(index + length, index + length + 48);
+  const thresholdAfter = /^\s*(?:以上|未満|から|より|or more|and up|minimum|over|above|\+)/i.test(after);
+  const conditionNearby = /(?:クーポン|coupon|割引|discount|off|送料無料|free shipping|送料|対象|条件|購入|注文|order|eligible)/i.test(
+    `${before}${after}`,
+  );
+  return thresholdAfter && conditionNearby;
 }
 
 function isShippingConditionAmountContext(text: string, index: number, length: number) {

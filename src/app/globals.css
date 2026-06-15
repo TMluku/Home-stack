@@ -308,6 +308,30 @@ h3 {
   margin-top: 0.42rem;
 }
 
+.hero__qa-template {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  margin: 0 0 1rem;
+  max-width: 32rem;
+  padding: 0.7rem 0.8rem;
+}
+
+.hero__qa-template summary {
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.hero__qa-template p {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.55;
+  margin: 0.55rem 0 0;
+  overflow-wrap: anywhere;
+}
+
 .hero__actions,
 .trust-list {
   display: flex;

@@ -249,6 +249,24 @@ export function HomeStackApp() {
     }
   }
 
+  async function copyMobileQaTemplate() {
+    const today = new Date().toISOString().slice(0, 10);
+    const template = [
+      `| ${today} | 端末名を記入 | ブラウザ名を記入 | Wi-Fi / 5G | Pass / Fail | GitHub Pages実機QA: 横スクロール、価格条件、URLスキャン、共有導線を確認 |`,
+      "",
+      "- Tested URL: https://tmluku.github.io/Home-stack/",
+      "- Phone screenshot: attach separately",
+      "- Browser E2E artifact: mobile-qa-evidence",
+    ].join("\n");
+
+    try {
+      await navigator.clipboard.writeText(template);
+      setPublicUrlMessage("実機QA記録テンプレートをコピーしました");
+    } catch {
+      setPublicUrlMessage(template);
+    }
+  }
+
   function handlePhotoUpload(file?: File) {
     if (!file) return;
     setPhotoPreview(URL.createObjectURL(file));
@@ -866,6 +884,9 @@ export function HomeStackApp() {
               <button className="button button--ghost" type="button" onClick={sharePublicPagesUrl}>
                 URLを共有
               </button>
+              <button className="button button--ghost" type="button" onClick={copyMobileQaTemplate}>
+                QA記録をコピー
+              </button>
             </div>
             <p className="hero__hint">{publicUrlMessage}</p>
             <figure className="hero__qr">
@@ -877,6 +898,10 @@ export function HomeStackApp() {
               <li>モバイル横スクロール検査</li>
               <li>価格条件の計算式と販売ページリンク</li>
             </ul>
+            <details className="hero__qa-template">
+              <summary>実機QAで記録する項目</summary>
+              <p>日付、端末、ブラウザ、回線、Pass/Fail、スクリーンショット、Browser E2E artifact を `docs/mobile-qa.md` に残します。</p>
+            </details>
             <dl className="radar-strip">
               <div>
                 <dt>10日以内</dt>

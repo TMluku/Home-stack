@@ -495,6 +495,30 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["shipping condition requires retailer confirmation"]));
   });
 
+  it("keeps separate or unknown shipping as retailer-confirmed conditions", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Separate shipping product</title></head>
+        <body>
+          <span>price 1,000 JPY</span>
+          <span>送料別途・地域により要確認</span>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1000,
+      effectivePriceQuote: {
+        listPrice: 1000,
+        effectivePrice: 1000,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["送料条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["shipping condition requires retailer confirmation"]));
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(expect.arrayContaining(["shipping fee from page text: 1,000 JPY"]));
+  });
+
   it("extracts structured shipping, point, and coupon evidence from product JSON-LD", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -1065,5 +1089,30 @@ describe("replenishment domain logic", () => {
     expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["送料条件あり"]));
     expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["shipping condition requires retailer confirmation"]));
     expect(candidates[0]?.evidence).not.toEqual(expect.arrayContaining(["shipping fee inferred: 3,980 JPY"]));
+  });
+
+  it("keeps marketplace calculated shipping as retailer-confirmed conditions", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/calculated" title="Calculated shipping detergent">Calculated shipping detergent</a>
+          <span>price 1,000 JPY</span>
+          <span>shipping not included - calculated at checkout</span>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      price: 1000,
+      effectivePriceQuote: {
+        listPrice: 1000,
+        effectivePrice: 1000,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["送料条件あり"]));
+    expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["shipping condition requires retailer confirmation"]));
   });
 });

@@ -598,6 +598,8 @@ function hasCertainFreeShippingCopy(text: string) {
 }
 
 function hasConditionalShippingCopy(text: string) {
+  if (hasUnconfirmedShippingCopy(text)) return true;
+
   const shippingLabels = ["送料", "shipping", "postage", "delivery"];
   const conditionWords = [
     "送料無料ライン",
@@ -617,6 +619,9 @@ function hasConditionalShippingCopy(text: string) {
     "members only",
     "prime",
     "subscription",
+    "region",
+    "checkout",
+    "calculated",
   ];
 
   return shippingLabels.some((label) =>
@@ -628,6 +633,12 @@ function hasConditionalShippingCopy(text: string) {
         new RegExp(`${escapedWord}.{0,36}${escapedLabel}`, "i").test(text)
       );
     }),
+  );
+}
+
+function hasUnconfirmedShippingCopy(text: string) {
+  return /(?:送料\s*(?:別|別途|未定|要確認|確認|有料)|別途\s*送料|送料は.{0,24}(?:確認|地域|離島|沖縄|北海道)|(?:地域|離島|沖縄|北海道).{0,24}送料|shipping\s*(?:not included|extra|varies|calculated|required)|plus shipping|calculated at checkout|delivery fee applies|additional shipping|varies by region)/i.test(
+    text,
   );
 }
 

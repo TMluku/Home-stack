@@ -1526,7 +1526,9 @@ function formatPriceEvidence(entry: string) {
   if (shippingFee) return `送料: ${shippingFee[1]}円を実質価格に加算`;
 
   if (/^official shipping: free$/i.test(entry)) return "送料: 公式APIで送料無料を確認";
-  if (/shipping condition requires retailer confirmation/i.test(entry)) return "送料条件: 送料無料ラインや会員条件は販売ページで確認";
+  if (/shipping condition requires retailer confirmation/i.test(entry)) {
+    return "送料条件: 送料無料ライン、別送料、地域条件を販売ページで確認";
+  }
   if (/purchase condition requires retailer confirmation/i.test(entry)) {
     return "購入条件: 初回限定、定期購入、まとめ買い、セット条件を販売ページで確認";
   }

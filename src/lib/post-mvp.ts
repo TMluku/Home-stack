@@ -369,6 +369,42 @@ export function buildCandidateConditionAuditLog({
     .sort((a, b) => a.effectivePrice - b.effectivePrice || a.listPrice - b.listPrice || a.retailer.localeCompare(b.retailer, "ja"));
 }
 
+export function buildLivePriceConditionAuditLog({
+  results,
+  generatedAt = new Date().toISOString(),
+}: {
+  results: LivePriceResult[];
+  generatedAt?: string;
+}): ConditionAuditLogEntry[] {
+  return results
+    .filter((result) => result.ok && (typeof result.price === "number" || result.effectivePriceQuote))
+    .map((result, index) => {
+      const quote = result.effectivePriceQuote;
+      const listPrice = quote?.listPrice ?? result.price ?? 0;
+      const effectivePrice = quote?.effectivePrice ?? result.price ?? listPrice;
+      const conditionLabels = quote?.conditionLabels ?? [];
+
+      return {
+        id: `live-price-${index}-${slugify(result.url)}`,
+        offerId: result.url,
+        offerTitle: result.title ?? result.url,
+        retailer: result.source,
+        url: result.url,
+        listPrice,
+        effectivePrice,
+        shipping: describeLivePriceShipping(result),
+        points: describeLivePricePoints(result),
+        conditionCount: conditionLabels.length,
+        conditionLabels,
+        conditionDetails: conditionLabels.map((label) => `${label}: verify direct product page terms before purchase`),
+        evidence: [`source: ${result.source}`, `fetched at: ${result.fetchedAt}`, ...(quote?.evidence ?? [])],
+        rankingBasis: "direct product URL scan effectivePriceQuote with raw price fallback",
+        generatedAt,
+      };
+    })
+    .sort((a, b) => a.effectivePrice - b.effectivePrice || a.listPrice - b.listPrice || a.url.localeCompare(b.url));
+}
+
 export function buildNotificationDrafts(
   queue: QueueEntry[],
   channel: Channel,
@@ -462,6 +498,22 @@ function describeCandidatePoints(candidate: ProductSearchCandidate) {
     quote?.couponValue && quote.couponValue > 0 ? `coupon deducted: ${quote.couponValue.toLocaleString("ja-JP")} JPY` : "",
   ].filter(Boolean);
   return parts.length ? parts.join(" / ") : "points and coupon terms require retailer confirmation";
+}
+
+function describeLivePriceShipping(result: LivePriceResult) {
+  const quote = result.effectivePriceQuote;
+  if (quote?.shippingFee && quote.shippingFee > 0) return `shipping fee included: ${quote.shippingFee.toLocaleString("ja-JP")} JPY`;
+  if (quote && quote.shippingFee === 0) return "shipping fee inferred as 0 JPY";
+  return "shipping terms require direct page confirmation";
+}
+
+function describeLivePricePoints(result: LivePriceResult) {
+  const quote = result.effectivePriceQuote;
+  const parts = [
+    quote?.pointValue && quote.pointValue > 0 ? `points deducted: ${quote.pointValue.toLocaleString("ja-JP")} JPY` : "",
+    quote?.couponValue && quote.couponValue > 0 ? `coupon deducted: ${quote.couponValue.toLocaleString("ja-JP")} JPY` : "",
+  ].filter(Boolean);
+  return parts.length ? parts.join(" / ") : "points and coupon terms require direct page confirmation";
 }
 
 function isValidJan8Code(value: string) {

@@ -12,6 +12,7 @@ import {
   buildCandidateConditionAuditLog,
   buildConditionAuditLog,
   buildEffectivePriceQuote,
+  buildLivePriceConditionAuditLog,
   buildMarketplaceSearchUrls,
   buildNotificationDrafts,
   buildPriceFetchPlan,
@@ -130,6 +131,37 @@ describe("post-MVP static helpers", () => {
     });
     expect(auditLog.some((entry) => entry.evidence.some((evidence) => evidence.startsWith("search query: ")))).toBe(true);
     expect(auditLog.some((entry) => entry.conditionCount > 0 && entry.conditionDetails.length > 0)).toBe(true);
+  });
+
+  it("builds live price scan audit rows from effective price quotes", () => {
+    const auditLog = buildLivePriceConditionAuditLog({
+      generatedAt: "2026-06-15T00:00:00.000Z",
+      results: [
+        {
+          url: "https://example.test/item",
+          ok: true,
+          title: "Example item",
+          price: 2000,
+          effectivePriceQuote: buildEffectivePriceQuote({
+            listPrice: 2000,
+            shippingFee: 300,
+            pointValue: 100,
+            couponValue: 250,
+          }),
+          currency: "JPY",
+          source: "html-text",
+          fetchedAt: "2026-06-15T00:00:00.000Z",
+        },
+      ],
+    });
+
+    expect(auditLog[0]).toMatchObject({
+      offerId: "https://example.test/item",
+      effectivePrice: 1950,
+      conditionCount: 3,
+      rankingBasis: "direct product URL scan effectivePriceQuote with raw price fallback",
+    });
+    expect(auditLog[0]?.evidence).toContain("source: html-text");
   });
 
   it("builds notification drafts and account sync payloads for server persistence", () => {

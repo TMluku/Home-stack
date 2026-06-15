@@ -36,6 +36,7 @@ Current MVP routes still return a lightweight shape so the client can stay simpl
 | `POST` | `/api/audit/candidates/append` | Convert product search candidates with effective-price quotes into stored condition-price audit events. |
 | `POST` | `/api/audit/conditions/append` | Append condition-price audit events from a sync payload or explicit event list. |
 | `POST` | `/api/audit/conditions/list` | List stored condition-price audit events for an account. |
+| `POST` | `/api/audit/price-scans/append` | Convert direct product URL scan results with effective-price quotes into stored condition-price audit events. |
 | `POST` | `/api/barcode/resolve` | Normalize JAN/barcode input, validate check digits, suggest correction candidates, and return static search candidates. |
 | `POST` | `/api/barcode/status` | Report whether barcode lookup uses the demo catalog or an external JAN master endpoint. |
 | `POST` | `/api/product-search` | Search marketplace sources for a product query and return normalized price candidates. Uses official API credentials when configured, otherwise tries public search-result HTML extraction. |
@@ -144,6 +145,7 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 - Preserve explicit condition details for coupons, point returns, shipping thresholds, account eligibility, and campaign windows.
 - Append condition-price audit events before replacing or clearing account state so ranking and click decisions remain inspectable.
 - Append candidate audit events after product search when effective-price quotes should be kept with source query, match score, source label, and price evidence.
+- Append direct price-scan audit events when URL scans return effective-price quotes that should remain inspectable.
 - Never rank a conditional effective price without exposing the conditions that make that price true.
 - Product search candidates should carry an `effectivePriceQuote` so sorting can use normalized price rather than raw extracted price.
 - Product search extraction should preserve evidence for inferred shipping fees, point value, and coupon value so condition banners can explain why an effective price changed.

@@ -6,6 +6,7 @@ import { POST as resolveAccount } from "../src/app/api/account/resolve/route";
 import { POST as appendCandidateAudit } from "../src/app/api/audit/candidates/append/route";
 import { POST as appendConditionAudit } from "../src/app/api/audit/conditions/append/route";
 import { POST as listConditionAudit } from "../src/app/api/audit/conditions/list/route";
+import { POST as appendPriceScanAudit } from "../src/app/api/audit/price-scans/append/route";
 import { POST as resolveBarcode } from "../src/app/api/barcode/resolve/route";
 import { POST as getBarcodeStatus } from "../src/app/api/barcode/status/route";
 import { POST as dispatchNotifications } from "../src/app/api/notifications/dispatch/route";
@@ -447,6 +448,74 @@ describe("API route contracts", () => {
       expect(
         listed.events.some((event: { evidence: string[] }) => event.evidence.some((evidence) => evidence.startsWith("search query: "))),
       ).toBe(true);
+    } finally {
+      await rm(storeDir, { recursive: true, force: true });
+    }
+  });
+
+  it("appends direct price scan audit events for an account", async () => {
+    const storeDir = await mkdtemp(join(tmpdir(), "home-stack-price-scan-audit-"));
+    process.env.HOME_STACK_STATE_STORE_DIR = storeDir;
+
+    try {
+      const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(
+          `
+            <html>
+              <head><title>Audited direct item</title></head>
+              <body>
+                <span>price 2,000 JPY</span>
+                <span>shipping 300</span>
+                <span>points 100</span>
+                <span>coupon 250</span>
+              </body>
+            </html>
+          `,
+          { status: 200 },
+        ),
+      );
+
+      const scanResponse = await scanPrices(
+        new Request("http://localhost/api/price-scan", {
+          method: "POST",
+          body: JSON.stringify({ urls: ["https://example.test/direct-item"] }),
+        }),
+      );
+      const scanned = await scanResponse.json();
+
+      const appendResponse = await appendPriceScanAudit(
+        new Request("http://localhost/api/audit/price-scans/append", {
+          method: "POST",
+          body: JSON.stringify({
+            accountId: "acct-price-scan-audit",
+            results: scanned.results,
+            generatedAt: "2026-06-15T00:00:00.000Z",
+          }),
+        }),
+      );
+      const appended = await appendResponse.json();
+
+      expect(scanResponse.status).toBe(200);
+      expect(appendResponse.status).toBe(200);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(appended.appended[0]).toMatchObject({
+        accountId: "acct-price-scan-audit",
+        eventType: "condition-price-ranked",
+        offerId: "https://example.test/direct-item",
+        effectivePrice: 1950,
+        conditionCount: 3,
+      });
+
+      const listResponse = await listConditionAudit(
+        new Request("http://localhost/api/audit/conditions/list", {
+          method: "POST",
+          body: JSON.stringify({ accountId: "acct-price-scan-audit" }),
+        }),
+      );
+      const listed = await listResponse.json();
+
+      expect(listResponse.status).toBe(200);
+      expect(listed.events[0].rankingBasis).toContain("direct product URL scan");
     } finally {
       await rm(storeDir, { recursive: true, force: true });
     }

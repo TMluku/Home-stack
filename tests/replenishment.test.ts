@@ -724,6 +724,37 @@ describe("replenishment domain logic", () => {
     );
   });
 
+  it("does not deduct next-purchase rewards from direct product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Next purchase reward product</title></head>
+        <body>
+          <span>price 2,000 JPY</span>
+          <span>ポイント 200円分 次回購入で利用可</span>
+          <span>coupon 300 JPY store credit for future purchase</span>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2000,
+      effectivePriceQuote: {
+        listPrice: 2000,
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 2000,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(
+      expect.arrayContaining(["point value from page text: 200 JPY", "coupon value from page text: 300 JPY"]),
+    );
+  });
+
   it("marks subscription and first-order direct prices as purchase conditions", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -1781,6 +1812,39 @@ describe("replenishment domain logic", () => {
     );
     expect(candidates[0]?.evidence).not.toEqual(
       expect.arrayContaining(["point value inferred: 150 JPY", "coupon value inferred: 300 JPY"]),
+    );
+  });
+
+  it("does not deduct marketplace next-purchase rewards as guaranteed discounts", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/next-purchase" title="Next purchase detergent">Next purchase detergent</a>
+          <span>price 2,000 JPY</span>
+          <span>ポイント 200円分 次回使える</span>
+          <span>coupon 300 JPY gift card for next order</span>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/detergent/",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      price: 2000,
+      effectivePriceQuote: {
+        listPrice: 2000,
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 2000,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(candidates[0]?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(candidates[0]?.evidence).not.toEqual(
+      expect.arrayContaining(["point value inferred: 200 JPY", "coupon value inferred: 300 JPY"]),
     );
   });
 

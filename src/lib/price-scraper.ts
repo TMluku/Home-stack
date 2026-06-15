@@ -808,6 +808,12 @@ function hasAmbiguousRewardCopy(text: string, labels: string[]) {
     "獲得予定",
     "付与予定",
     "後日獲得",
+    "次回",
+    "次回購入",
+    "次回使える",
+    "次回利用",
+    "ギフト券",
+    "ストアクレジット",
     "up to",
     "max",
     "maximum",
@@ -828,6 +834,11 @@ function hasAmbiguousRewardCopy(text: string, labels: string[]) {
     "first purchase",
     "new customer",
     "one-time",
+    "next order",
+    "next purchase",
+    "future purchase",
+    "store credit",
+    "gift card",
   ];
   return labels.some((label) =>
     ambiguousWords.some((word) => {

@@ -279,6 +279,35 @@ h3 {
   line-height: 1.45;
 }
 
+.hero__qa-list {
+  display: grid;
+  gap: 0.4rem;
+  list-style: none;
+  margin: 0 0 1rem;
+  max-width: 32rem;
+  padding: 0;
+}
+
+.hero__qa-list li {
+  align-items: start;
+  color: var(--muted);
+  display: grid;
+  font-size: 0.82rem;
+  font-weight: 850;
+  gap: 0.45rem;
+  grid-template-columns: auto 1fr;
+  line-height: 1.45;
+}
+
+.hero__qa-list li::before {
+  background: var(--green);
+  border-radius: 999px;
+  content: "";
+  inline-size: 0.45rem;
+  block-size: 0.45rem;
+  margin-top: 0.42rem;
+}
+
 .hero__actions,
 .trust-list {
   display: flex;

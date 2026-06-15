@@ -872,6 +872,11 @@ export function HomeStackApp() {
               <Image src={publicPagesQrPath} alt="Home Stack GitHub Pages 公開URLのQRコード" width={128} height={128} />
               <figcaption>スマホのカメラで読み取って実機表示を確認</figcaption>
             </figure>
+            <ul className="hero__qa-list" aria-label="実機スマホQA確認ポイント">
+              <li>公開URL QR</li>
+              <li>モバイル横スクロール検査</li>
+              <li>価格条件の計算式と販売ページリンク</li>
+            </ul>
             <dl className="radar-strip">
               <div>
                 <dt>10日以内</dt>

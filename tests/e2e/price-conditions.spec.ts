@@ -5,6 +5,7 @@ test("shows ranked price candidates with condition evidence and visual asset", a
 
   await expect(page.locator(".price-insight-visual img")).toHaveAttribute("src", /price-insight-visual\.png/);
   await expect(page.getByAltText("Home Stack GitHub Pages 公開URLのQRコード")).toHaveAttribute("src", /pages-qr\.svg/);
+  await expect(page.getByLabel("実機スマホQA確認ポイント").locator("li")).toHaveCount(3);
   await page.getByRole("button", { name: "公開URLをコピー" }).click();
   await expect(page.locator(".hero__hint")).toContainText(/公開URLをコピーしました|https:\/\/tmluku\.github\.io\/Home-stack\//);
   await page.getByRole("button", { name: "URLを共有" }).click();

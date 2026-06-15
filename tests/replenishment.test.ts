@@ -243,6 +243,44 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips used embedded JSON prices before new product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Embedded used condition product</title>
+          <script id="__NEXT_DATA__" type="application/json">
+            {
+              "props": {
+                "pageProps": {
+                  "offers": [
+                    {
+                      "productName": "Embedded used condition product",
+                      "currentPrice": "980",
+                      "currency": "JPY",
+                      "condition": "open-box outlet"
+                    },
+                    {
+                      "productName": "Embedded new condition product",
+                      "currentPrice": "1,480",
+                      "currency": "JPY",
+                      "condition": "new"
+                    }
+                  ]
+                }
+              }
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1480,
+      currency: "JPY",
+      source: "embedded-json",
+    });
+  });
+
   it("extracts live price effective quotes from product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -595,6 +633,23 @@ describe("replenishment domain logic", () => {
         effectivePrice: 1480,
       },
       source: "html-text",
+    });
+  });
+
+  it("skips used data-attribute prices before new attribute prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Attribute condition product</title></head>
+        <body>
+          <button data-current-price="980" data-condition="used open box">中古を購入</button>
+          <button data-current-price="1,480" data-condition="new">新品を購入</button>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1480,
+      source: "data-attribute",
     });
   });
 
@@ -2034,6 +2089,25 @@ describe("replenishment domain logic", () => {
         effectivePrice: 1480,
       },
     });
+  });
+
+  it("filters used marketplace HTML snippets before ranking fallback candidates", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/used" title="Detergent refill used open box">Detergent refill used open box</a>
+          <span>980円</span>
+        </article>
+        <article>
+          <a href="/new" title="Detergent refill new">Detergent refill new</a>
+          <span>1,280円</span>
+        </article>
+      `,
+      "rakuten",
+      "https://example.test/search",
+    );
+
+    expect(candidates.map((candidate) => candidate.url)).toEqual(["https://example.test/new"]);
   });
 
   it("skips range lower-bound prices before exact marketplace item prices", () => {

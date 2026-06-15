@@ -219,7 +219,7 @@ function findPriceInEmbeddedJson(value: unknown): ExtractedPrice {
   }
 
   const price = extractFirstAmountForKeys(record, ["salePrice", "currentPrice", "itemPrice", "taxIncludedPrice", "price"]);
-  if (price && isEmbeddedProductRecord(record)) {
+  if (price && isEmbeddedProductRecord(record) && !hasUsedConditionCopy(collectStructuredText(record))) {
     const adjustments = extractEmbeddedAdjustments(record);
     return {
       price,
@@ -242,6 +242,8 @@ function extractAttributePrice(html: string) {
   const priceAttributePattern = /\b(?:data-(?:sale-)?price|data-item-price|data-current-price)=["']([^"']+)["']/i;
 
   for (const tag of tags) {
+    const decodedTag = decodeEntities(tag);
+    if (hasUsedConditionCopy(decodedTag)) continue;
     const price = parsePrice(matchContent(tag, priceAttributePattern));
     if (price) return { price, currency: inferCurrency(tag) };
   }

@@ -70,6 +70,7 @@ export function extractSearchCandidatesFromHtml(html: string, source: Marketplac
     const price = extractPrice(snippet);
     const title = extractTitle(snippet);
     if (!url || !title || !price) return null;
+    if (hasUsedConditionCopy(title)) return null;
     const adjustments = inferPriceAdjustments(snippet, price);
 
     return {

@@ -81,6 +81,7 @@ This checklist defines the current acceptance target for the Home Stack MVP.
 - [x] Add `/api/state/export` sync payload for server-side account persistence handoff.
 - [x] Add POST-only server save/load/reset endpoints backed by a replaceable JSON repository.
 - [x] Add server state repository status API for deployment readiness checks.
+- [x] Add server-side saved account index and account list API.
 - [ ] Add production server-side persistence and user accounts.
 - [ ] Add production image recognition and barcode/JAN master data.
 - [ ] Add official retailer API integrations with normalized shipping, point, and coupon windows.

@@ -33,6 +33,7 @@ Current MVP routes still return a lightweight shape so the client can stay simpl
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/api/account/resolve` | Resolve demo, email-link, or OAuth-style account metadata without storing raw email addresses. |
+| `POST` | `/api/account/list` | List saved account summaries from the configured server state store. |
 | `POST` | `/api/audit/candidates/append` | Convert product search candidates with effective-price quotes into stored condition-price audit events. |
 | `POST` | `/api/audit/conditions/append` | Append condition-price audit events from a sync payload or explicit event list. |
 | `POST` | `/api/audit/conditions/list` | List stored condition-price audit events for an account. |
@@ -139,9 +140,10 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 ## Implementation Notes
 
 - Keep `src/lib/replenishment.ts` as pure domain logic so it can be reused by API routes and tests.
-- `src/lib/server-state-store.ts` is the repository boundary for account state. It writes JSON files to `.server-state/` by default, or `HOME_STACK_STATE_STORE_DIR` when configured. `/api/state/status` exposes the active repository kind and write readiness for deployment checks.
+- `src/lib/server-state-store.ts` is the repository boundary for account state. It writes JSON files and an account index to `.server-state/` by default, or `HOME_STACK_STATE_STORE_DIR` when configured. `/api/state/status` exposes the active repository kind and write readiness for deployment checks.
 - Replace the file-backed repository with PostgreSQL, Supabase, or another durable store before multi-user production launch.
 - Account profiles should use stable account IDs and email hashes. Do not place raw email addresses inside saved sync payloads.
+- Update the account index when account state is saved or reset so `/api/account/list` can drive account switching and operations checks.
 - Preserve explicit condition details for coupons, point returns, shipping thresholds, account eligibility, and campaign windows.
 - Append condition-price audit events before replacing or clearing account state so ranking and click decisions remain inspectable.
 - Append candidate audit events after product search when effective-price quotes should be kept with source query, match score, source label, and price evidence.

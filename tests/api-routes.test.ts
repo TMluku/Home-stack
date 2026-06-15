@@ -2,6 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { POST as listAccounts } from "../src/app/api/account/list/route";
 import { POST as resolveAccount } from "../src/app/api/account/resolve/route";
 import { POST as appendCandidateAudit } from "../src/app/api/audit/candidates/append/route";
 import { POST as appendConditionAudit } from "../src/app/api/audit/conditions/append/route";
@@ -275,6 +276,20 @@ describe("API route contracts", () => {
       expect(saveResponse.status).toBe(200);
       expect(saved.stored.accountId).toBe("acct-server-test");
 
+      const listResponse = await listAccounts();
+      const listed = await listResponse.json();
+
+      expect(listResponse.status).toBe(200);
+      expect(listed.accounts).toContainEqual(
+        expect.objectContaining({
+          accountId: "acct-server-test",
+          authMode: "email-link",
+          schemaVersion: "post-mvp-sync-v1",
+          inventoryCount: saved.stored.payload.summary.inventoryCount,
+          notificationDraftCount: saved.stored.payload.summary.notificationDraftCount,
+        }),
+      );
+
       const loadResponse = await loadState(
         new Request("http://localhost/api/state/load", {
           method: "POST",
@@ -294,6 +309,11 @@ describe("API route contracts", () => {
         }),
       );
       expect(resetResponse.status).toBe(200);
+
+      const emptyListResponse = await listAccounts();
+      const emptyList = await emptyListResponse.json();
+
+      expect(emptyList.accounts).not.toContainEqual(expect.objectContaining({ accountId: "acct-server-test" }));
 
       const missingResponse = await loadState(
         new Request("http://localhost/api/state/load", {

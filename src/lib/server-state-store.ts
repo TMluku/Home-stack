@@ -24,6 +24,22 @@ export type StoredServerState = {
   payload: ServerSyncPayload;
 };
 
+export type StoredAccountSummary = {
+  accountId: string;
+  authMode: ServerSyncPayload["account"]["authMode"];
+  emailHash?: string;
+  provider?: ServerSyncPayload["account"]["provider"];
+  displayName?: string;
+  verified?: boolean;
+  createdAt?: string;
+  lastSavedAt: string;
+  schemaVersion: ServerSyncPayload["schemaVersion"];
+  inventoryCount: number;
+  queueCount: number;
+  conditionalAuditCount: number;
+  notificationDraftCount: number;
+};
+
 export type StoredAuditEvent = ConditionAuditLogEntry & {
   accountId: string;
   eventType: "condition-price-ranked" | "condition-price-clicked" | "condition-price-exported";
@@ -89,6 +105,7 @@ export async function saveServerState(payload: ServerSyncPayload, savedAt = new 
 
   await mkdir(getServerStateStoreDir(), { recursive: true });
   await writeFile(getStatePath(accountId), `${JSON.stringify(stored, null, 2)}\n`, "utf8");
+  await upsertAccountSummary(stored);
   return stored;
 }
 
@@ -106,7 +123,19 @@ export async function resetServerState(accountId: string) {
   const normalized = normalizeAccountId(accountId);
   await rm(getStatePath(normalized), { force: true });
   await rm(getAuditPath(normalized), { force: true });
+  await removeAccountSummary(normalized);
   return { accountId: normalized, deleted: true };
+}
+
+export async function listServerAccounts(): Promise<StoredAccountSummary[]> {
+  try {
+    const text = await readFile(getAccountIndexPath(), "utf8");
+    const accounts = JSON.parse(text) as StoredAccountSummary[];
+    return accounts.sort((a, b) => b.lastSavedAt.localeCompare(a.lastSavedAt) || a.accountId.localeCompare(b.accountId));
+  } catch (error) {
+    if (isMissingFile(error)) return [];
+    throw error;
+  }
 }
 
 export async function appendAuditEvents({
@@ -150,6 +179,45 @@ function getStatePath(accountId: string) {
 
 function getAuditPath(accountId: string) {
   return join(getServerStateStoreDir(), `${normalizeAccountId(accountId)}.audit.json`);
+}
+
+function getAccountIndexPath() {
+  return join(getServerStateStoreDir(), "accounts.index.json");
+}
+
+async function upsertAccountSummary(stored: StoredServerState) {
+  const existing = await listServerAccounts();
+  const summary = buildAccountSummary(stored);
+  const next = [summary, ...existing.filter((account) => account.accountId !== summary.accountId)].sort(
+    (a, b) => b.lastSavedAt.localeCompare(a.lastSavedAt) || a.accountId.localeCompare(b.accountId),
+  );
+
+  await writeFile(getAccountIndexPath(), `${JSON.stringify(next, null, 2)}\n`, "utf8");
+}
+
+async function removeAccountSummary(accountId: string) {
+  const existing = await listServerAccounts();
+  const next = existing.filter((account) => account.accountId !== normalizeAccountId(accountId));
+  await mkdir(getServerStateStoreDir(), { recursive: true });
+  await writeFile(getAccountIndexPath(), `${JSON.stringify(next, null, 2)}\n`, "utf8");
+}
+
+function buildAccountSummary(stored: StoredServerState): StoredAccountSummary {
+  return {
+    accountId: stored.accountId,
+    authMode: stored.payload.account.authMode,
+    emailHash: stored.payload.account.emailHash,
+    provider: stored.payload.account.provider,
+    displayName: stored.payload.account.displayName,
+    verified: stored.payload.account.verified,
+    createdAt: stored.payload.account.createdAt,
+    lastSavedAt: stored.savedAt,
+    schemaVersion: stored.payload.schemaVersion,
+    inventoryCount: stored.payload.summary.inventoryCount,
+    queueCount: stored.payload.summary.queueCount,
+    conditionalAuditCount: stored.payload.summary.conditionalAuditCount,
+    notificationDraftCount: stored.payload.summary.notificationDraftCount,
+  };
 }
 
 function isMissingFile(error: unknown) {

@@ -1091,9 +1091,9 @@ function isTaxExcludedContext(text: string, index: number, length: number) {
   const before = text.slice(Math.max(0, index - 18), index);
   const after = text.slice(index + length, index + length + 18);
   return (
-    /(?:税抜|税別|本体価格|excluding tax|tax excluded|excl\.?\s*tax)\s*$/i.test(before) ||
-    /^\s*(?:税抜|税別|excluding tax|tax excluded|excl\.?\s*tax)/i.test(after) ||
-    /^\s*(?:\(|（|\[|【)?\s*(?:税抜|税別|本体価格|excluding tax|tax excluded|excl\.?\s*tax)/i.test(after)
+    /(?:税抜(?:価格)?|税別(?:価格)?|本体価格|excluding tax|tax excluded|excl\.?\s*tax)\s*[:：-]?\s*$/i.test(before) ||
+    /^\s*(?:税抜(?:価格)?|税別(?:価格)?|excluding tax|tax excluded|excl\.?\s*tax)/i.test(after) ||
+    /^\s*(?:\(|（|\[|【)?\s*(?:税抜(?:価格)?|税別(?:価格)?|本体価格|excluding tax|tax excluded|excl\.?\s*tax)/i.test(after)
   );
 }
 
@@ -1101,9 +1101,10 @@ function isReferencePriceContext(text: string, index: number, length: number) {
   const before = text.slice(Math.max(0, index - 22), index);
   const after = text.slice(index + length, index + length + 18);
   const labelPrefix = `${before.replace(/^.*[0-9０-９][^0-9０-９]*/, "")}${text.slice(index, index + length).replace(/[0-9０-９].*$/, "")}`;
+  const referenceWords = /(?:通常価格|参考価格|メーカー希望小売価格|定価|list price|regular price|was price|original price)\s*[:：-]?\s*$/i;
   return (
-    /(?:通常価格|参考価格|メーカー希望小売価格|定価|list price|regular price|was price|original price)\s*$/i.test(labelPrefix) ||
-    /(?:通常価格|参考価格|メーカー希望小売価格|定価|list price|regular price|was price|original price)\s*$/i.test(before) ||
+    referenceWords.test(labelPrefix) ||
+    referenceWords.test(before) ||
     /^\s*(?:通常価格|参考価格|メーカー希望小売価格|定価|list price|regular price|was price|original price)/i.test(after)
   );
 }

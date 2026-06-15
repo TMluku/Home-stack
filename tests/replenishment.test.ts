@@ -356,6 +356,23 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips colon-separated tax-excluded prices before tax-included totals on direct product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Colon tax included product</title></head>
+        <body>
+          <span>税抜価格: 1,000円</span>
+          <strong>税込価格: 1,100円</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1100,
+      source: "html-text",
+    });
+  });
+
   it("skips reference prices before sale totals on direct product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -363,6 +380,23 @@ describe("replenishment domain logic", () => {
         <body>
           <span>通常価格 2,000円</span>
           <strong>販売価格 1,500円</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1500,
+      source: "html-text",
+    });
+  });
+
+  it("skips colon-separated reference prices before sale totals on direct product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Colon sale product</title></head>
+        <body>
+          <span>通常価格: 2,000円</span>
+          <strong>販売価格: 1,500円</strong>
         </body>
       </html>
     `);
@@ -1408,6 +1442,29 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips colon-separated tax-excluded prices before tax-included totals in marketplace HTML", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/tax-colon" title="Colon tax detergent">Colon tax detergent</a>
+          <span>税抜価格: 1,000円</span>
+          <strong>税込価格: 1,100円</strong>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Colon tax detergent",
+      price: 1100,
+      effectivePriceQuote: {
+        listPrice: 1100,
+        effectivePrice: 1100,
+      },
+    });
+  });
+
   it("skips reference prices before sale totals in marketplace HTML", () => {
     const candidates = extractSearchCandidatesFromHtml(
       `
@@ -1423,6 +1480,29 @@ describe("replenishment domain logic", () => {
 
     expect(candidates[0]).toMatchObject({
       title: "Sale detergent",
+      price: 1500,
+      effectivePriceQuote: {
+        listPrice: 1500,
+        effectivePrice: 1500,
+      },
+    });
+  });
+
+  it("skips colon-separated reference prices before sale totals in marketplace HTML", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/sale-colon" title="Colon sale detergent">Colon sale detergent</a>
+          <span>通常価格: 2,000円</span>
+          <strong>販売価格: 1,500円</strong>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/detergent/",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Colon sale detergent",
       price: 1500,
       effectivePriceQuote: {
         listPrice: 1500,

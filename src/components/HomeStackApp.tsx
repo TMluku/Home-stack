@@ -1535,11 +1535,15 @@ function formatPriceEvidence(entry: string) {
 
   const pointValue = entry.match(/^(?:official )?point value(?: inferred| from [^:]+)?: ([\d,]+) JPY$/i);
   if (pointValue) return `ポイント: ${pointValue[1]}円相当を実質価格から控除`;
-  if (/point condition requires retailer confirmation/i.test(entry)) return "ポイント条件: エントリーや対象者条件を販売ページで確認";
+  if (/point condition requires retailer confirmation/i.test(entry)) {
+    return "ポイント条件: エントリー、後日付与、付与上限、対象者条件を販売ページで確認";
+  }
 
   const couponValue = entry.match(/^(?:official )?coupon value(?: inferred| from [^:]+)?: ([\d,]+) JPY$/i);
   if (couponValue) return `クーポン: ${couponValue[1]}円相当を実質価格から控除`;
-  if (/coupon condition requires retailer confirmation/i.test(entry)) return "クーポン条件: 対象者や利用条件を販売ページで確認";
+  if (/coupon condition requires retailer confirmation/i.test(entry)) {
+    return "クーポン条件: 初回限定、対象者、併用可否、利用条件を販売ページで確認";
+  }
 
   const pointWindow = entry.match(/^point window: (.+)$/i);
   if (pointWindow) return `ポイント期間: ${pointWindow[1]}`;

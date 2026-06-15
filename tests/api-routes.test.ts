@@ -361,6 +361,75 @@ describe("API route contracts", () => {
     );
   });
 
+  it("keeps official delayed rewards and first-order coupons as conditions", async () => {
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "Delayed official Rakuten item",
+                  itemPrice: 2000,
+                  itemUrl: "https://rakuten.example.test/delayed",
+                  pointRate: "PayPayポイント 150円相当 後日付与",
+                  couponAmount: "初回限定クーポン 300円",
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          hits: [
+            {
+              name: "Delayed official Yahoo item",
+              url: "https://shopping.example.test/delayed",
+              price: 2100,
+              point: { amount: "PayPayポイント 120円相当 付与上限あり" },
+              coupon: { amount: "LINE限定クーポン 300円" },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+
+    const response = await searchProducts(
+      new Request("http://localhost/api/product-search", {
+        method: "POST",
+        body: JSON.stringify({ query: "delayed official" }),
+      }),
+    );
+    const payload = await response.json();
+    const rakutenCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "rakuten");
+    const yahooCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "yahoo-shopping");
+
+    expect(response.status).toBe(200);
+    expect(rakutenCandidate.effectivePriceQuote).toMatchObject({
+      listPrice: 2000,
+      pointValue: 0,
+      couponValue: 0,
+      effectivePrice: 2000,
+      conditionRequired: true,
+    });
+    expect(rakutenCandidate.effectivePriceQuote.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(yahooCandidate.effectivePriceQuote).toMatchObject({
+      listPrice: 2100,
+      pointValue: 0,
+      couponValue: 0,
+      effectivePrice: 2100,
+      conditionRequired: true,
+    });
+    expect(yahooCandidate.effectivePriceQuote.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+  });
+
   it("keeps official threshold coupons as conditions instead of guaranteed discounts", async () => {
     process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
     process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";

@@ -448,6 +448,37 @@ describe("replenishment domain logic", () => {
     );
   });
 
+  it("does not deduct delayed points or first-order coupons from direct product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Delayed reward product</title></head>
+        <body>
+          <span>price 2,000 JPY</span>
+          <span>PayPayポイント 150円相当 後日付与・付与上限あり</span>
+          <span>初回限定クーポン 300円OFF</span>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2000,
+      effectivePriceQuote: {
+        listPrice: 2000,
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 2000,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(
+      expect.arrayContaining(["point value from page text: 150 JPY", "coupon value from page text: 300 JPY"]),
+    );
+  });
+
   it("marks subscription and first-order direct prices as purchase conditions", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -1036,6 +1067,39 @@ describe("replenishment domain logic", () => {
     );
     expect(candidates[0]?.evidence).not.toEqual(
       expect.arrayContaining(["point value inferred: 120 JPY", "coupon value inferred: 300 JPY"]),
+    );
+  });
+
+  it("does not deduct marketplace delayed points or limited coupons as guaranteed discounts", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/delayed-reward" title="Delayed reward detergent">Delayed reward detergent</a>
+          <span>price 2,000 JPY</span>
+          <span>PayPayポイント 150円相当 後日付与・付与上限あり</span>
+          <span>LINE限定クーポン 300円OFF</span>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      price: 2000,
+      effectivePriceQuote: {
+        listPrice: 2000,
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 2000,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(candidates[0]?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(candidates[0]?.evidence).not.toEqual(
+      expect.arrayContaining(["point value inferred: 150 JPY", "coupon value inferred: 300 JPY"]),
     );
   });
 

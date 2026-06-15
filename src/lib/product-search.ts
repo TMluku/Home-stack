@@ -925,7 +925,8 @@ function isTaxExcludedContext(text: string, index: number, length: number) {
   const after = text.slice(index + length, index + length + 18);
   return (
     /(?:税抜|税別|本体価格|excluding tax|tax excluded|excl\.?\s*tax)\s*$/i.test(before) ||
-    /^\s*(?:税抜|税別|excluding tax|tax excluded|excl\.?\s*tax)/i.test(after)
+    /^\s*(?:税抜|税別|excluding tax|tax excluded|excl\.?\s*tax)/i.test(after) ||
+    /^\s*(?:\(|（|\[|【)?\s*(?:税抜|税別|本体価格|excluding tax|tax excluded|excl\.?\s*tax)/i.test(after)
   );
 }
 

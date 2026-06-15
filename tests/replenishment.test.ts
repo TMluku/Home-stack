@@ -307,6 +307,23 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips parenthesized tax-excluded prices before tax-included totals on direct product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Parenthesized tax included product</title></head>
+        <body>
+          <span>1,000円（税抜）</span>
+          <strong>1,100円（税込）</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1100,
+      source: "html-text",
+    });
+  });
+
   it("skips reference prices before sale totals on direct product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -1078,6 +1095,29 @@ describe("replenishment domain logic", () => {
 
     expect(candidates[0]).toMatchObject({
       title: "Tax included detergent",
+      price: 1100,
+      effectivePriceQuote: {
+        listPrice: 1100,
+        effectivePrice: 1100,
+      },
+    });
+  });
+
+  it("skips parenthesized tax-excluded prices before tax-included totals in marketplace HTML", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/tax-parenthesized" title="Parenthesized tax included detergent">Parenthesized tax included detergent</a>
+          <span>1,000円（税抜）</span>
+          <strong>1,100円（税込）</strong>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Parenthesized tax included detergent",
       price: 1100,
       effectivePriceQuote: {
         listPrice: 1100,

@@ -4,7 +4,27 @@ import { expect, test } from "@playwright/test";
 test("shows ranked price candidates with condition evidence and visual asset", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.locator(".price-insight-visual img")).toHaveAttribute("src", /price-insight-visual\.png/);
+  const priceVisual = page.locator(".price-insight-visual img");
+  await expect(priceVisual).toHaveAttribute("src", /price-insight-visual\.png/);
+  await expect(priceVisual).toBeVisible();
+  const visualMetrics = await priceVisual.evaluate((image) => {
+    if (!(image instanceof HTMLImageElement)) return null;
+    const rect = image.getBoundingClientRect();
+    return {
+      complete: image.complete,
+      naturalWidth: image.naturalWidth,
+      naturalHeight: image.naturalHeight,
+      renderedWidth: Math.round(rect.width),
+      renderedHeight: Math.round(rect.height),
+    };
+  });
+  expect(visualMetrics).toMatchObject({
+    complete: true,
+    naturalWidth: 1693,
+    naturalHeight: 929,
+  });
+  expect(visualMetrics?.renderedWidth ?? 0).toBeGreaterThan(250);
+  expect(visualMetrics?.renderedHeight ?? 0).toBeGreaterThan(130);
   await expect(page.getByAltText("Home Stack GitHub Pages 公開URLのQRコード")).toHaveAttribute("src", /pages-qr\.svg/);
   await expect(page.getByLabel("実機スマホQA確認ポイント").locator("li")).toHaveCount(3);
   await page.getByRole("button", { name: "公開URLをコピー" }).click();

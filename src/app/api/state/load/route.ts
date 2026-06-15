@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { resolveAccountAccess } from "@/lib/account-auth";
 import { loadServerState } from "@/lib/server-state-store";
 
 export async function POST(request: Request) {
@@ -9,7 +10,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "読み込むaccountIdを指定してください。", stored: null }, { status: 400 });
   }
 
-  const stored = await loadServerState(accountId);
+  const access = resolveAccountAccess(request, accountId);
+  if (!access.ok) {
+    return NextResponse.json({ ok: false, error: access.error, context: access.context, stored: null }, { status: access.status });
+  }
+
+  const stored = await loadServerState(access.accountId);
   if (!stored) {
     return NextResponse.json({ ok: false, error: "保存済み状態が見つかりません。", stored: null }, { status: 404 });
   }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { resolveAccountAccess } from "@/lib/account-auth";
 import type { ServerSyncPayload } from "@/lib/post-mvp";
 import { saveServerState } from "@/lib/server-state-store";
 
@@ -8,6 +9,11 @@ export async function POST(request: Request) {
 
   if (!isServerSyncPayload(payload)) {
     return NextResponse.json({ ok: false, error: "保存する同期payloadを指定してください。", stored: null }, { status: 400 });
+  }
+
+  const access = resolveAccountAccess(request, payload.account.accountId);
+  if (!access.ok) {
+    return NextResponse.json({ ok: false, error: access.error, context: access.context, stored: null }, { status: access.status });
   }
 
   const stored = await saveServerState(payload);

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { resolveAccountAccess } from "@/lib/account-auth";
 import { listNotificationEvents } from "@/lib/server-state-store";
 
 export async function POST(request: Request) {
@@ -9,6 +10,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "読み込むaccountIdを指定してください。", events: [] }, { status: 400 });
   }
 
-  const events = await listNotificationEvents(accountId);
+  const access = resolveAccountAccess(request, accountId);
+  if (!access.ok) {
+    return NextResponse.json({ ok: false, error: access.error, context: access.context, events: [] }, { status: access.status });
+  }
+
+  const events = await listNotificationEvents(access.accountId);
   return NextResponse.json({ ok: true, events });
 }

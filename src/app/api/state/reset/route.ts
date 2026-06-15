@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { resolveAccountAccess } from "@/lib/account-auth";
 import { resetServerState } from "@/lib/server-state-store";
 
 export async function POST(request: Request) {
@@ -9,6 +10,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "削除するaccountIdを指定してください。", result: null }, { status: 400 });
   }
 
-  const result = await resetServerState(accountId);
+  const access = resolveAccountAccess(request, accountId);
+  if (!access.ok) {
+    return NextResponse.json({ ok: false, error: access.error, context: access.context, result: null }, { status: access.status });
+  }
+
+  const result = await resetServerState(access.accountId);
   return NextResponse.json({ ok: true, result });
 }

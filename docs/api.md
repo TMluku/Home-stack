@@ -145,6 +145,7 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 - `src/lib/server-state-store.ts` is the repository boundary for account state. It writes JSON files and an account index to `.server-state/` by default, or `HOME_STACK_STATE_STORE_DIR` when configured. Set `HOME_STACK_STATE_STORE_KIND=postgres` with `HOME_STACK_POSTGRES_URL`, `POSTGRES_URL`, or `DATABASE_URL` to use Postgres JSONB tables instead.
 - `/api/state/status` exposes the active repository kind and write readiness for deployment checks. It reports whether a database URL is configured, but it must not return the URL value.
 - The Postgres repository creates account-state, audit-event, and notification-event tables with the `HOME_STACK_STATE_TABLE_PREFIX` prefix, defaulting to `home_stack`.
+- Account-scoped APIs can enforce an upstream authenticated account boundary with `HOME_STACK_ACCOUNT_AUTH_REQUIRED=true`. The API reads `x-home-stack-account-id` by default, or `HOME_STACK_TRUSTED_ACCOUNT_HEADER` when configured, and rejects missing headers or accountId mismatches with 401/403 responses.
 - Replace the demo account-resolution handoff with a real authenticated identity provider before multi-user production launch.
 - Account profiles should use stable account IDs and email hashes. Do not place raw email addresses inside saved sync payloads.
 - Update the account index when account state is saved or reset so `/api/account/list` can drive account switching and operations checks.

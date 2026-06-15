@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { resolveAccountAccess } from "@/lib/account-auth";
 import type { NotificationContactPoints } from "@/lib/notification-jobs";
 import { buildNotificationJobs, getNotificationProviderReadiness, summarizeNotificationJobs } from "@/lib/notification-jobs";
 import type { ServerSyncPayload } from "@/lib/post-mvp";
@@ -17,14 +18,22 @@ export async function POST(request: Request) {
     );
   }
 
+  const access = resolveAccountAccess(request, body.payload.account.accountId);
+  if (!access.ok) {
+    return NextResponse.json(
+      { ok: false, error: access.error, context: access.context, jobs: [], summary: null },
+      { status: access.status },
+    );
+  }
+
   const jobs = buildNotificationJobs({
-    accountId: body.payload.account.accountId,
+    accountId: access.accountId,
     drafts: body.payload.notificationDrafts,
     contactPoints: body?.contactPoints,
   });
   const summary = summarizeNotificationJobs(jobs);
   const event = await appendNotificationEvent({
-    accountId: body.payload.account.accountId,
+    accountId: access.accountId,
     eventType: "notification-prepared",
     appendedAt: new Date().toISOString(),
     jobs,

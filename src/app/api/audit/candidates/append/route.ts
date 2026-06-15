@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { resolveAccountAccess } from "@/lib/account-auth";
 import { buildCandidateConditionAuditLog } from "@/lib/post-mvp";
 import { appendAuditEvents } from "@/lib/server-state-store";
 import type { ProductSearchCandidate, ProductSearchResult } from "@/lib/types";
@@ -25,6 +26,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "accountId and search candidates are required.", appended: [] }, { status: 400 });
   }
 
+  const access = resolveAccountAccess(request, accountId);
+  if (!access.ok) {
+    return NextResponse.json({ ok: false, error: access.error, context: access.context, appended: [] }, { status: access.status });
+  }
+
   const events = buildCandidateConditionAuditLog({
     candidates,
     generatedAt,
@@ -36,7 +42,7 @@ export async function POST(request: Request) {
   }
 
   const appended = await appendAuditEvents({
-    accountId,
+    accountId: access.accountId,
     events,
     eventType: "condition-price-ranked",
   });

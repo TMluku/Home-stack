@@ -93,6 +93,7 @@ This checklist defines the current acceptance target for the Home Stack MVP.
 - [x] Connect Post-MVP account panel to save, load, delete, and account-list refresh routes.
 - [x] Load saved server-side account state directly from the Post-MVP account list.
 - [x] Add Postgres-backed server state repository for production persistence handoff.
+- [x] Add trusted account header guard for account-scoped server APIs.
 - [ ] Add production server-side persistence and user accounts.
 - [ ] Add production image recognition and barcode/JAN master data.
 - [ ] Add official retailer API integrations with normalized shipping, point, and coupon windows.

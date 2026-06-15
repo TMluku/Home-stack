@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { resolveAccountAccess } from "@/lib/account-auth";
 import type { ConditionAuditLogEntry, ServerSyncPayload } from "@/lib/post-mvp";
 import { appendAuditEvents } from "@/lib/server-state-store";
 
@@ -19,8 +20,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "accountIdと監査イベントを指定してください。", appended: [] }, { status: 400 });
   }
 
+  const access = resolveAccountAccess(request, accountId);
+  if (!access.ok) {
+    return NextResponse.json({ ok: false, error: access.error, context: access.context, appended: [] }, { status: access.status });
+  }
+
   const appended = await appendAuditEvents({
-    accountId,
+    accountId: access.accountId,
     events,
     eventType: parseEventType(body?.eventType),
   });

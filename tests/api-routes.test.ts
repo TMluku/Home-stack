@@ -29,6 +29,8 @@ describe("API route contracts", () => {
     delete process.env.HOME_STACK_STATE_STORE_KIND;
     delete process.env.HOME_STACK_STATE_TABLE_PREFIX;
     delete process.env.HOME_STACK_POSTGRES_URL;
+    delete process.env.HOME_STACK_ACCOUNT_AUTH_REQUIRED;
+    delete process.env.HOME_STACK_TRUSTED_ACCOUNT_HEADER;
     delete process.env.POSTGRES_URL;
     delete process.env.DATABASE_URL;
     delete process.env.HOME_STACK_BARCODE_MASTER_URL;
@@ -334,7 +336,7 @@ describe("API route contracts", () => {
       expect(saveResponse.status).toBe(200);
       expect(saved.stored.accountId).toBe("acct-server-test");
 
-      const listResponse = await listAccounts();
+      const listResponse = await listAccounts(new Request("http://localhost/api/account/list", { method: "POST" }));
       const listed = await listResponse.json();
 
       expect(listResponse.status).toBe(200);
@@ -368,7 +370,7 @@ describe("API route contracts", () => {
       );
       expect(resetResponse.status).toBe(200);
 
-      const emptyListResponse = await listAccounts();
+      const emptyListResponse = await listAccounts(new Request("http://localhost/api/account/list", { method: "POST" }));
       const emptyList = await emptyListResponse.json();
 
       expect(emptyList.accounts).not.toContainEqual(expect.objectContaining({ accountId: "acct-server-test" }));
@@ -380,6 +382,79 @@ describe("API route contracts", () => {
         }),
       );
       expect(missingResponse.status).toBe(404);
+    } finally {
+      await rm(storeDir, { recursive: true, force: true });
+    }
+  });
+
+  it("enforces account-scoped API access when trusted account headers are required", async () => {
+    const storeDir = await mkdtemp(join(tmpdir(), "home-stack-auth-state-"));
+    process.env.HOME_STACK_STATE_STORE_DIR = storeDir;
+    process.env.HOME_STACK_ACCOUNT_AUTH_REQUIRED = "true";
+
+    try {
+      const exportResponse = await exportState(
+        new Request("http://localhost/api/state/export", {
+          method: "POST",
+          body: JSON.stringify({
+            accountId: "acct-auth",
+            authMode: "email-link",
+          }),
+        }),
+      );
+      const exported = await exportResponse.json();
+
+      const missingHeaderResponse = await saveState(
+        new Request("http://localhost/api/state/save", {
+          method: "POST",
+          body: JSON.stringify({ payload: exported.payload }),
+        }),
+      );
+      const missingHeader = await missingHeaderResponse.json();
+
+      expect(missingHeaderResponse.status).toBe(401);
+      expect(missingHeader).toMatchObject({
+        ok: false,
+        context: { required: true, source: "missing" },
+        stored: null,
+      });
+
+      const saveResponse = await saveState(
+        new Request("http://localhost/api/state/save", {
+          method: "POST",
+          headers: { "x-home-stack-account-id": "acct-auth" },
+          body: JSON.stringify({ payload: exported.payload }),
+        }),
+      );
+      expect(saveResponse.status).toBe(200);
+
+      const forbiddenLoadResponse = await loadState(
+        new Request("http://localhost/api/state/load", {
+          method: "POST",
+          headers: { "x-home-stack-account-id": "acct-other" },
+          body: JSON.stringify({ accountId: "acct-auth" }),
+        }),
+      );
+      const forbiddenLoad = await forbiddenLoadResponse.json();
+
+      expect(forbiddenLoadResponse.status).toBe(403);
+      expect(forbiddenLoad).toMatchObject({
+        ok: false,
+        context: { accountId: "acct-other", required: true, source: "trusted-header" },
+        stored: null,
+      });
+
+      const listResponse = await listAccounts(
+        new Request("http://localhost/api/account/list", {
+          method: "POST",
+          headers: { "x-home-stack-account-id": "acct-auth" },
+        }),
+      );
+      const listed = await listResponse.json();
+
+      expect(listResponse.status).toBe(200);
+      expect(listed.accounts).toHaveLength(1);
+      expect(listed.accounts[0]).toMatchObject({ accountId: "acct-auth" });
     } finally {
       await rm(storeDir, { recursive: true, force: true });
     }

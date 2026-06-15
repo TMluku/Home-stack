@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { resolveAccountAccess } from "@/lib/account-auth";
 import type { NotificationContactPoints, NotificationJob } from "@/lib/notification-jobs";
 import {
   buildNotificationDispatchResults,
@@ -32,6 +33,20 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { ok: false, error: "Notification jobs or a sync payload are required.", results: [], summary: null },
       { status: 400 },
+    );
+  }
+  if (!jobs.every((job) => job.accountId === jobs[0].accountId)) {
+    return NextResponse.json(
+      { ok: false, error: "Notification jobs must belong to one account.", results: [], summary: null },
+      { status: 400 },
+    );
+  }
+
+  const access = resolveAccountAccess(request, jobs[0].accountId);
+  if (!access.ok) {
+    return NextResponse.json(
+      { ok: false, error: access.error, context: access.context, results: [], summary: null },
+      { status: access.status },
     );
   }
 

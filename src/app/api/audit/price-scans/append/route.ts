@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { resolveAccountAccess } from "@/lib/account-auth";
 import { buildLivePriceConditionAuditLog } from "@/lib/post-mvp";
 import { appendAuditEvents } from "@/lib/server-state-store";
 import type { LivePriceResult } from "@/lib/types";
@@ -18,6 +19,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "accountId and live price scan results are required.", appended: [] }, { status: 400 });
   }
 
+  const access = resolveAccountAccess(request, accountId);
+  if (!access.ok) {
+    return NextResponse.json({ ok: false, error: access.error, context: access.context, appended: [] }, { status: access.status });
+  }
+
   const events = buildLivePriceConditionAuditLog({ results, generatedAt });
   if (events.length === 0) {
     return NextResponse.json(
@@ -27,7 +33,7 @@ export async function POST(request: Request) {
   }
 
   const appended = await appendAuditEvents({
-    accountId,
+    accountId: access.accountId,
     events,
     eventType: "condition-price-ranked",
   });

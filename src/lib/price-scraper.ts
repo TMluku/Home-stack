@@ -305,6 +305,7 @@ function extractTextPrice(html: string) {
     if (isRewardAmountContext(text, match.index ?? 0, priceText.length)) continue;
     if (isConditionThresholdAmountContext(text, match.index ?? 0, priceText.length)) continue;
     if (isDiscountAmountContext(text, match.index ?? 0, priceText.length)) continue;
+    if (isFreeShippingProgressAmountContext(text, match.index ?? 0, priceText.length)) continue;
     if (isShippingConditionAmountContext(text, match.index ?? 0, priceText.length)) continue;
     if (isTaxExcludedContext(text, match.index ?? 0, priceText.length)) continue;
     if (isReferencePriceContext(text, match.index ?? 0, priceText.length)) continue;
@@ -690,9 +691,14 @@ function hasCertainFreeShippingCopy(text: string) {
 function hasConditionalShippingCopy(text: string) {
   if (hasUnconfirmedShippingCopy(text)) return true;
 
-  const shippingLabels = ["送料", "shipping", "postage", "delivery"];
+  const shippingLabels = ["送料", "送料無料", "free shipping", "shipping", "postage", "delivery"];
   const conditionWords = [
     "送料無料ライン",
+    "あと",
+    "残り",
+    "不足",
+    "追加",
+    "もう",
     "以上",
     "未満",
     "対象",
@@ -704,6 +710,9 @@ function hasConditionalShippingCopy(text: string) {
     "over",
     "above",
     "minimum",
+    "remaining",
+    "short by",
+    "add",
     "eligible",
     "membership",
     "members only",
@@ -994,6 +1003,14 @@ function isConditionThresholdAmountContext(text: string, index: number, length: 
     `${before}${after}`,
   );
   return thresholdAfter && conditionNearby;
+}
+
+function isFreeShippingProgressAmountContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 24), index);
+  const after = text.slice(index + length, index + length + 36);
+  const progressBefore = /(?:あと|残り|不足|追加|もう|add|remaining|short by)\s*$/i.test(before);
+  const freeShippingAfter = /^\s*(?:で|追加で|more for|to|until)?\s*(?:送料無料|free shipping)/i.test(after);
+  return progressBefore && freeShippingAfter;
 }
 
 function isShippingConditionAmountContext(text: string, index: number, length: number) {

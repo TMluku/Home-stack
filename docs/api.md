@@ -33,6 +33,7 @@ Current MVP routes still return a lightweight shape so the client can stay simpl
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/api/account/resolve` | Resolve demo, email-link, or OAuth-style account metadata without storing raw email addresses. |
+| `POST` | `/api/account/session` | Resolve the authenticated account profile from trusted upstream identity headers for production server deployments. |
 | `POST` | `/api/account/list` | List saved account summaries from the configured server state store. |
 | `POST` | `/api/audit/candidates/append` | Convert product search candidates with effective-price quotes into stored condition-price audit events. |
 | `POST` | `/api/audit/conditions/append` | Append condition-price audit events from a sync payload or explicit event list. |
@@ -166,7 +167,8 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 - `/api/state/status` exposes the active repository kind and write readiness for deployment checks. It reports whether a database URL is configured, but it must not return the URL value.
 - The Postgres repository creates account-state, audit-event, and notification-event tables with the `HOME_STACK_STATE_TABLE_PREFIX` prefix, defaulting to `home_stack`.
 - Account-scoped APIs can enforce an upstream authenticated account boundary with `HOME_STACK_ACCOUNT_AUTH_REQUIRED=true`. The API reads `x-home-stack-account-id` by default, or `HOME_STACK_TRUSTED_ACCOUNT_HEADER` when configured, and rejects missing headers or accountId mismatches with 401/403 responses.
-- Replace the demo account-resolution handoff with a real authenticated identity provider before multi-user production launch.
+- `/api/account/session` resolves production user accounts from trusted upstream auth headers. Defaults are `x-home-stack-user-email`, `x-home-stack-user-sub`, `x-home-stack-auth-provider`, `x-home-stack-display-name`, and `x-home-stack-email-verified`; override them with `HOME_STACK_TRUSTED_EMAIL_HEADER`, `HOME_STACK_TRUSTED_SUBJECT_HEADER`, `HOME_STACK_TRUSTED_PROVIDER_HEADER`, `HOME_STACK_TRUSTED_DISPLAY_NAME_HEADER`, and `HOME_STACK_TRUSTED_EMAIL_VERIFIED_HEADER`.
+- Put an authenticated reverse proxy or identity provider in front of the Next.js server before multi-user production launch, then enable `HOME_STACK_ACCOUNT_AUTH_REQUIRED=true` so state, audit, and notification APIs only accept trusted account identity.
 - Account profiles should use stable account IDs and email hashes. Do not place raw email addresses inside saved sync payloads.
 - Update the account index when account state is saved or reset so `/api/account/list` can drive account switching and operations checks.
 - The Post-MVP UI connects account profile resolution, save, load, delete, list-refresh, and saved-account selection controls to these routes when running as a Next.js server. Static GitHub Pages exports keep the same panel visible with API-unavailable status messaging.

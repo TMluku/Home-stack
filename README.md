@@ -29,7 +29,7 @@ Implemented:
 Not implemented in the MVP:
 
 - Real payments or purchase confirmation.
-- Server-side user accounts or persistence.
+- Server-side user accounts or persistence on the static GitHub Pages build.
 - Guaranteed retailer stock, delivery date, or final checkout price.
 
 ## Getting Started
@@ -91,6 +91,7 @@ pnpm.cmd run dev
 When the app runs as a Next.js server, account sync payloads can be saved through the POST-only state routes:
 
 - `POST /api/account/resolve`
+- `POST /api/account/session`
 - `POST /api/account/list`
 - `POST /api/audit/candidates/append`
 - `POST /api/audit/conditions/append`
@@ -113,10 +114,11 @@ When the app runs as a Next.js server, account sync payloads can be saved throug
 By default, saved JSON files are written under `.server-state/`. Set `HOME_STACK_STATE_STORE_DIR` to use another local directory. Set `HOME_STACK_STATE_STORE_KIND=postgres` plus `HOME_STACK_POSTGRES_URL`, `POSTGRES_URL`, or `DATABASE_URL` to store account state, audit events, and notification history in Postgres JSONB tables. GitHub Pages remains static and does not run these API routes.
 `POST /api/state/status` reports the active state repository kind, file store directory or Postgres table prefix, write readiness, and normalized account ID without returning database URLs.
 Account resolution creates stable account IDs and email hashes for email-link/OAuth handoff without storing raw email addresses in sync payloads.
+`POST /api/account/session` resolves production account sessions from trusted upstream auth headers without returning or storing raw email addresses. By default it reads `x-home-stack-user-email`, `x-home-stack-user-sub`, `x-home-stack-auth-provider`, `x-home-stack-display-name`, and `x-home-stack-email-verified`; each header can be overridden with the matching `HOME_STACK_TRUSTED_*_HEADER` environment variable.
 Account listing reads the server-side account index that is updated whenever account state is saved or reset.
 The Post-MVP panel can call these routes from a Next.js server build to resolve an account profile, save, load, delete, and refresh account state; the GitHub Pages build keeps the controls visible but reports that API persistence is unavailable.
 Saved account summaries can be selected from the Post-MVP panel to load that account state directly, including the latest saved timestamp and payload counts.
-Set `HOME_STACK_ACCOUNT_AUTH_REQUIRED=true` on a server deployment to require the trusted account header on account-scoped APIs. The default trusted header is `x-home-stack-account-id`; override it with `HOME_STACK_TRUSTED_ACCOUNT_HEADER` when an upstream auth proxy or identity provider emits a different header.
+Set `HOME_STACK_ACCOUNT_AUTH_REQUIRED=true` on a server deployment to require trusted account identity headers on account-scoped APIs. The default account ID header is `x-home-stack-account-id`; override it with `HOME_STACK_TRUSTED_ACCOUNT_HEADER` when an upstream auth proxy or identity provider emits a different header.
 Condition audit routes append and list effective-price condition events so ranking decisions can be inspected later, including product-search candidate quotes and direct URL scan quotes.
 The Post-MVP panel can save the current condition audit payload and load stored audit events for the active account when the app is running on a Next.js server.
 Notification preparation builds queued or blocked jobs, status reports configured providers, dispatch can dry-run provider handoff, and notification history stores prepare/dispatch events per account. With `dryRun: false`, configured LINE jobs call the LINE Messaging API push endpoint, configured email jobs send through SMTP, and configured Web Push jobs send encrypted payloads to a PushSubscription JSON destination.

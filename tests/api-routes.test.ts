@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import webPush from "web-push";
 import { POST as listAccounts } from "../src/app/api/account/list/route";
 import { POST as resolveAccount } from "../src/app/api/account/resolve/route";
+import { POST as getAccountSession } from "../src/app/api/account/session/route";
 import { POST as appendCandidateAudit } from "../src/app/api/audit/candidates/append/route";
 import { POST as appendConditionAudit } from "../src/app/api/audit/conditions/append/route";
 import { POST as listConditionAudit } from "../src/app/api/audit/conditions/list/route";
@@ -35,6 +36,11 @@ describe("API route contracts", () => {
     delete process.env.HOME_STACK_POSTGRES_URL;
     delete process.env.HOME_STACK_ACCOUNT_AUTH_REQUIRED;
     delete process.env.HOME_STACK_TRUSTED_ACCOUNT_HEADER;
+    delete process.env.HOME_STACK_TRUSTED_EMAIL_HEADER;
+    delete process.env.HOME_STACK_TRUSTED_SUBJECT_HEADER;
+    delete process.env.HOME_STACK_TRUSTED_PROVIDER_HEADER;
+    delete process.env.HOME_STACK_TRUSTED_DISPLAY_NAME_HEADER;
+    delete process.env.HOME_STACK_TRUSTED_EMAIL_VERIFIED_HEADER;
     delete process.env.POSTGRES_URL;
     delete process.env.DATABASE_URL;
     delete process.env.HOME_STACK_BARCODE_MASTER_URL;
@@ -484,6 +490,93 @@ describe("API route contracts", () => {
       authMode: "email-link",
       emailHash: account.profile.emailHash,
       displayName: "Home User",
+    });
+  });
+
+  it("resolves production account sessions from trusted identity headers", async () => {
+    const response = await getAccountSession(
+      new Request("http://localhost/api/account/session", {
+        method: "POST",
+        headers: {
+          "x-home-stack-user-email": " USER@example.TEST ",
+          "x-home-stack-auth-provider": "google",
+          "x-home-stack-display-name": "Home User",
+          "x-home-stack-email-verified": "true",
+        },
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload).toMatchObject({
+      ok: true,
+      authenticated: true,
+      profile: {
+        authMode: "oauth",
+        provider: "google",
+        displayName: "Home User",
+        verified: true,
+      },
+      context: {
+        source: "trusted-identity",
+        required: false,
+      },
+      status: {
+        supports: {
+          accountState: true,
+          auditEvents: true,
+          notificationEvents: true,
+        },
+      },
+    });
+    expect(payload.profile.accountId).toMatch(/^acct-/);
+    expect(JSON.stringify(payload.profile)).not.toContain("USER@example.TEST");
+    expect(JSON.stringify(payload.profile)).not.toContain("user@example.test");
+  });
+
+  it("requires trusted identity headers for production account sessions when auth is required", async () => {
+    process.env.HOME_STACK_ACCOUNT_AUTH_REQUIRED = "true";
+
+    const missingResponse = await getAccountSession(new Request("http://localhost/api/account/session", { method: "POST" }));
+    const missing = await missingResponse.json();
+
+    expect(missingResponse.status).toBe(401);
+    expect(missing).toMatchObject({
+      ok: false,
+      authenticated: false,
+      context: { required: true, source: "missing" },
+      profile: null,
+    });
+
+    const authenticatedResponse = await getAccountSession(
+      new Request("http://localhost/api/account/session", {
+        method: "POST",
+        headers: {
+          "x-home-stack-user-sub": "provider-user-123",
+          "x-home-stack-auth-provider": "github",
+          "x-home-stack-display-name": "Ops User",
+          "x-home-stack-email-verified": "1",
+        },
+      }),
+    );
+    const authenticated = await authenticatedResponse.json();
+
+    expect(authenticatedResponse.status).toBe(200);
+    expect(authenticated).toMatchObject({
+      ok: true,
+      authenticated: true,
+      profile: {
+        accountId: "acct-github-provider-user-123",
+        authMode: "oauth",
+        provider: "github",
+        displayName: "Ops User",
+        verified: true,
+      },
+      context: {
+        accountId: "acct-github-provider-user-123",
+        required: true,
+        source: "trusted-identity",
+      },
     });
   });
 

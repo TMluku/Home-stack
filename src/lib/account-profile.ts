@@ -19,11 +19,13 @@ export function buildAccountProfile({
   provider = "email",
   displayName,
   createdAt = new Date().toISOString(),
+  verified = false,
 }: {
   email?: string;
   provider?: AccountProfile["provider"];
   displayName?: string;
   createdAt?: string;
+  verified?: boolean;
 }): AccountProfile {
   const normalizedEmail = email ? normalizeEmail(email) : "";
   const emailHash = normalizedEmail ? hashText(normalizedEmail) : undefined;
@@ -36,7 +38,7 @@ export function buildAccountProfile({
     provider: normalizedEmail ? provider : undefined,
     displayName: displayName?.trim() || undefined,
     createdAt,
-    verified: false,
+    verified,
   };
 }
 

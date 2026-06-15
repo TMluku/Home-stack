@@ -57,6 +57,7 @@ pnpm.cmd run build
 pnpm.cmd run build:pages
 pnpm.cmd run check:pages
 pnpm.cmd run test:e2e
+pnpm.cmd run test:e2e:browser
 ```
 
 `check` runs:
@@ -66,6 +67,19 @@ pnpm.cmd run test:e2e
 - Vitest tests
 
 `test:e2e` checks the published GitHub Pages URL and the visual asset used by the price-search UI by default. Override it with `HOME_STACK_PAGES_URL` when validating another deployment.
+
+`test:e2e:browser` builds the static Pages export, serves it locally, and verifies the price-search flow in mobile and desktop Chromium. Install the browser once with:
+
+```powershell
+pnpm.cmd exec playwright install chromium
+```
+
+Manual smartphone QA for Pages:
+
+- Open `https://tmluku.github.io/Home-stack/` on a real phone.
+- Confirm the price-search visual loads.
+- Tap an inventory chip and confirm candidates appear in price order.
+- Confirm condition-required cards show `価格条件を確認`, evidence rows, and a link to the seller page without horizontal scrolling.
 
 Remove generated build, preview, log, dependency, and local server-state artifacts with:
 

@@ -12,6 +12,8 @@ const generatedTargets = [
   ".pages-static.err.log",
   ".tmp-pnpm",
   "node_modules",
+  "playwright-report",
+  "test-results",
   "tsconfig.tsbuildinfo",
   ".server-state",
 ];

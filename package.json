@@ -9,7 +9,9 @@
     "build:pages": "node scripts/build-pages.mjs",
     "check:pages": "node scripts/check-pages-readiness.mjs",
     "deploy:pages-branch": "node scripts/publish-pages-branch.mjs",
+    "preview:pages": "node scripts/serve-pages.mjs",
     "test:e2e": "node scripts/e2e-pages-smoke.mjs",
+    "test:e2e:browser": "playwright test",
     "start": "next start",
     "check": "pnpm run typecheck && pnpm run lint && pnpm test",
     "test": "vitest run",
@@ -32,6 +34,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.2",
+    "@playwright/test": "^1.61.0",
     "@types/node": "^24.0.0",
     "@types/nodemailer": "7.0.4",
     "@types/react": "^19.1.8",

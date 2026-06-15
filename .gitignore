@@ -1,5 +1,6 @@
 node_modules/
 .next/
+out/
 .turbo/
 .tools/
 .tmp-pnpm/
@@ -7,6 +8,8 @@ node_modules/
 .next-start*.log
 .pages-static*.log
 .pages-preview/
+playwright-report/
+test-results/
 .server-state/
 pnpm-lock.yaml.tmp
 tsconfig.tsbuildinfo

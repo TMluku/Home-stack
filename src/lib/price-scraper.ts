@@ -485,9 +485,11 @@ function findNamedReward(value: unknown, labels: string[]): RewardSignal {
   if (labels.some((label) => name.toLowerCase().includes(label.toLowerCase()))) {
     const rawValue = record.value ?? record.price ?? record.amount;
     const descriptor = `${name} ${stringifyRewardPayload(record)}`;
+    const windowState = getRewardWindowState(record);
+    if (windowState === "inactive") return { conditionRequired: true };
     if (hasStructuredRewardConditionCopy(descriptor, labels)) return { conditionRequired: true };
     const amount = parsePrice(rawValue);
-    if (amount) return { value: amount };
+    if (amount) return { value: amount, conditionRequired: windowState === "active" };
   }
 
   for (const nested of Object.values(record)) {
@@ -563,9 +565,11 @@ function extractFirstRewardForKeys(value: unknown, keys: string[], labels: strin
   for (const [key, rawValue] of Object.entries(record)) {
     if (keys.some((candidate) => key.toLowerCase() === candidate.toLowerCase())) {
       const descriptor = `${key} ${stringifyRewardPayload(record)}`;
+      const windowState = getRewardWindowState(record);
+      if (windowState === "inactive") return { conditionRequired: true };
       if (hasStructuredRewardConditionCopy(descriptor, labels)) return { conditionRequired: true };
       const amount = parseAmountPayload(rawValue);
-      if (amount) return { value: amount };
+      if (amount) return { value: amount, conditionRequired: windowState === "active" };
     }
   }
 
@@ -582,6 +586,48 @@ function parseAmountPayload(value: unknown) {
   if (!value || typeof value !== "object") return undefined;
   const record = value as Record<string, unknown>;
   return parsePrice(record.amount ?? record.value ?? record.price);
+}
+
+function getRewardWindowState(value: unknown): "active" | "inactive" | undefined {
+  const start = readFirstDateForKeys(value, ["validFrom", "startTime", "start", "startsAt", "availableFrom", "campaignStartTime"]);
+  const end = readFirstDateForKeys(value, ["validThrough", "endTime", "end", "endsAt", "expiresAt", "availableThrough", "campaignEndTime"]);
+  if (end && isPastDateTime(end)) return "inactive";
+  if (start && isFutureDateTime(start)) return "inactive";
+  if (start || end) return "active";
+  return undefined;
+}
+
+function readFirstDateForKeys(value: unknown, keys: string[]): string | undefined {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = readFirstDateForKeys(item, keys);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  for (const [key, rawValue] of Object.entries(record)) {
+    if (!keys.some((candidate) => key.toLowerCase() === candidate.toLowerCase())) continue;
+    if (typeof rawValue === "string" && Number.isFinite(Date.parse(rawValue))) return rawValue;
+  }
+
+  for (const nested of Object.values(record)) {
+    const found = readFirstDateForKeys(nested, keys);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function isPastDateTime(value: string) {
+  const time = Date.parse(value);
+  return Number.isFinite(time) && time < Date.now();
+}
+
+function isFutureDateTime(value: string) {
+  const time = Date.parse(value);
+  return Number.isFinite(time) && time > Date.now();
 }
 
 function stringifyRewardPayload(value: unknown): string {

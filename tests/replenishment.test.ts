@@ -417,6 +417,61 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("extracts Amazon-style product prices before broad text fallback", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Amazon detergent</title></head>
+        <body>
+          <span class="a-price a-text-price">
+            <span class="a-offscreen">￥3,980</span>
+          </span>
+          <span class="a-price">
+            <span class="a-offscreen">￥2,480</span>
+          </span>
+          <span>free shipping with prime membership</span>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      title: "Amazon detergent",
+      price: 2480,
+      source: "html-text",
+      effectivePriceQuote: {
+        listPrice: 2480,
+        shippingFee: 0,
+        effectivePrice: 2480,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining(["price from Amazon a-offscreen", "shipping condition requires retailer confirmation"]),
+    );
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["送料条件あり"]));
+  });
+
+  it("extracts Amazon split whole and fraction prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Amazon wipes</title></head>
+        <body>
+          <span class="a-price">
+            <span class="a-price-symbol">￥</span>
+            <span class="a-price-whole">1,280</span>
+            <span class="a-price-decimal">.</span>
+            <span class="a-price-fraction">00</span>
+          </span>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1280,
+      source: "html-text",
+    });
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["price from Amazon split whole/fraction"]));
+  });
+
   it("extracts product search candidates from marketplace HTML", () => {
     const candidates = extractSearchCandidatesFromHtml(
       `

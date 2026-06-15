@@ -78,6 +78,9 @@ export function extractPriceFromHtml(
   const attributePrice = extractAttributePrice(html);
   if (attributePrice.price) return withEffectivePriceQuote({ title, ...attributePrice, source: "data-attribute" }, html);
 
+  const amazonPrice = extractAmazonPrice(html);
+  if (amazonPrice.price) return withEffectivePriceQuote({ title, ...amazonPrice, source: "html-text" }, html);
+
   const textPrice = extractTextPrice(html);
   if (textPrice.price) return withEffectivePriceQuote({ title, ...textPrice, source: "html-text" }, html);
 
@@ -241,6 +244,44 @@ function extractAttributePrice(html: string) {
   return {};
 }
 
+function extractAmazonPrice(html: string): ExtractedPrice {
+  const offscreenPrice = findAmazonOffscreenPrice(html);
+  if (offscreenPrice) {
+    return { price: offscreenPrice, currency: "JPY", evidence: ["price from Amazon a-offscreen"] };
+  }
+
+  const splitPrice = findAmazonSplitPrice(html);
+  if (splitPrice) {
+    return { price: splitPrice, currency: "JPY", evidence: ["price from Amazon split whole/fraction"] };
+  }
+
+  return {};
+}
+
+function findAmazonOffscreenPrice(html: string) {
+  const blocks = [...html.matchAll(/<span\b[^>]*class=["'][^"']*\ba-price\b[^"']*["'][^>]*>[\s\S]{0,700}?<\/span>\s*<\/span>/gi)].map(
+    (match) => match[0],
+  );
+  for (const block of blocks) {
+    if (/a-text-price|listPrice|basisPrice|savings/i.test(block)) continue;
+    const value = block.match(/<span\b[^>]*class=["'][^"']*\ba-offscreen\b[^"']*["'][^>]*>([^<]+)<\/span>/i)?.[1];
+    const price = parsePrice(value);
+    if (price) return price;
+  }
+  return undefined;
+}
+
+function findAmazonSplitPrice(html: string) {
+  const block = html.match(/<span\b[^>]*class=["'][^"']*\ba-price\b[^"']*["'][^>]*>[\s\S]{0,900}?<\/span>\s*<\/span>/i)?.[0];
+  if (!block || /a-text-price|listPrice|basisPrice|savings/i.test(block)) return undefined;
+  const whole = block.match(/<span\b[^>]*class=["'][^"']*\ba-price-whole\b[^"']*["'][^>]*>([^<]+)<\/span>/i)?.[1];
+  const fraction = block.match(/<span\b[^>]*class=["'][^"']*\ba-price-fraction\b[^"']*["'][^>]*>([^<]+)<\/span>/i)?.[1];
+  const wholePrice = parsePrice(whole);
+  if (!wholePrice) return undefined;
+  const fractionPrice = parsePrice(fraction);
+  return fractionPrice ? Math.round(wholePrice + fractionPrice / 100) : wholePrice;
+}
+
 function extractTextPrice(html: string) {
   const text = decodeEntities(
     html
@@ -262,6 +303,7 @@ function withEffectivePriceQuote<T extends Pick<LivePriceResult, "title" | "pric
   const inferredAdjustments = inferPriceAdjustments(html, result.price);
   const adjustments = mergeAdjustments(result.adjustments, inferredAdjustments);
   const { adjustments: _adjustments, evidence: _evidence, ...visibleResult } = result;
+  const evidence = [...(result.evidence ?? []), ...adjustments.evidence];
   return {
     ...(visibleResult as T),
     effectivePriceQuote: appendAdjustmentEvidence(
@@ -271,7 +313,7 @@ function withEffectivePriceQuote<T extends Pick<LivePriceResult, "title" | "pric
         pointValue: adjustments.pointValue,
         couponValue: adjustments.couponValue,
       }),
-      adjustments.evidence,
+      evidence,
     ),
   };
 }

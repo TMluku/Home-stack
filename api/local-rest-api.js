@@ -196,6 +196,7 @@ export function createLocalRestApi({ getState, setState, saveState, createDefaul
       }
 
       if (verb === "PATCH" && resource === "queue" && id) {
+        if (!getState().inventory.some((item) => item.id === id)) return fail(404, "Inventory item not found.", { id });
         if (!QUEUE_ACTION_OPTIONS.has(body.action)) return fail(422, "不正なキュー操作です。", { action: body.action });
         const data = commit((draft) => {
           draft.queueDecisions[id] = body.action;

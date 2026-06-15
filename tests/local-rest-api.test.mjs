@@ -161,8 +161,30 @@ test("offer clicks and queue actions update metrics through REST resources", asy
   assert.equal(harness.state.metrics.estimatedRevenue, 320);
 });
 
+test("queue actions reject unknown inventory items without mutating metrics", async () => {
+  const harness = createApiHarness(
+    createState({
+      inventory: [{ id: "item-1", name: "A", category: "test", stock: 10, dailyUsage: 5, autoReplenish: true, note: "" }],
+    }),
+  );
+
+  const response = await harness.api.request("PATCH", "/queue/missing-item", { action: "approve", estimatedRevenue: 120 });
+
+  assert.equal(response.ok, false);
+  assert.equal(response.status, 404);
+  assert.equal(harness.state.queueDecisions["missing-item"], undefined);
+  assert.equal(harness.state.metrics.approvals, 0);
+  assert.equal(harness.state.metrics.clicks, 0);
+  assert.equal(harness.state.metrics.estimatedRevenue, 0);
+  assert.equal(harness.saveCount, 0);
+});
+
 test("unknown resources and invalid queue actions return REST-style errors", async () => {
-  const harness = createApiHarness();
+  const harness = createApiHarness(
+    createState({
+      inventory: [{ id: "item-1", name: "A", category: "test", stock: 10, dailyUsage: 5, autoReplenish: true, note: "" }],
+    }),
+  );
 
   const missing = await harness.api.request("GET", "/does-not-exist");
   assert.equal(missing.ok, false);

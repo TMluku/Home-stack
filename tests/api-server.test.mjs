@@ -72,6 +72,17 @@ test("GET / serves the static app shell", async () => {
   });
 });
 
+test("malformed static URL escapes return a REST-style not found response", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/%E0%A4%A`);
+    const payload = await response.json();
+
+    assert.equal(response.status, 404);
+    assert.equal(payload.ok, false);
+    assert.equal(payload.error.message, "Not found");
+  });
+});
+
 test("invalid JSON returns a REST-style 400 error", async () => {
   await withServer(async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/inventory`, {

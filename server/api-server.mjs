@@ -48,7 +48,12 @@ async function readJsonBody(request) {
 }
 
 function resolveStaticPath(urlPath, rootDir) {
-  const decodedPath = decodeURIComponent(urlPath.split("?")[0]);
+  let decodedPath;
+  try {
+    decodedPath = decodeURIComponent(urlPath.split("?")[0]);
+  } catch {
+    return null;
+  }
   const normalizedPath = normalize(decodedPath === "/" ? "/index.html" : decodedPath).replace(/^[/\\]+/, "");
   const filePath = resolve(join(rootDir, normalizedPath));
   if (!filePath.startsWith(rootDir)) return null;

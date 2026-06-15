@@ -1727,6 +1727,70 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["送料条件あり"]));
   });
 
+  it("skips Amazon subscribe-and-save prices before one-time prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Amazon one-time detergent</title></head>
+        <body>
+          <section>
+            <span>Subscribe & Save subscription price</span>
+            <span class="a-price">
+              <span class="a-offscreen">￥1,080</span>
+            </span>
+          </section>
+          <section>${".".repeat(260)}
+            <span>One-time purchase</span>
+            <span class="a-price">
+              <span class="a-offscreen">￥1,480</span>
+            </span>
+          </section>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      title: "Amazon one-time detergent",
+      price: 1480,
+      source: "html-text",
+    });
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["price from Amazon a-offscreen"]));
+  });
+
+  it("skips Amazon used offer prices before new split prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Amazon new wipes</title></head>
+        <body>
+          <section>
+            <span>Used open box offer</span>
+            <span class="a-price">
+              <span class="a-price-symbol">￥</span>
+              <span class="a-price-whole">980</span>
+              <span class="a-price-decimal">.</span>
+              <span class="a-price-fraction">00</span>
+            </span>
+          </section>
+          <section>${".".repeat(260)}
+            <span>New item price</span>
+            <span class="a-price">
+              <span class="a-price-symbol">￥</span>
+              <span class="a-price-whole">1,280</span>
+              <span class="a-price-decimal">.</span>
+              <span class="a-price-fraction">00</span>
+            </span>
+          </section>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      title: "Amazon new wipes",
+      price: 1280,
+      source: "html-text",
+    });
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["price from Amazon split whole/fraction"]));
+  });
+
   it("extracts Amazon split whole and fraction prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>

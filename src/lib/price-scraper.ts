@@ -266,11 +266,11 @@ function extractAmazonPrice(html: string): ExtractedPrice {
 }
 
 function findAmazonOffscreenPrice(html: string) {
-  const blocks = [...html.matchAll(/<span\b[^>]*class=["'][^"']*\ba-price\b[^"']*["'][^>]*>[\s\S]{0,700}?<\/span>\s*<\/span>/gi)].map(
-    (match) => match[0],
-  );
-  for (const block of blocks) {
+  const blocks = [...html.matchAll(/<span\b[^>]*class=["'][^"']*\ba-price\b[^"']*["'][^>]*>[\s\S]{0,700}?<\/span>\s*<\/span>/gi)];
+  for (const match of blocks) {
+    const block = match[0];
     if (/a-text-price|listPrice|basisPrice|savings/i.test(block)) continue;
+    if (isAmazonSuppressedPriceContext(html, match.index ?? 0, block.length)) continue;
     const value = block.match(/<span\b[^>]*class=["'][^"']*\ba-offscreen\b[^"']*["'][^>]*>([^<]+)<\/span>/i)?.[1];
     const price = parsePrice(value);
     if (price) return price;
@@ -279,14 +279,28 @@ function findAmazonOffscreenPrice(html: string) {
 }
 
 function findAmazonSplitPrice(html: string) {
-  const block = html.match(/<span\b[^>]*class=["'][^"']*\ba-price\b[^"']*["'][^>]*>[\s\S]{0,900}?<\/span>\s*<\/span>/i)?.[0];
-  if (!block || /a-text-price|listPrice|basisPrice|savings/i.test(block)) return undefined;
-  const whole = block.match(/<span\b[^>]*class=["'][^"']*\ba-price-whole\b[^"']*["'][^>]*>([^<]+)<\/span>/i)?.[1];
-  const fraction = block.match(/<span\b[^>]*class=["'][^"']*\ba-price-fraction\b[^"']*["'][^>]*>([^<]+)<\/span>/i)?.[1];
-  const wholePrice = parsePrice(whole);
-  if (!wholePrice) return undefined;
-  const fractionPrice = parsePrice(fraction);
-  return fractionPrice ? Math.round(wholePrice + fractionPrice / 100) : wholePrice;
+  const blocks = [...html.matchAll(/<span\b[^>]*class=["'][^"']*\ba-price\b[^"']*["'][^>]*>[\s\S]{0,900}?<\/span>\s*<\/span>/gi)];
+  for (const match of blocks) {
+    const block = match[0];
+    if (/a-text-price|listPrice|basisPrice|savings/i.test(block)) continue;
+    if (isAmazonSuppressedPriceContext(html, match.index ?? 0, block.length)) continue;
+    const whole = block.match(/<span\b[^>]*class=["'][^"']*\ba-price-whole\b[^"']*["'][^>]*>([^<]+)<\/span>/i)?.[1];
+    const fraction = block.match(/<span\b[^>]*class=["'][^"']*\ba-price-fraction\b[^"']*["'][^>]*>([^<]+)<\/span>/i)?.[1];
+    const wholePrice = parsePrice(whole);
+    if (!wholePrice) continue;
+    const fractionPrice = parsePrice(fraction);
+    return fractionPrice ? Math.round(wholePrice + fractionPrice / 100) : wholePrice;
+  }
+  return undefined;
+}
+
+function isAmazonSuppressedPriceContext(html: string, index: number, length: number) {
+  const context = extractPlainText(html.slice(Math.max(0, index - 220), index + length + 220));
+  return (
+    hasPurchaseConditionCopy(context) ||
+    hasUsedConditionCopy(context) ||
+    isUnavailablePriceContext(context, Math.min(900, context.length), 0)
+  );
 }
 
 function extractTextPrice(html: string) {

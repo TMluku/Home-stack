@@ -53,12 +53,15 @@ export function extractSearchCandidatesFromHtml(html: string, source: Marketplac
       title,
       url,
       price,
-      effectivePriceQuote: buildEffectivePriceQuote({
-        listPrice: price,
-        shippingFee: adjustments.shippingFee,
-        pointValue: adjustments.pointValue,
-        couponValue: adjustments.couponValue,
-      }),
+      effectivePriceQuote: appendConditionLabels(
+        buildEffectivePriceQuote({
+          listPrice: price,
+          shippingFee: adjustments.shippingFee,
+          pointValue: adjustments.pointValue,
+          couponValue: adjustments.couponValue,
+        }),
+        adjustments.conditionLabels,
+      ),
       currency: "JPY",
       shipping: adjustments.shippingLabel,
       imageUrl: extractImageUrl(snippet, baseUrl),
@@ -127,12 +130,15 @@ async function searchRakutenApi(query: string): Promise<{ candidates: RawCandida
             title: item.itemName ?? "",
             url: item.itemUrl ?? "",
             price: item.itemPrice,
-            effectivePriceQuote: buildEffectivePriceQuote({
-              listPrice: item.itemPrice ?? 0,
-              shippingFee: signals.shippingFee,
-              pointValue: signals.pointValue,
-              couponValue: signals.couponValue,
-            }),
+            effectivePriceQuote: appendConditionLabels(
+              buildEffectivePriceQuote({
+                listPrice: item.itemPrice ?? 0,
+                shippingFee: signals.shippingFee,
+                pointValue: signals.pointValue,
+                couponValue: signals.couponValue,
+              }),
+              signals.conditionLabels,
+            ),
             currency: "JPY",
             shipping: signals.shippingLabel,
             imageUrl: item.mediumImageUrls?.[0]?.imageUrl?.replace(/\?_ex=\d+x\d+$/, ""),
@@ -207,12 +213,15 @@ async function searchYahooShoppingApi(
             title: item.name ?? "",
             url: item.url ?? "",
             price: item.price,
-            effectivePriceQuote: buildEffectivePriceQuote({
-              listPrice: item.price ?? 0,
-              shippingFee: signals.shippingFee,
-              pointValue: signals.pointValue,
-              couponValue: signals.couponValue,
-            }),
+            effectivePriceQuote: appendConditionLabels(
+              buildEffectivePriceQuote({
+                listPrice: item.price ?? 0,
+                shippingFee: signals.shippingFee,
+                pointValue: signals.pointValue,
+                couponValue: signals.couponValue,
+              }),
+              signals.conditionLabels,
+            ),
             currency: "JPY",
             shipping: item.shipping?.name ?? signals.shippingLabel,
             imageUrl: item.image?.medium,
@@ -358,12 +367,13 @@ function extractPrice(snippet: string) {
 
 function inferPriceAdjustments(snippet: string, listPrice: number) {
   const text = cleanText(snippet) ?? "";
-  const freeShipping = /送料無料|送料\s*0|free shipping/i.test(text);
-  const shippingFee = freeShipping ? 0 : extractAmountAroundLabel(text, ["送料", "shipping", "postage"]);
+  const shippingConditionRequired = hasConditionalShippingCopy(text);
+  const shippingFee = extractShippingFeeFromText(text);
   const pointValue = extractPointValue(text, listPrice);
   const couponValue = extractCouponValue(text, listPrice);
   const evidence = [
     typeof shippingFee === "number" ? `shipping fee inferred: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
+    shippingConditionRequired ? "shipping condition requires retailer confirmation" : "",
     pointValue ? `point value inferred: ${pointValue.toLocaleString("ja-JP")} JPY` : "",
     couponValue ? `coupon value inferred: ${couponValue.toLocaleString("ja-JP")} JPY` : "",
   ].filter(Boolean);
@@ -372,6 +382,7 @@ function inferPriceAdjustments(snippet: string, listPrice: number) {
     shippingFee,
     pointValue,
     couponValue,
+    conditionLabels: shippingConditionRequired ? ["送料条件あり"] : [],
     shippingLabel:
       shippingFee === 0
         ? "送料無料候補"
@@ -384,6 +395,8 @@ function inferPriceAdjustments(snippet: string, listPrice: number) {
 
 function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number, source: MarketplaceSearchSource) {
   const shippingFee = extractOfficialShippingFee(record, source);
+  const shippingName = readStringPath(record, ["shipping.name", "shippingLabel", "postageLabel"]);
+  const shippingConditionRequired = Boolean(shippingName && hasConditionalShippingCopy(shippingName));
   const pointValue =
     readNumberPath(record, ["point.amount", "pointValue", "pointAmount", "points", "rewardPoint"]) ??
     inferPointValueFromRate(listPrice, readNumberPath(record, ["pointRate", "point.rate", "pointRateValue"]));
@@ -409,6 +422,7 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   const couponEnd = readStringPath(record, ["coupon.endTime", "coupon.end", "couponEndTime", "discountEndTime"]);
   const evidence = [
     typeof shippingFee === "number" ? (shippingFee === 0 ? "official shipping: free" : `official shipping fee: ${shippingFee} JPY`) : "",
+    shippingConditionRequired ? "official shipping condition requires retailer confirmation" : "",
     pointValue ? `official point value: ${pointValue} JPY` : "",
     couponValue ? `official coupon value: ${couponValue} JPY` : "",
     pointStart || pointEnd ? `point window: ${pointStart ?? "unknown"} - ${pointEnd ?? "unknown"}` : "",
@@ -419,6 +433,7 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
     shippingFee,
     pointValue,
     couponValue,
+    conditionLabels: shippingConditionRequired ? ["送料条件あり"] : [],
     shippingLabel:
       shippingFee === 0
         ? "送料無料"
@@ -429,12 +444,18 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   };
 }
 
+function appendConditionLabels<T extends { conditionLabels: string[]; conditionRequired: boolean }>(quote: T, labels: string[] = []): T {
+  const conditionLabels = [...new Set([...quote.conditionLabels, ...labels])];
+  return { ...quote, conditionLabels, conditionRequired: conditionLabels.length > 0 };
+}
+
 function extractOfficialShippingFee(record: OfficialApiRecord, source: MarketplaceSearchSource) {
   const explicit = readNumberPath(record, ["shippingFee", "postage", "postageAmount", "deliveryFee", "shipping.amount", "shipping.fee"]);
   if (typeof explicit === "number") return explicit;
   if (source === "rakuten" && readNumberPath(record, ["postageFlag"]) === 0) return 0;
   if (source === "yahoo-shopping" && readNumberPath(record, ["shipping.code"]) === 1) return 0;
   const shippingName = readStringPath(record, ["shipping.name", "shippingLabel", "postageLabel"]);
+  if (shippingName && hasConditionalShippingCopy(shippingName)) return undefined;
   return shippingName && /送料無料|free shipping/i.test(shippingName) ? 0 : undefined;
 }
 
@@ -478,8 +499,67 @@ function extractCouponValue(text: string, listPrice: number) {
   return rate && rate <= 60 ? Math.round(listPrice * (rate / 100)) : undefined;
 }
 
+function extractShippingFeeFromText(text: string) {
+  if (hasCertainFreeShippingCopy(text)) return 0;
+  if (hasConditionalShippingCopy(text)) return undefined;
+  return extractAmountAroundLabel(text, ["送料", "shipping", "postage"]);
+}
+
+function hasCertainFreeShippingCopy(text: string) {
+  return !hasConditionalShippingCopy(text) && /送料無料|送料\s*0|free shipping/i.test(text);
+}
+
+function hasConditionalShippingCopy(text: string) {
+  const shippingLabels = ["送料", "shipping", "postage", "delivery"];
+  const conditionWords = [
+    "送料無料ライン",
+    "以上",
+    "未満",
+    "対象",
+    "条件",
+    "会員",
+    "プライム",
+    "定期",
+    "まとめ買い",
+    "over",
+    "above",
+    "minimum",
+    "eligible",
+    "membership",
+    "members only",
+    "prime",
+    "subscription",
+  ];
+
+  return shippingLabels.some((label) =>
+    conditionWords.some((word) => {
+      const escapedLabel = escapeRegExp(label);
+      const escapedWord = escapeRegExp(word);
+      return (
+        new RegExp(`${escapedLabel}.{0,36}${escapedWord}`, "i").test(text) ||
+        new RegExp(`${escapedWord}.{0,36}${escapedLabel}`, "i").test(text)
+      );
+    }),
+  );
+}
+
 function hasAmbiguousRewardCopy(text: string, labels: string[]) {
-  const ambiguousWords = ["最大", "上限", "抽選", "予定", "対象者限定", "要エントリー", "up to", "entry required", "eligible only"];
+  const ambiguousWords = [
+    "最大",
+    "上限",
+    "抽選",
+    "予定",
+    "対象者限定",
+    "要エントリー",
+    "up to",
+    "max",
+    "maximum",
+    "campaign",
+    "entry required",
+    "eligible only",
+    "members only",
+    "requires",
+  ];
   return labels.some((label) =>
     ambiguousWords.some((word) => {
       const escapedLabel = escapeRegExp(label);

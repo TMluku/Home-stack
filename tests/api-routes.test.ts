@@ -224,6 +224,51 @@ describe("API route contracts", () => {
     );
   });
 
+  it("does not treat official conditional shipping labels as guaranteed free shipping", async () => {
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(JSON.stringify({ Items: [] }), { status: 200 });
+      }
+
+      return new Response(
+        JSON.stringify({
+          hits: [
+            {
+              name: "Conditional shipping Yahoo item",
+              url: "https://shopping.example.test/conditional",
+              price: 1000,
+              shipping: { name: "free shipping on orders over 3,980 JPY" },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+
+    const response = await searchProducts(
+      new Request("http://localhost/api/product-search", {
+        method: "POST",
+        body: JSON.stringify({ query: "conditional shipping" }),
+      }),
+    );
+    const payload = await response.json();
+    const yahooCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "yahoo-shopping");
+
+    expect(response.status).toBe(200);
+    expect(yahooCandidate.effectivePriceQuote).toMatchObject({
+      listPrice: 1000,
+      shippingFee: 0,
+      effectivePrice: 1000,
+      conditionRequired: true,
+    });
+    expect(yahooCandidate.effectivePriceQuote.conditionLabels).toEqual(expect.arrayContaining(["送料条件あり"]));
+    expect(yahooCandidate.evidence).toEqual(expect.arrayContaining(["official shipping condition requires retailer confirmation"]));
+    expect(yahooCandidate.evidence).not.toEqual(expect.arrayContaining(["official shipping: free"]));
+  });
+
   it("normalizes external photo detection responses into inventory candidates", async () => {
     process.env.HOME_STACK_IMAGE_RECOGNITION_URL = "https://vision.example.test/detect";
     process.env.HOME_STACK_IMAGE_RECOGNITION_TOKEN = "vision-token";

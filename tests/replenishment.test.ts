@@ -250,6 +250,30 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("keeps conditional free-shipping thresholds as retailer-confirmed conditions", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Conditional shipping product</title></head>
+        <body>
+          <span>price 1,000 JPY</span>
+          <span>free shipping on orders over 3,980 JPY</span>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1000,
+      effectivePriceQuote: {
+        listPrice: 1000,
+        shippingFee: 0,
+        effectivePrice: 1000,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["送料条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["shipping condition requires retailer confirmation"]));
+  });
+
   it("extracts structured shipping, point, and coupon evidence from product JSON-LD", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -481,5 +505,32 @@ describe("replenishment domain logic", () => {
     expect(candidates[0]?.evidence).not.toEqual(
       expect.arrayContaining(["point value inferred: 500 JPY", "coupon value inferred: 900 JPY"]),
     );
+  });
+
+  it("keeps marketplace free-shipping thresholds out of effective-price shipping deductions", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/threshold" title="Threshold detergent">Threshold detergent</a>
+          <span>price 1,000 JPY</span>
+          <span>free shipping on orders over 3,980 JPY</span>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      price: 1000,
+      effectivePriceQuote: {
+        listPrice: 1000,
+        shippingFee: 0,
+        effectivePrice: 1000,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["送料条件あり"]));
+    expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["shipping condition requires retailer confirmation"]));
+    expect(candidates[0]?.evidence).not.toEqual(expect.arrayContaining(["shipping fee inferred: 3,980 JPY"]));
   });
 });

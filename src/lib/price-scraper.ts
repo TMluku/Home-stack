@@ -7,6 +7,7 @@ type PriceAdjustments = {
   shippingFee?: number;
   pointValue?: number;
   couponValue?: number;
+  conditionLabels?: string[];
   evidence: string[];
 };
 
@@ -280,6 +281,7 @@ function mergeAdjustments(structured: Partial<PriceAdjustments> | undefined, inf
     shippingFee: structured?.shippingFee ?? inferred.shippingFee,
     pointValue: structured?.pointValue ?? inferred.pointValue,
     couponValue: structured?.couponValue ?? inferred.couponValue,
+    conditionLabels: [...(structured?.conditionLabels ?? []), ...(inferred.conditionLabels ?? [])],
     evidence: [...(structured?.evidence ?? []), ...inferred.evidence],
   };
 }
@@ -288,10 +290,17 @@ function appendAdjustmentEvidence(
   quote: NonNullable<LivePriceResult["effectivePriceQuote"]>,
   evidence: string[],
 ): NonNullable<LivePriceResult["effectivePriceQuote"]> {
+  const conditionLabels = [...new Set([...quote.conditionLabels, ...evidenceToConditionLabels(evidence)])];
   return {
     ...quote,
+    conditionLabels,
+    conditionRequired: conditionLabels.length > 0,
     evidence: [...quote.evidence, ...evidence],
   };
+}
+
+function evidenceToConditionLabels(evidence: string[]) {
+  return evidence.some((entry) => entry.includes("shipping condition requires retailer confirmation")) ? ["送料条件あり"] : [];
 }
 
 function extractStructuredAdjustments(record: Record<string, unknown>): PriceAdjustments {
@@ -455,16 +464,18 @@ function extractMetaAmount(html: string, keys: string[]) {
 
 function inferPriceAdjustments(html: string, listPrice: number): PriceAdjustments {
   const text = extractPlainText(html);
-  const freeShipping = /送料無料|送料\s*0|free shipping/i.test(text);
-  const shippingFee = freeShipping ? 0 : extractAmountAroundLabel(text, ["送料", "shipping", "postage"]);
+  const shippingConditionRequired = hasConditionalShippingCopy(text);
+  const shippingFee = extractShippingFeeFromText(text);
   const pointValue = extractPointValue(text, listPrice);
   const couponValue = extractCouponValue(text, listPrice);
   return {
     shippingFee,
     pointValue,
     couponValue,
+    conditionLabels: shippingConditionRequired ? ["送料条件あり"] : [],
     evidence: [
       typeof shippingFee === "number" ? `shipping fee from page text: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
+      shippingConditionRequired ? "shipping condition requires retailer confirmation" : "",
       pointValue ? `point value from page text: ${pointValue.toLocaleString("ja-JP")} JPY` : "",
       couponValue ? `coupon value from page text: ${couponValue.toLocaleString("ja-JP")} JPY` : "",
     ].filter(Boolean),
@@ -497,8 +508,67 @@ function extractCouponValue(text: string, listPrice: number) {
   return rate && rate <= 60 ? Math.round(listPrice * (rate / 100)) : undefined;
 }
 
+function extractShippingFeeFromText(text: string) {
+  if (hasCertainFreeShippingCopy(text)) return 0;
+  if (hasConditionalShippingCopy(text)) return undefined;
+  return extractAmountAroundLabel(text, ["送料", "shipping", "postage"]);
+}
+
+function hasCertainFreeShippingCopy(text: string) {
+  return !hasConditionalShippingCopy(text) && /送料無料|送料\s*0|free shipping/i.test(text);
+}
+
+function hasConditionalShippingCopy(text: string) {
+  const shippingLabels = ["送料", "shipping", "postage", "delivery"];
+  const conditionWords = [
+    "送料無料ライン",
+    "以上",
+    "未満",
+    "対象",
+    "条件",
+    "会員",
+    "プライム",
+    "定期",
+    "まとめ買い",
+    "over",
+    "above",
+    "minimum",
+    "eligible",
+    "membership",
+    "members only",
+    "prime",
+    "subscription",
+  ];
+
+  return shippingLabels.some((label) =>
+    conditionWords.some((word) => {
+      const escapedLabel = escapeRegExp(label);
+      const escapedWord = escapeRegExp(word);
+      return (
+        new RegExp(`${escapedLabel}.{0,36}${escapedWord}`, "i").test(text) ||
+        new RegExp(`${escapedWord}.{0,36}${escapedLabel}`, "i").test(text)
+      );
+    }),
+  );
+}
+
 function hasAmbiguousRewardCopy(text: string, labels: string[]) {
-  const ambiguousWords = ["最大", "上限", "抽選", "予定", "対象者限定", "要エントリー", "up to", "entry required", "eligible only"];
+  const ambiguousWords = [
+    "最大",
+    "上限",
+    "抽選",
+    "予定",
+    "対象者限定",
+    "要エントリー",
+    "up to",
+    "max",
+    "maximum",
+    "campaign",
+    "entry required",
+    "eligible only",
+    "members only",
+    "requires",
+  ];
   return labels.some((label) =>
     ambiguousWords.some((word) => {
       const escapedLabel = escapeRegExp(label);

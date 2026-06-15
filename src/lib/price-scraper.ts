@@ -502,6 +502,7 @@ function extractMetaAmount(html: string, keys: string[]) {
       .join(" ")
       .toLowerCase();
     if (!keys.some((key) => descriptor.includes(key.toLowerCase()))) continue;
+    if (keys.some((key) => /point/i.test(key)) && hasRewardMultiplierCopy(descriptor, ["point", "points"])) continue;
     const amount = parsePrice(matchContent(tag, /\bcontent=["']([^"']+)["']/i));
     if (typeof amount === "number") return amount;
   }
@@ -514,7 +515,9 @@ function inferPriceAdjustments(html: string, listPrice: number): PriceAdjustment
   const shippingFee = extractShippingFeeFromText(text);
   const pointValue = extractPointValue(text, listPrice);
   const couponValue = extractCouponValue(text, listPrice);
-  const pointConditionRequired = !pointValue && hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"]);
+  const pointConditionRequired =
+    !pointValue &&
+    (hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"]) || hasRewardMultiplierCopy(text, ["point", "points", "ポイント"]));
   const couponConditionRequired = !couponValue && hasAmbiguousRewardCopy(text, ["coupon", "discount", "off", "クーポン"]);
   return {
     shippingFee,
@@ -548,6 +551,7 @@ function extractPlainText(html: string) {
 
 function extractPointValue(text: string, listPrice: number) {
   if (hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"])) return undefined;
+  if (hasRewardMultiplierCopy(text, ["point", "points", "ポイント"])) return undefined;
   const explicit = extractAmountAroundLabel(text, ["ポイント", "point", "points"]);
   if (explicit && explicit / listPrice <= 0.35) return explicit;
   const rate = extractRateAroundLabel(text, ["ポイント", "point", "points"]);
@@ -633,6 +637,16 @@ function hasAmbiguousRewardCopy(text: string, labels: string[]) {
       );
     }),
   );
+}
+
+function hasRewardMultiplierCopy(text: string, labels: string[]) {
+  return labels.some((label) => {
+    const escapedLabel = escapeRegExp(label);
+    return (
+      new RegExp(`${escapedLabel}.{0,20}[0-9０-９]{1,2}\\s*(?:x|times|倍|倍率)`, "i").test(text) ||
+      new RegExp(`[0-9０-９]{1,2}\\s*(?:x|times|倍|倍率).{0,20}${escapedLabel}`, "i").test(text)
+    );
+  });
 }
 
 function extractAmountAroundLabel(text: string, labels: string[]) {

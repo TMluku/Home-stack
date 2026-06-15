@@ -254,6 +254,30 @@ describe("replenishment domain logic", () => {
     );
   });
 
+  it("does not treat point multipliers as guaranteed direct-page yen discounts", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Point multiplier product</title></head>
+        <body>
+          <span>price 1,200 JPY</span>
+          <span>points 10x today</span>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1200,
+      effectivePriceQuote: {
+        listPrice: 1200,
+        pointValue: 0,
+        effectivePrice: 1200,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["point condition requires retailer confirmation"]));
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(expect.arrayContaining(["point value from page text: 10 JPY"]));
+  });
+
   it("keeps conditional free-shipping thresholds as retailer-confirmed conditions", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -568,6 +592,32 @@ describe("replenishment domain logic", () => {
     expect(candidates[0]?.evidence).toEqual(
       expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
     );
+  });
+
+  it("does not treat marketplace point multipliers as guaranteed yen discounts", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/multiplier" title="Multiplier detergent">Multiplier detergent</a>
+          <span>price 1,200 JPY</span>
+          <span>points 10x today</span>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/detergent/",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      price: 1200,
+      effectivePriceQuote: {
+        listPrice: 1200,
+        pointValue: 0,
+        effectivePrice: 1200,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["point condition requires retailer confirmation"]));
+    expect(candidates[0]?.evidence).not.toEqual(expect.arrayContaining(["point value inferred: 10 JPY"]));
   });
 
   it("keeps marketplace free-shipping thresholds out of effective-price shipping deductions", () => {

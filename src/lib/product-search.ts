@@ -396,7 +396,9 @@ function inferPriceAdjustments(snippet: string, listPrice: number) {
   const shippingFee = extractShippingFeeFromText(text);
   const pointValue = extractPointValue(text, listPrice);
   const couponValue = extractCouponValue(text, listPrice);
-  const pointConditionRequired = !pointValue && hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"]);
+  const pointConditionRequired =
+    !pointValue &&
+    (hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"]) || hasRewardMultiplierCopy(text, ["point", "points", "ポイント"]));
   const couponConditionRequired = !couponValue && hasAmbiguousRewardCopy(text, ["coupon", "discount", "off", "クーポン"]);
   const evidence = [
     typeof shippingFee === "number" ? `shipping fee inferred: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
@@ -459,7 +461,10 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   const pointWindowRequired = Boolean(pointValue && (pointStart || pointEnd));
   const couponWindowRequired = Boolean(couponValue && (couponStart || couponEnd));
   const officialText = collectRecordText(record);
-  const pointConditionRequired = !pointValue && hasAmbiguousRewardCopy(officialText, ["point", "points", "ポイント"]);
+  const pointConditionRequired =
+    !pointValue &&
+    (hasAmbiguousRewardCopy(officialText, ["point", "points", "ポイント"]) ||
+      hasRewardMultiplierCopy(officialText, ["point", "points", "ポイント"]));
   const couponConditionRequired = !couponValue && hasAmbiguousRewardCopy(officialText, ["coupon", "discount", "off", "クーポン"]);
   const evidence = [
     typeof shippingFee === "number" ? (shippingFee === 0 ? "official shipping: free" : `official shipping fee: ${shippingFee} JPY`) : "",
@@ -553,6 +558,7 @@ function collectRecordText(value: unknown): string {
 
 function extractPointValue(text: string, listPrice: number) {
   if (hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"])) return undefined;
+  if (hasRewardMultiplierCopy(text, ["point", "points", "ポイント"])) return undefined;
   const explicit = extractAmountAroundLabel(text, ["ポイント", "point", "points"]);
   if (explicit && explicit / listPrice <= 0.35) return explicit;
   const rate = extractRateAroundLabel(text, ["ポイント", "point", "points"]);
@@ -638,6 +644,16 @@ function hasAmbiguousRewardCopy(text: string, labels: string[]) {
       );
     }),
   );
+}
+
+function hasRewardMultiplierCopy(text: string, labels: string[]) {
+  return labels.some((label) => {
+    const escapedLabel = escapeRegExp(label);
+    return (
+      new RegExp(`${escapedLabel}.{0,20}[0-9０-９]{1,2}\\s*(?:x|times|倍|倍率)`, "i").test(text) ||
+      new RegExp(`[0-9０-９]{1,2}\\s*(?:x|times|倍|倍率).{0,20}${escapedLabel}`, "i").test(text)
+    );
+  });
 }
 
 function extractAmountAroundLabel(text: string, labels: string[]) {

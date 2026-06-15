@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { POST as scanPrices } from "../src/app/api/price-scan/route";
 import { POST as searchProducts } from "../src/app/api/product-search/route";
+import { POST as exportState } from "../src/app/api/state/export/route";
 
 describe("API route contracts", () => {
   afterEach(() => {
@@ -68,5 +69,43 @@ describe("API route contracts", () => {
 
     expect(response.status).toBe(400);
     expect(payload.ok).toBe(false);
+  });
+
+  it("exports the default sync payload for server persistence", async () => {
+    const response = await exportState(
+      new Request("http://localhost/api/state/export", {
+        method: "POST",
+        body: JSON.stringify({}),
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.ok).toBe(true);
+    expect(payload.payload).toMatchObject({
+      schemaVersion: "post-mvp-sync-v1",
+      account: { accountId: "demo-account", authMode: "demo" },
+    });
+    expect(payload.payload.auditLog.length).toBeGreaterThan(0);
+  });
+
+  it("exports posted state with account metadata", async () => {
+    const response = await exportState(
+      new Request("http://localhost/api/state/export", {
+        method: "POST",
+        body: JSON.stringify({
+          accountId: "acct-123",
+          authMode: "oauth",
+          state: {
+            household: { channel: "email" },
+          },
+        }),
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.payload.account).toEqual({ accountId: "acct-123", authMode: "oauth" });
+    expect(payload.payload.state.household.channel).toBe("email");
   });
 });

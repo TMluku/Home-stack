@@ -60,9 +60,13 @@ This checklist defines the current acceptance target for the Home Stack MVP.
 
 - [x] Add GitHub Pages deployment workflow for the static front end.
 - [x] Add JAN/barcode input and known-code lookup for demo product search.
+- [x] Add price fetch planning for official marketplace APIs, product-page JSON-LD/meta extraction, and HTML fallback.
 - [x] Add condition audit rows for effective-price ranking decisions.
+- [x] Add API-ready condition audit log entries with evidence and ranking basis.
 - [x] Add notification adapter readiness panel.
+- [x] Add notification draft payloads for LINE/email/Web Push handoff.
 - [x] Add account/server-save migration contract panel.
+- [x] Add `/api/state/export` sync payload for server-side account persistence handoff.
 - [ ] Add production server-side persistence and user accounts.
 - [ ] Add production image recognition and barcode/JAN master data.
 - [ ] Add official retailer API integrations with normalized shipping, point, and coupon windows.

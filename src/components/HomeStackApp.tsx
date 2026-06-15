@@ -6,7 +6,17 @@ import { flushSync } from "react-dom";
 import { categories, createDefaultState, detectedInventoryCandidates, normalizeState, STORAGE_KEY } from "@/lib/demo-state";
 import { recordOutboundClick, recordQueueDecision } from "@/lib/metrics";
 import { baseOffers } from "@/lib/offers";
-import { buildStaticPriceScanResults, buildStaticProductSearchResult, isValidJanCode, resolveJanProduct } from "@/lib/post-mvp";
+import type { ConditionAuditLogEntry, NotificationDraft, PriceFetchPlanStep, ServerSyncPayload } from "@/lib/post-mvp";
+import {
+  buildConditionAuditLog,
+  buildNotificationDrafts,
+  buildPriceFetchPlan,
+  buildServerSyncPayload,
+  buildStaticPriceScanResults,
+  buildStaticProductSearchResult,
+  isValidJanCode,
+  resolveJanProduct,
+} from "@/lib/post-mvp";
 import {
   buildReplenishmentQueue,
   buildShoppingListSummary,
@@ -92,20 +102,20 @@ export function HomeStackApp() {
   const atRiskCount = state.inventory.filter((item) => calculateDaysLeft(item, state.household) <= 10).length;
   const allowedCount = state.inventory.filter((item) => item.autoReplenish).length;
   const reservableCount = queue.filter((entry) => entry.autoReservable).length;
-  const conditionAuditRows = useMemo(
+  const conditionAuditLog = useMemo(() => buildConditionAuditLog(offers), [offers]);
+  const notificationDrafts = useMemo(() => buildNotificationDrafts(queue, state.household.channel), [queue, state.household.channel]);
+  const priceFetchPlan = useMemo(
+    () => buildPriceFetchPlan(productSearchQuery || janCode || activeOffer?.title || "", livePriceUrls.split(/\r?\n/)),
+    [productSearchQuery, janCode, activeOffer, livePriceUrls],
+  );
+  const serverSyncPayload = useMemo(
     () =>
-      offers
-        .flatMap((offer) =>
-          offer.competitors.map((competitor) => ({
-            offer: offer.title,
-            retailer: competitor.retailer,
-            effectivePrice: competitor.effectivePrice,
-            conditionCount: competitor.conditions.length,
-            conditionSummary: competitor.conditions.map((condition) => `${condition.label}: ${condition.detail}`).join(" / ") || "条件なし",
-          })),
-        )
-        .slice(0, 8),
-    [offers],
+      buildServerSyncPayload({
+        state,
+        auditLog: conditionAuditLog,
+        notificationDrafts,
+      }),
+    [state, conditionAuditLog, notificationDrafts],
   );
   const bestConditionSavings = useMemo(
     () =>
@@ -888,9 +898,12 @@ export function HomeStackApp() {
         </section>
 
         <PostMvpOpsPanel
-          conditionAuditRows={conditionAuditRows}
+          conditionAuditLog={conditionAuditLog}
+          notificationDrafts={notificationDrafts}
+          priceFetchPlan={priceFetchPlan}
           queueItemCount={queueSummary.itemCount}
           queueTotal={queueSummary.totalEffectivePrice}
+          serverSyncPayload={serverSyncPayload}
         />
       </main>
 
@@ -1154,20 +1167,25 @@ function LivePriceScanner({
 }
 
 function PostMvpOpsPanel({
-  conditionAuditRows,
+  conditionAuditLog,
+  notificationDrafts,
+  priceFetchPlan,
   queueItemCount,
   queueTotal,
+  serverSyncPayload,
 }: {
-  conditionAuditRows: Array<{
-    offer: string;
-    retailer: string;
-    effectivePrice: number;
-    conditionCount: number;
-    conditionSummary: string;
-  }>;
+  conditionAuditLog: ConditionAuditLogEntry[];
+  notificationDrafts: NotificationDraft[];
+  priceFetchPlan: PriceFetchPlanStep[];
   queueItemCount: number;
   queueTotal: number;
+  serverSyncPayload: ServerSyncPayload;
 }) {
+  const auditPreview = conditionAuditLog.slice(0, 8);
+  const latestDraft = notificationDrafts[0];
+  const officialSourceCount = priceFetchPlan.filter((step) => step.extractionPriority[0] === "official-api").length;
+  const directPageCount = priceFetchPlan.filter((step) => step.source === "direct-page").length;
+
   return (
     <section id="post-mvp" className="section post-mvp-panel">
       <div className="section__heading">
@@ -1180,15 +1198,34 @@ function PostMvpOpsPanel({
       </div>
 
       <div className="ops-grid">
+        <section className="ops-panel" aria-label="実EC価格取得計画">
+          <h3>実EC価格取得計画</h3>
+          <dl className="ops-list">
+            <div>
+              <dt>取得候補</dt>
+              <dd>{priceFetchPlan.length}件</dd>
+            </div>
+            <div>
+              <dt>公式API優先</dt>
+              <dd>{officialSourceCount}件</dd>
+            </div>
+            <div>
+              <dt>直接ページ</dt>
+              <dd>{directPageCount}件</dd>
+            </div>
+          </dl>
+          <p>公式API、JSON-LD、meta、HTML text の順で価格・送料・条件を取り込み、実質価格順の比較に使います。</p>
+        </section>
+
         <section className="ops-panel" aria-label="条件付き価格監査ログ">
           <h3>条件付き価格の監査ログ</h3>
           <div className="audit-table">
-            {conditionAuditRows.map((row) => (
-              <article key={`${row.offer}-${row.retailer}`}>
+            {auditPreview.map((row) => (
+              <article key={row.id}>
                 <span>{row.retailer}</span>
                 <strong>{yenFormatter.format(row.effectivePrice)}</strong>
                 <small>{row.conditionCount > 0 ? `${row.conditionCount}条件` : "条件なし"}</small>
-                <p>{row.conditionSummary}</p>
+                <p>{row.conditionDetails.join(" / ") || row.rankingBasis}</p>
               </article>
             ))}
           </div>
@@ -1199,7 +1236,9 @@ function PostMvpOpsPanel({
           <dl className="ops-list">
             <div>
               <dt>通知候補</dt>
-              <dd>{queueItemCount}件</dd>
+              <dd>
+                {notificationDrafts.length}件 / queue {queueItemCount}件
+              </dd>
             </div>
             <div>
               <dt>通知金額</dt>
@@ -1207,10 +1246,12 @@ function PostMvpOpsPanel({
             </div>
             <div>
               <dt>送信先</dt>
-              <dd>LINE / Email / Web Push adapter</dd>
+              <dd>{latestDraft ? channelLabels[latestDraft.channel] : "LINE / Email / Web Push adapter"}</dd>
             </div>
           </dl>
-          <p>次の実装では通知ジョブ、送信前プレビュー、失敗時リトライ、配信停止状態をサーバー側に保存します。</p>
+          <p>
+            {latestDraft?.message ?? "次の実装では通知ジョブ、送信前プレビュー、失敗時リトライ、配信停止状態をサーバー側に保存します。"}
+          </p>
         </section>
 
         <section className="ops-panel" aria-label="アカウントとサーバー保存準備">
@@ -1222,11 +1263,15 @@ function PostMvpOpsPanel({
             </div>
             <div>
               <dt>同期単位</dt>
-              <dd>inventory / household / queue / metrics</dd>
+              <dd>
+                inventory {serverSyncPayload.summary.inventoryCount} / audit {serverSyncPayload.summary.conditionalAuditCount}
+              </dd>
             </div>
             <div>
               <dt>認証</dt>
-              <dd>メールリンクまたはOAuthを想定</dd>
+              <dd>
+                {serverSyncPayload.account.authMode} / {serverSyncPayload.schemaVersion}
+              </dd>
             </div>
           </dl>
           <p>GitHub Pages版は静的フロントとして動作し、将来のAPI endpointへ同じ状態構造を送れるように保ちます。</p>

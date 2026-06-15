@@ -13,7 +13,7 @@
     "test:e2e": "node scripts/e2e-pages-smoke.mjs",
     "test:e2e:browser": "playwright test",
     "start": "next start",
-    "check": "pnpm run typecheck && pnpm run lint && pnpm test",
+    "check": "tsc --noEmit && biome check . && vitest run",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "ci": "turbo run typecheck lint build",

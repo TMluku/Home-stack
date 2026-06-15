@@ -1184,7 +1184,14 @@ function LivePriceScanner({
           {results.map((result) => (
             <article className={result.ok ? "live-price-card is-ok" : "live-price-card"} key={result.url}>
               <span>{result.source}</span>
-              <strong>{result.price ? yenFormatter.format(result.price) : "取得不可"}</strong>
+              <strong>
+                {result.effectivePriceQuote?.effectivePrice
+                  ? yenFormatter.format(result.effectivePriceQuote.effectivePrice)
+                  : result.price
+                    ? yenFormatter.format(result.price)
+                    : "取得不可"}
+              </strong>
+              {result.effectivePriceQuote?.conditionLabels.length ? <p>{result.effectivePriceQuote.conditionLabels.join(" / ")}</p> : null}
               <p>{result.title ?? result.url}</p>
               <small>
                 {new Date(result.fetchedAt).toLocaleString("ja-JP")} / {result.error ?? result.url}

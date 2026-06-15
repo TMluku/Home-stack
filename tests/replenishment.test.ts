@@ -164,6 +164,33 @@ describe("replenishment domain logic", () => {
     expect(extracted).toMatchObject({ price: 698, currency: "JPY", source: "json-ld", title: "Test detergent" });
   });
 
+  it("extracts live price effective quotes from product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Conditioned product</title></head>
+        <body>
+          <span>price 2,000 JPY</span>
+          <span>shipping 300</span>
+          <span>points 100</span>
+          <span>coupon 250</span>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2000,
+      source: "html-text",
+      effectivePriceQuote: {
+        listPrice: 2000,
+        shippingFee: 300,
+        pointValue: 100,
+        couponValue: 250,
+        effectivePrice: 1950,
+        conditionRequired: true,
+      },
+    });
+  });
+
   it("extracts product search candidates from marketplace HTML", () => {
     const candidates = extractSearchCandidatesFromHtml(
       `

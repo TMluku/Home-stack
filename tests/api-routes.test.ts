@@ -72,6 +72,10 @@ describe("API route contracts", () => {
     expect(response.status).toBe(200);
     expect(payload.ok).toBe(true);
     expect(payload.results).toHaveLength(5);
+    expect(payload.results[0].effectivePriceQuote).toMatchObject({
+      listPrice: 1280,
+      effectivePrice: 1280,
+    });
     expect(fetchMock).toHaveBeenCalledTimes(5);
   });
 

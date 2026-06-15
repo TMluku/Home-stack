@@ -263,6 +263,7 @@ export function buildStaticPriceScanResults(urls: string, scannedAt = new Date()
     .map((url) => ({
       url,
       ok: false,
+      effectivePriceQuote: undefined,
       source: "none",
       fetchedAt: scannedAt,
       error: "GitHub Pages版ではサーバー側価格取得は未接続です。API接続後にJSON-LD/meta/HTML抽出を実行します。",

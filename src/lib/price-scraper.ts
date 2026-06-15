@@ -1,3 +1,4 @@
+import { buildEffectivePriceQuote } from "./post-mvp";
 import type { LivePriceResult } from "./types";
 
 const MAX_HTML_BYTES = 1_500_000;
@@ -29,6 +30,7 @@ export async function scrapePriceUrl(url: string): Promise<LivePriceResult> {
       ok: Boolean(extracted.price),
       title: extracted.title,
       price: extracted.price,
+      effectivePriceQuote: extracted.effectivePriceQuote,
       currency: extracted.currency,
       source: extracted.source,
       fetchedAt,
@@ -45,16 +47,18 @@ export async function scrapePriceUrl(url: string): Promise<LivePriceResult> {
   }
 }
 
-export function extractPriceFromHtml(html: string): Pick<LivePriceResult, "title" | "price" | "currency" | "source"> {
+export function extractPriceFromHtml(
+  html: string,
+): Pick<LivePriceResult, "title" | "price" | "effectivePriceQuote" | "currency" | "source"> {
   const title = extractTitle(html);
   const jsonLdPrice = extractJsonLdPrice(html);
-  if (jsonLdPrice.price) return { title, ...jsonLdPrice, source: "json-ld" };
+  if (jsonLdPrice.price) return withEffectivePriceQuote({ title, ...jsonLdPrice, source: "json-ld" }, html);
 
   const metaPrice = extractMetaPrice(html);
-  if (metaPrice.price) return { title, ...metaPrice, source: "meta" };
+  if (metaPrice.price) return withEffectivePriceQuote({ title, ...metaPrice, source: "meta" }, html);
 
   const textPrice = extractTextPrice(html);
-  if (textPrice.price) return { title, ...textPrice, source: "html-text" };
+  if (textPrice.price) return withEffectivePriceQuote({ title, ...textPrice, source: "html-text" }, html);
 
   return { title, source: "none" };
 }
@@ -149,6 +153,91 @@ function extractTextPrice(html: string) {
   const priceText = text.match(/(?:税込|価格|price)?\s*(?:¥|￥)?\s*([0-9０-９][0-9０-９,，]*)(?:\s*(?:円|yen|JPY))/i)?.[0];
   const price = parsePrice(priceText);
   return price ? { price, currency: inferCurrency(priceText) } : {};
+}
+
+function withEffectivePriceQuote<T extends Pick<LivePriceResult, "title" | "price" | "currency" | "source">>(
+  result: T,
+  html: string,
+): T & Pick<LivePriceResult, "effectivePriceQuote"> {
+  if (!result.price) return result;
+  const adjustments = inferPriceAdjustments(html, result.price);
+  return {
+    ...result,
+    effectivePriceQuote: buildEffectivePriceQuote({
+      listPrice: result.price,
+      shippingFee: adjustments.shippingFee,
+      pointValue: adjustments.pointValue,
+      couponValue: adjustments.couponValue,
+    }),
+  };
+}
+
+function inferPriceAdjustments(html: string, listPrice: number) {
+  const text = extractPlainText(html);
+  const freeShipping = /送料無料|送料\s*0|free shipping/i.test(text);
+  return {
+    shippingFee: freeShipping ? 0 : extractAmountAroundLabel(text, ["送料", "shipping", "postage"]),
+    pointValue: extractPointValue(text, listPrice),
+    couponValue: extractCouponValue(text, listPrice),
+  };
+}
+
+function extractPlainText(html: string) {
+  return decodeEntities(
+    html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " "),
+  );
+}
+
+function extractPointValue(text: string, listPrice: number) {
+  const explicit = extractAmountAroundLabel(text, ["ポイント", "point", "points"]);
+  if (explicit) return explicit;
+  const rate = extractRateAroundLabel(text, ["ポイント", "point", "points"]);
+  return rate ? Math.round(listPrice * (rate / 100)) : undefined;
+}
+
+function extractCouponValue(text: string, listPrice: number) {
+  const explicit = extractAmountAroundLabel(text, ["クーポン", "coupon", "値引", "discount"]);
+  if (explicit) return explicit;
+  const rate = extractRateAroundLabel(text, ["クーポン", "coupon", "off", "discount"]);
+  return rate ? Math.round(listPrice * (rate / 100)) : undefined;
+}
+
+function extractAmountAroundLabel(text: string, labels: string[]) {
+  for (const label of labels) {
+    const escaped = escapeRegExp(label);
+    const patterns = [
+      new RegExp(`${escaped}[^0-9０-９]{0,16}(?:¥|￥|JPY)?\\s*([0-9０-９][0-9０-９,，]*)`, "i"),
+      new RegExp(`(?:¥|￥|JPY)?\\s*([0-9０-９][0-9０-９,，]*)[^0-9０-９]{0,16}${escaped}`, "i"),
+    ];
+    for (const pattern of patterns) {
+      const amount = parsePrice(text.match(pattern)?.[1]);
+      if (amount) return amount;
+    }
+  }
+  return undefined;
+}
+
+function extractRateAroundLabel(text: string, labels: string[]) {
+  for (const label of labels) {
+    const escaped = escapeRegExp(label);
+    const patterns = [
+      new RegExp(`${escaped}[^0-9０-９]{0,16}([0-9０-９]{1,2})\\s*%`, "i"),
+      new RegExp(`([0-9０-９]{1,2})\\s*%[^0-9０-９]{0,16}${escaped}`, "i"),
+    ];
+    for (const pattern of patterns) {
+      const rate = parsePrice(text.match(pattern)?.[1]);
+      if (rate && rate <= 80) return rate;
+    }
+  }
+  return undefined;
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function matchContent(html: string, pattern: RegExp) {

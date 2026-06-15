@@ -98,6 +98,16 @@ export type LivePriceResult = {
   ok: boolean;
   title?: string;
   price?: number;
+  effectivePriceQuote?: {
+    listPrice: number;
+    shippingFee?: number;
+    pointValue?: number;
+    couponValue?: number;
+    effectivePrice: number;
+    conditionLabels: string[];
+    conditionRequired: boolean;
+    evidence: string[];
+  };
   currency?: string;
   source: "json-ld" | "meta" | "html-text" | "none";
   fetchedAt: string;

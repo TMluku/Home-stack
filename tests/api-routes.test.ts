@@ -235,6 +235,72 @@ describe("API route contracts", () => {
     expect(amazonLinkCandidate.price).toBeUndefined();
   });
 
+  it("filters official used or outlet marketplace records from replenishment candidates", async () => {
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "Official detergent refill outlet",
+                  itemPrice: 900,
+                  itemUrl: "https://rakuten.example.test/outlet",
+                  condition: "アウトレット 開封済み",
+                },
+              },
+              {
+                Item: {
+                  itemName: "Official detergent refill new",
+                  itemPrice: 1200,
+                  itemUrl: "https://rakuten.example.test/new",
+                  condition: "NewCondition",
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          hits: [
+            {
+              name: "Official detergent refill used",
+              url: "https://shopping.example.test/used",
+              price: 950,
+              condition: "used",
+            },
+            {
+              name: "Official detergent refill Yahoo new",
+              url: "https://shopping.example.test/new",
+              price: 1300,
+              condition: "new",
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+
+    const response = await searchProducts(
+      new Request("http://localhost/api/product-search", {
+        method: "POST",
+        body: JSON.stringify({ query: "detergent refill" }),
+      }),
+    );
+    const payload = await response.json();
+    const urls = payload.candidates.map((candidate: { url: string }) => candidate.url);
+
+    expect(response.status).toBe(200);
+    expect(urls).toEqual(expect.arrayContaining(["https://rakuten.example.test/new", "https://shopping.example.test/new"]));
+    expect(urls).not.toEqual(expect.arrayContaining(["https://rakuten.example.test/outlet", "https://shopping.example.test/used"]));
+  });
+
   it("does not treat official conditional shipping labels as guaranteed free shipping", async () => {
     process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
     process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";

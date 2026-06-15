@@ -207,6 +207,42 @@ describe("replenishment domain logic", () => {
     expect(extracted).toMatchObject({ price: 698, currency: "JPY", source: "json-ld", title: "Test detergent" });
   });
 
+  it("skips used-condition JSON-LD offers before new product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Structured used condition product</title>
+          <script type="application/ld+json">
+            {
+              "@type": "Product",
+              "name": "Structured used condition product",
+              "offers": [
+                {
+                  "@type": "Offer",
+                  "price": "980",
+                  "priceCurrency": "JPY",
+                  "itemCondition": "https://schema.org/UsedCondition"
+                },
+                {
+                  "@type": "Offer",
+                  "price": "1,280",
+                  "priceCurrency": "JPY",
+                  "itemCondition": "https://schema.org/NewCondition"
+                }
+              ]
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1280,
+      currency: "JPY",
+      source: "json-ld",
+    });
+  });
+
   it("extracts live price effective quotes from product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>

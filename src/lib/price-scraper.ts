@@ -144,7 +144,7 @@ function findPriceInJsonLd(value: unknown): ExtractedPrice {
 
   const rawPrice = record.price ?? record.lowPrice ?? record.highPrice;
   const price = parsePrice(rawPrice);
-  if (price) {
+  if (price && !hasUsedConditionCopy(collectStructuredText(record))) {
     const adjustments = extractStructuredAdjustments(record);
     return {
       price,
@@ -586,6 +586,14 @@ function parseAmountPayload(value: unknown) {
   if (!value || typeof value !== "object") return undefined;
   const record = value as Record<string, unknown>;
   return parsePrice(record.amount ?? record.value ?? record.price);
+}
+
+function collectStructuredText(value: unknown): string {
+  if (Array.isArray(value)) return value.map(collectStructuredText).join(" ");
+  if (!value || typeof value !== "object") return typeof value === "string" ? value : "";
+  return Object.entries(value as Record<string, unknown>)
+    .map(([key, nested]) => `${key} ${collectStructuredText(nested)}`)
+    .join(" ");
 }
 
 function getRewardWindowState(value: unknown): "active" | "inactive" | undefined {
@@ -1227,6 +1235,12 @@ function isUsedConditionPriceContext(text: string, index: number, length: number
   const wordsAfter =
     /^\s*(?:中古|中古品|訳あり|アウトレット|開封済み|展示品|再生品|箱潰れ|箱つぶれ|used|pre-owned|preowned|open box|open-box|outlet|refurbished|renewed|damaged box)/i;
   return words.test(labelPrefix) || words.test(before) || wordsAfter.test(after);
+}
+
+function hasUsedConditionCopy(text: string) {
+  return /(?:中古|中古品|訳あり|アウトレット|開封済み|展示品|再生品|箱潰れ|箱つぶれ|used|pre-owned|preowned|open box|open-box|outlet|refurbished|renewed|damaged box|UsedCondition|RefurbishedCondition|DamagedCondition)/i.test(
+    text,
+  );
 }
 
 function isUnavailablePriceContext(text: string, index: number, length: number) {

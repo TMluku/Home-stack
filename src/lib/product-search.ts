@@ -146,6 +146,7 @@ async function searchRakutenApi(query: string): Promise<{ candidates: RawCandida
     const candidates: RawCandidate[] =
       payload.Items?.map((entry) => entry.Item)
         .filter((item): item is NonNullable<typeof item> => Boolean(item))
+        .filter((item) => !hasUsedConditionCopy(collectRecordText(item)))
         .map((item): RawCandidate => {
           const signals = buildOfficialPriceSignals(item as OfficialApiRecord, item.itemPrice ?? 0, "rakuten");
 
@@ -229,6 +230,7 @@ async function searchYahooShoppingApi(
     };
     const candidates: RawCandidate[] =
       payload.hits
+        ?.filter((item) => !hasUsedConditionCopy(collectRecordText(item)))
         ?.map((item): RawCandidate => {
           const signals = buildOfficialPriceSignals(item as OfficialApiRecord, item.price ?? 0, "yahoo-shopping");
 
@@ -1084,6 +1086,12 @@ function isUsedConditionPriceContext(text: string, index: number, length: number
   const wordsAfter =
     /^\s*(?:中古|中古品|訳あり|アウトレット|開封済み|展示品|再生品|箱潰れ|箱つぶれ|used|pre-owned|preowned|open box|open-box|outlet|refurbished|renewed|damaged box)/i;
   return words.test(labelPrefix) || words.test(before) || wordsAfter.test(after);
+}
+
+function hasUsedConditionCopy(text: string) {
+  return /(?:中古|中古品|訳あり|アウトレット|開封済み|展示品|再生品|箱潰れ|箱つぶれ|used|pre-owned|preowned|open box|open-box|outlet|refurbished|renewed|damaged box|UsedCondition|RefurbishedCondition|DamagedCondition)/i.test(
+    text,
+  );
 }
 
 function isUnavailablePriceContext(text: string, index: number, length: number) {

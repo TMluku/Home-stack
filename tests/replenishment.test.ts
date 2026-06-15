@@ -526,6 +526,29 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["shipping condition requires retailer confirmation"]));
   });
 
+  it("does not use free-shipping threshold amounts as direct product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Shipping threshold product</title></head>
+        <body>
+          <span>送料無料ライン 3,980円以上</span>
+          <strong>販売価格 1,280円</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1280,
+      effectivePriceQuote: {
+        listPrice: 1280,
+        effectivePrice: 1280,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["送料条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["shipping condition requires retailer confirmation"]));
+  });
+
   it("keeps separate or unknown shipping as retailer-confirmed conditions", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -1270,6 +1293,31 @@ describe("replenishment domain logic", () => {
     expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["送料条件あり"]));
     expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["shipping condition requires retailer confirmation"]));
     expect(candidates[0]?.evidence).not.toEqual(expect.arrayContaining(["shipping fee inferred: 3,980 JPY"]));
+  });
+
+  it("does not use marketplace free-shipping threshold amounts as item prices", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/shipping-threshold" title="Shipping threshold detergent">Shipping threshold detergent</a>
+          <span>送料無料ライン 3,980円以上</span>
+          <strong>販売価格 1,280円</strong>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/detergent/",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      price: 1280,
+      effectivePriceQuote: {
+        listPrice: 1280,
+        effectivePrice: 1280,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["送料条件あり"]));
+    expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["shipping condition requires retailer confirmation"]));
   });
 
   it("keeps marketplace calculated shipping as retailer-confirmed conditions", () => {

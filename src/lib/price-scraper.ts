@@ -301,6 +301,7 @@ function extractTextPrice(html: string) {
     if (isUnitPriceContext(text, match.index ?? 0, priceText.length)) continue;
     if (isPackComponentPriceContext(text, match.index ?? 0, priceText.length)) continue;
     if (isDiscountAmountContext(text, match.index ?? 0, priceText.length)) continue;
+    if (isShippingConditionAmountContext(text, match.index ?? 0, priceText.length)) continue;
     if (isTaxExcludedContext(text, match.index ?? 0, priceText.length)) continue;
     if (isReferencePriceContext(text, match.index ?? 0, priceText.length)) continue;
     if (isUnavailablePriceContext(text, match.index ?? 0, priceText.length)) continue;
@@ -946,6 +947,15 @@ function isDiscountAmountContext(text: string, index: number, length: number) {
   const labelPrefix = `${nearestBeforeToken}${text.slice(index, index + length).replace(/[0-9０-９].*$/, "")}`;
   const words = /(?:クーポン|値引き|値引|割引|割引額|off|discount|coupon|cashback)/i;
   return words.test(labelPrefix) || /^\s*(?:OFF|off|引き|値引き|値引|割引|割引額|discount|cashback)(?:\b|$)/i.test(after);
+}
+
+function isShippingConditionAmountContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 36), index);
+  const after = text.slice(index + length, index + length + 24);
+  const hasShippingLabelBefore = /(?:送料無料ライン|送料無料|送料|shipping|postage|delivery|free shipping)/i.test(before);
+  const hasConditionWordBefore = /(?:以上|未満|条件|対象|ライン|over|above|minimum|orders?\s+over|threshold|eligible)\s*$/i.test(before);
+  const hasConditionWordAfter = /^\s*(?:以上|未満|条件|対象|ライン|or more|over|above|minimum|threshold|eligible)/i.test(after);
+  return hasShippingLabelBefore && (hasConditionWordBefore || hasConditionWordAfter);
 }
 
 function isTaxExcludedContext(text: string, index: number, length: number) {

@@ -1,4 +1,4 @@
-import { buildEffectivePriceQuote } from "./post-mvp";
+import { buildEffectivePriceQuote, buildMarketplaceSearchUrls } from "./post-mvp";
 import type { ProductSearchCandidate, ProductSearchResult } from "./types";
 
 const MAX_HTML_BYTES = 1_500_000;
@@ -24,8 +24,19 @@ export async function searchProductPrices(query: string): Promise<ProductSearchR
   }
 
   const [rakuten, yahoo] = await Promise.all([searchRakuten(normalizedQuery), searchYahooShopping(normalizedQuery)]);
-  const sources = [rakuten.report, yahoo.report];
-  const candidates = rankCandidates([...rakuten.candidates, ...yahoo.candidates], normalizedQuery, searchedAt);
+  const marketplaceLinks = buildLiveMarketplaceLinkCandidates(normalizedQuery);
+  const sources = [
+    rakuten.report,
+    yahoo.report,
+    {
+      source: "marketplace-link" as const,
+      label: "外部検索リンク",
+      ok: marketplaceLinks.length > 0,
+      searchedUrl: "",
+      count: marketplaceLinks.length,
+    },
+  ];
+  const candidates = rankCandidates([...rakuten.candidates, ...yahoo.candidates, ...marketplaceLinks], normalizedQuery, searchedAt);
 
   return {
     query,
@@ -34,6 +45,20 @@ export async function searchProductPrices(query: string): Promise<ProductSearchR
     candidates: candidates.slice(0, 12),
     sources,
   };
+}
+
+function buildLiveMarketplaceLinkCandidates(query: string): RawCandidate[] {
+  return buildMarketplaceSearchUrls(query)
+    .filter((source) => source.label.includes("Amazon"))
+    .map((source) => ({
+      source: "marketplace-link",
+      sourceLabel: source.label,
+      title: `${source.label}で ${query} を検索`,
+      url: source.url,
+      currency: "JPY",
+      shipping: "価格・送料条件は販売サイトで確認",
+      evidence: ["external marketplace search link", "Amazonは商品ページまたは検索結果から価格条件を確認"],
+    }));
 }
 
 export function extractSearchCandidatesFromHtml(html: string, source: MarketplaceSearchSource, baseUrl: string): RawCandidate[] {

@@ -187,6 +187,9 @@ describe("API route contracts", () => {
     );
     const rakutenCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "rakuten");
     const yahooCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "yahoo-shopping");
+    const amazonLinkCandidate = payload.candidates.find(
+      (candidate: { source: string; sourceLabel: string }) => candidate.source === "marketplace-link" && candidate.sourceLabel === "Amazon",
+    );
 
     expect(rakutenCandidate.effectivePriceQuote).toMatchObject({
       listPrice: 2000,
@@ -222,6 +225,12 @@ describe("API route contracts", () => {
         "coupon window: 2026-06-17T00:00:00+09:00 - 2026-06-18T23:59:59+09:00",
       ]),
     );
+    expect(amazonLinkCandidate).toMatchObject({
+      source: "marketplace-link",
+      sourceLabel: "Amazon",
+      shipping: "価格・送料条件は販売サイトで確認",
+    });
+    expect(amazonLinkCandidate.price).toBeUndefined();
   });
 
   it("does not treat official conditional shipping labels as guaranteed free shipping", async () => {

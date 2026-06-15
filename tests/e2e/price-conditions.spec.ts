@@ -98,6 +98,29 @@ test("keeps offer cards sorted by effective price while filtering by conditions"
   await expect(page.locator(".offer-card__label--conditions").first()).toContainText("条件あり");
 });
 
+test("links live scan condition banners to proof details on the static Pages build", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByLabel("商品ページURL").fill("https://example.com/demo-condition-item");
+  await page.getByRole("button", { name: "ライブ価格を取得" }).click();
+
+  await expect(page.locator(".live-price-card")).toHaveCount(1);
+  const liveConditionBanner = page.locator(".live-price-card .condition-banner").first();
+  await expect(liveConditionBanner).toContainText("条件あり");
+  await expect(liveConditionBanner).toHaveAttribute("href", "#live-conditions-0");
+  await liveConditionBanner.click();
+  await expect(page).toHaveURL(/#live-conditions-0/);
+
+  const liveProof = page.locator("#live-conditions-0");
+  await expect(liveProof).toBeInViewport();
+  await expect(liveProof.locator(".effective-proof__badges")).toContainText("購入条件あり");
+  await expect(liveProof.locator(".effective-proof__details")).toHaveAttribute("open", "");
+  await expect(liveProof.getByRole("link", { name: "販売ページで条件を見る" })).toHaveAttribute(
+    "href",
+    "https://example.com/demo-condition-item",
+  );
+});
+
 test("keeps the price condition proof usable on mobile width", async ({ page }, testInfo) => {
   await page.goto("/");
   await page.locator(".inventory-search-chips .chip").first().click();

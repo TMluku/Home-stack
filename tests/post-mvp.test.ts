@@ -88,11 +88,21 @@ describe("post-MVP static helpers", () => {
     expect(result.candidates.some((candidate) => candidate.source === "marketplace-link")).toBe(true);
   });
 
-  it("reports static price scan URLs as pending server-side integration", () => {
+  it("shows static price scan URLs with demo effective-price proof", () => {
     const results = buildStaticPriceScanResults("https://example.com/a\nhttps://example.com/b", "2026-06-15T00:00:00.000Z");
 
     expect(results).toHaveLength(2);
-    expect(results.every((result) => result.ok === false && result.source === "none")).toBe(true);
+    expect(results[0]).toMatchObject({
+      ok: true,
+      source: "html-text",
+      price: 2480,
+      effectivePriceQuote: {
+        effectivePrice: 2260,
+        conditionRequired: true,
+      },
+    });
+    expect(results[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["購入条件あり", "クーポン条件あり"]));
+    expect(results[0]?.error).toContain("GitHub Pages版のデモ価格台帳");
   });
 
   it("builds a price fetch plan that prefers official APIs before HTML fallback", () => {

@@ -1,4 +1,5 @@
 import type { AccountAuthMode, AccountProfile } from "./account-profile";
+import { baseOffers } from "./offers";
 import type { AppState, Channel, LivePriceResult, Offer, ProductSearchCandidate, ProductSearchResult, QueueEntry } from "./types";
 
 export type ConditionAuditLogEntry = {
@@ -310,19 +311,38 @@ function hasCouponConditionText(text: string) {
 }
 
 export function buildStaticPriceScanResults(urls: string, scannedAt = new Date().toISOString()): LivePriceResult[] {
+  const demoOffers = [
+    ...baseOffers.filter((offer) => offer.conditions.length > 0),
+    ...baseOffers.filter((offer) => offer.conditions.length === 0),
+  ];
   return urls
     .split(/\r?\n/)
     .map((url) => url.trim())
     .filter(Boolean)
     .slice(0, 5)
-    .map((url) => ({
-      url,
-      ok: false,
-      effectivePriceQuote: undefined,
-      source: "none",
-      fetchedAt: scannedAt,
-      error: "GitHub Pages版ではサーバー側価格取得は未接続です。API接続後にJSON-LD/meta/HTML抽出を実行します。",
-    }));
+    .map((url, index) => {
+      const offer = demoOffers[index % demoOffers.length];
+      const quote = withOfferConditionEvidence(
+        buildEffectivePriceQuote({
+          listPrice: offer.listPrice,
+          shippingFee: 0,
+          pointValue: Math.max(0, offer.listPrice - offer.effectivePrice),
+          couponValue: 0,
+        }),
+        offer,
+      );
+      return {
+        url,
+        ok: true,
+        title: `${offer.title} / ${offer.retailer}`,
+        price: offer.listPrice,
+        effectivePriceQuote: quote,
+        currency: "JPY",
+        source: "html-text",
+        fetchedAt: scannedAt,
+        error: "GitHub Pages版のデモ価格台帳です。サーバー接続後は入力URLのJSON-LD/meta/HTML抽出結果に置き換えます。",
+      };
+    });
 }
 
 export function buildPriceFetchPlan(query: string, directUrls: string[] = []): PriceFetchPlanStep[] {

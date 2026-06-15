@@ -37,6 +37,7 @@ Current MVP routes still return a lightweight shape so the client can stay simpl
 | `POST` | `/api/audit/conditions/append` | Append condition-price audit events from a sync payload or explicit event list. |
 | `POST` | `/api/audit/conditions/list` | List stored condition-price audit events for an account. |
 | `POST` | `/api/barcode/resolve` | Normalize JAN/barcode input, validate check digits, suggest correction candidates, and return static search candidates. |
+| `POST` | `/api/barcode/status` | Report whether barcode lookup uses the demo catalog or an external JAN master endpoint. |
 | `POST` | `/api/product-search` | Search marketplace sources for a product query and return normalized price candidates. Uses official API credentials when configured, otherwise tries public search-result HTML extraction. |
 | `POST` | `/api/price-scan` | Fetch specific product page URLs and extract price candidates from JSON-LD, meta tags, or HTML text. |
 | `POST` | `/api/state/export` | Build a server-sync payload from demo or posted account state, including condition audit logs and notification drafts. |
@@ -63,6 +64,22 @@ Response includes the normalized query, searched sources, candidate titles, pric
 - `YAHOO_SHOPPING_APP_ID`
 
 Without credentials, the route still attempts public search-page extraction, but results can be blocked or change when marketplace HTML changes.
+
+### `POST /api/barcode/resolve`
+
+Request:
+
+```json
+{
+  "barcode": "4900000000016"
+}
+```
+
+Response includes normalized digits, JAN-13/JAN-8 validation, correction candidates, the matched product when available, and barcode master provider metadata. Optional environment variable:
+
+- `HOME_STACK_BARCODE_MASTER_URL`
+
+When configured, the server calls the endpoint with `?janCode=` and accepts either `{ "product": { ... } }`, `{ "items": [{ ... }] }`, or a product-shaped JSON object. Without it, the route uses the demo JAN catalog and keeps returning static search candidates.
 
 ### `POST /api/price-scan`
 
@@ -131,6 +148,7 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 - Product search candidates should carry an `effectivePriceQuote` so sorting can use normalized price rather than raw extracted price.
 - Product search extraction should preserve evidence for inferred shipping fees, point value, and coupon value so condition banners can explain why an effective price changed.
 - JAN/barcode input should preserve the raw input, normalized digits, validation result, and suggested check-digit correction before searching marketplaces.
+- JAN/barcode lookup should expose the active master provider and be able to hand off valid codes to an external HTTP JAN master through `HOME_STACK_BARCODE_MASTER_URL`.
 - Notification preparation must keep delivery as a separate adapter step. Missing LINE/email/Web Push destinations should produce blocked jobs, not silent drops.
 - Notification dispatch should run as dry-run until real LINE/email/Web Push adapters are configured, preserving payloads, destinations, provider names, and attempt counts.
 - Store click events and queue decisions as append-only events once the backend exists.

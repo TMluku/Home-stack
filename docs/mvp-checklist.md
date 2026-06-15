@@ -61,6 +61,7 @@ This checklist defines the current acceptance target for the Home Stack MVP.
 - [x] Add GitHub Pages deployment workflow for the static front end.
 - [x] Add JAN/barcode input and known-code lookup for demo product search.
 - [x] Add JAN/barcode check-digit correction candidates and `/api/barcode/resolve`.
+- [x] Add external JAN master provider boundary and `/api/barcode/status`.
 - [x] Add price fetch planning for official marketplace APIs, product-page JSON-LD/meta extraction, and HTML fallback.
 - [x] Add effective-price normalization for shipping fees, point value, and coupon value.
 - [x] Add effective-price quotes to product search candidates and sort by normalized effective price.

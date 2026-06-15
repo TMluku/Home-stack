@@ -96,6 +96,7 @@ When the app runs as a Next.js server, account sync payloads can be saved throug
 - `POST /api/notifications/prepare`
 - `POST /api/notifications/dispatch`
 - `POST /api/barcode/resolve`
+- `POST /api/barcode/status`
 
 By default, saved JSON files are written under `.server-state/`. Set `HOME_STACK_STATE_STORE_DIR` to use another local directory. GitHub Pages remains static and does not run these API routes.
 `POST /api/state/status` reports the active state repository kind, configured store directory, write readiness, and normalized account ID.
@@ -103,6 +104,7 @@ Account resolution creates stable account IDs and email hashes for email-link/OA
 Condition audit routes append and list effective-price condition events so ranking decisions can be inspected later, including product-search candidate quotes.
 Notification preparation builds queued or blocked jobs, and dispatch can dry-run provider handoff without sending real LINE, email, or Web Push messages yet.
 Barcode resolution validates JAN check digits, suggests corrected candidates, and returns search candidates without needing a production barcode master yet.
+Set `HOME_STACK_BARCODE_MASTER_URL` to hand valid JAN codes to an external HTTP master endpoint; otherwise the demo catalog remains the fallback.
 
 ## Important Data Notes
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { resolveBarcodeWithMaster } from "@/lib/barcode-master";
 import { baseOffers } from "@/lib/offers";
-import { buildStaticProductSearchResult, resolveBarcode } from "@/lib/post-mvp";
+import { buildStaticProductSearchResult } from "@/lib/post-mvp";
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as { barcode?: unknown; janCode?: unknown } | null;
@@ -10,9 +11,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "JANまたはバーコードを指定してください。", resolution: null }, { status: 400 });
   }
 
-  const resolution = resolveBarcode(barcode);
+  const lookup = await resolveBarcodeWithMaster(barcode);
+  const resolution = lookup.resolution;
   const searchQuery = resolution.product?.janCode ?? resolution.corrections[0] ?? resolution.normalized;
   const searchResult = searchQuery ? buildStaticProductSearchResult(searchQuery, baseOffers) : null;
 
-  return NextResponse.json({ ok: true, resolution, searchResult });
+  return NextResponse.json({ ok: true, resolution, master: lookup, searchResult });
 }

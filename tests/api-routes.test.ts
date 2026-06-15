@@ -7,6 +7,7 @@ import { POST as appendCandidateAudit } from "../src/app/api/audit/candidates/ap
 import { POST as appendConditionAudit } from "../src/app/api/audit/conditions/append/route";
 import { POST as listConditionAudit } from "../src/app/api/audit/conditions/list/route";
 import { POST as resolveBarcode } from "../src/app/api/barcode/resolve/route";
+import { POST as getBarcodeStatus } from "../src/app/api/barcode/status/route";
 import { POST as dispatchNotifications } from "../src/app/api/notifications/dispatch/route";
 import { POST as prepareNotifications } from "../src/app/api/notifications/prepare/route";
 import { POST as scanPrices } from "../src/app/api/price-scan/route";
@@ -21,6 +22,7 @@ describe("API route contracts", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     delete process.env.HOME_STACK_STATE_STORE_DIR;
+    delete process.env.HOME_STACK_BARCODE_MASTER_URL;
   });
 
   it("rejects empty price scan requests", async () => {
@@ -101,7 +103,71 @@ describe("API route contracts", () => {
       corrections: ["4900000000016"],
       product: { name: "猫砂 5L" },
     });
+    expect(payload.master).toMatchObject({
+      provider: { kind: "demo-catalog", configuredBy: "default" },
+      source: "demo-catalog",
+      matched: true,
+    });
     expect(payload.searchResult.candidates.length).toBeGreaterThan(0);
+  });
+
+  it("reports barcode master provider status", async () => {
+    process.env.HOME_STACK_BARCODE_MASTER_URL = "https://master.example.test/lookup";
+
+    const response = await getBarcodeStatus();
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload).toMatchObject({
+      ok: true,
+      status: {
+        kind: "external-http",
+        configuredBy: "env",
+        endpoint: "https://master.example.test/lookup",
+        ready: true,
+      },
+    });
+  });
+
+  it("resolves valid barcodes from an external JAN master when configured", async () => {
+    process.env.HOME_STACK_BARCODE_MASTER_URL = "https://master.example.test/lookup";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          product: {
+            janCode: "4900000000047",
+            name: "External sponge pack",
+            category: "Kitchen",
+            unitHint: "5 pcs",
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    const response = await resolveBarcode(
+      new Request("http://localhost/api/barcode/resolve", {
+        method: "POST",
+        body: JSON.stringify({ barcode: "4900000000047" }),
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://master.example.test/lookup?janCode=4900000000047",
+      expect.objectContaining({ headers: expect.objectContaining({ accept: "application/json" }) }),
+    );
+    expect(payload.resolution).toMatchObject({
+      valid: true,
+      product: { name: "External sponge pack", category: "Kitchen", unitHint: "5 pcs" },
+    });
+    expect(payload.master).toMatchObject({
+      provider: { kind: "external-http", configuredBy: "env" },
+      source: "external-http",
+      matched: true,
+      evidence: ["matched external JAN master"],
+    });
   });
 
   it("exports the default sync payload for server persistence", async () => {

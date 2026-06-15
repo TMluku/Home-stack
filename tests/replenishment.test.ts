@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createDefaultState } from "../src/lib/demo-state";
 import { recordOutboundClick, recordQueueDecision } from "../src/lib/metrics";
 import { baseOffers } from "../src/lib/offers";
+import { formatPriceEvidence } from "../src/lib/price-evidence";
 import { extractPriceFromHtml } from "../src/lib/price-scraper";
 import { extractSearchCandidatesFromHtml, searchProductPrices } from "../src/lib/product-search";
 import {
@@ -133,6 +134,13 @@ describe("replenishment domain logic", () => {
     expect(baseOffers.every((offer) => offer.competitors.length >= 2)).toBe(true);
     expect(baseOffers.every((offer) => offer.comparisonBasis.length > 0)).toBe(true);
     expect(baseOffers.some((offer) => offer.conditions.length > 0)).toBe(true);
+  });
+
+  it("formats official campaign window evidence for condition details", () => {
+    expect(formatPriceEvidence("official point window expired before fetch")).toBe("ポイント期間: 取得時点でキャンペーン期間が終了済み");
+    expect(formatPriceEvidence("official point window starts after fetch")).toBe("ポイント期間: 取得時点ではキャンペーン開始前");
+    expect(formatPriceEvidence("official coupon window expired before fetch")).toBe("クーポン期間: 取得時点でキャンペーン期間が終了済み");
+    expect(formatPriceEvidence("official coupon window starts after fetch")).toBe("クーポン期間: 取得時点ではキャンペーン開始前");
   });
 
   it("records outbound clicks and conditional offer revenue", () => {

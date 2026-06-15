@@ -1069,6 +1069,39 @@ h3 {
   color: var(--muted);
 }
 
+.effective-proof__summary {
+  display: grid;
+  gap: 0.35rem;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(auto-fit, minmax(9.2rem, 1fr));
+  margin: 0;
+}
+
+.effective-proof__summary div {
+  background: #f7fbff;
+  border: 1px solid #d4e7f7;
+  border-radius: 0.45rem;
+  display: grid;
+  gap: 0.14rem;
+  min-width: 0;
+  padding: 0.44rem 0.5rem;
+}
+
+.effective-proof__summary dt {
+  color: #20506d;
+  font-size: 0.68rem;
+  font-weight: 950;
+}
+
+.effective-proof__summary dd {
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.35;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .effective-proof p,
 .effective-proof small {
   grid-column: 1 / -1;

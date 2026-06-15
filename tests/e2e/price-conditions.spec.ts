@@ -62,6 +62,11 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(conditionalProof.locator(".effective-proof__badge").first()).toBeVisible();
   await expect(conditionalProof.locator(".effective-proof__badges")).toContainText("購入条件あり");
   await expect(conditionalProof.locator(".effective-proof__badges")).toContainText("クーポン条件あり");
+  await expect(conditionalProof.locator(".effective-proof__summary")).toHaveAttribute("aria-label", "価格成立条件の要約");
+  await expect(conditionalProof.locator(".effective-proof__summary")).toContainText("購入");
+  await expect(conditionalProof.locator(".effective-proof__summary")).toContainText("数量・定期・初回・セット条件を見る");
+  await expect(conditionalProof.locator(".effective-proof__summary")).toContainText("クーポン");
+  await expect(conditionalProof.locator(".effective-proof__summary")).toContainText("取得条件・併用可否・対象者を見る");
   await expect(conditionalProof.locator("details")).toHaveAttribute("open", "");
   await expect(conditionalProof).toContainText("販売ページで条件を見る");
   await expect(conditionalProof).toContainText("購入条件:");
@@ -185,6 +190,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
         breakdownItems: [...proof.querySelectorAll(".effective-proof__breakdown-item")]
           .map((item) => item.textContent?.trim())
           .filter(Boolean),
+        summaryItems: [...proof.querySelectorAll(".effective-proof__summary div")].map((item) => item.textContent?.trim()).filter(Boolean),
         detailRows: [...proof.querySelectorAll(".effective-proof__details li")].map((item) => item.textContent?.trim()).filter(Boolean),
         detailsOpen: proof.querySelector(".effective-proof__details")?.hasAttribute("open") ?? false,
         sellerLink: proof.querySelector(".effective-proof__details a")?.getAttribute("href") ?? null,

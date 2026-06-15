@@ -1478,6 +1478,7 @@ function EffectivePriceProof({
   const proofEvidence = prioritizeConditionEvidence([...new Set(rawProofEvidence.map(formatPriceEvidence))]).slice(0, 6);
   const proofCount = rawProofEvidence.length;
   const checkItems = buildConditionCheckItems(quote.conditionLabels);
+  const conditionSummaryItems = buildConditionSummaryItems(quote.conditionLabels);
   const breakdownItems = [
     { label: "表示価格", value: yenFormatter.format(quote.listPrice), type: "base" },
     { label: "送料", value: `+${yenFormatter.format(quote.shippingFee ?? 0)}`, type: "add" },
@@ -1511,6 +1512,16 @@ function EffectivePriceProof({
           <li className="effective-proof__badge effective-proof__badge--plain">控除条件なし</li>
         )}
       </ul>
+      {conditionSummaryItems.length > 0 ? (
+        <dl className="effective-proof__summary" aria-label="価格成立条件の要約">
+          {conditionSummaryItems.map((item) => (
+            <div key={item.label}>
+              <dt>{item.label}</dt>
+              <dd>{item.detail}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
       <p className="effective-proof__formula">{priceFormula}</p>
       <p className={quote.conditionRequired ? "effective-proof__notice" : "effective-proof__notice effective-proof__notice--plain"}>
         {quote.conditionRequired
@@ -1560,6 +1571,18 @@ function buildConditionCheckItems(labels: string[]) {
     /クーポン/.test(joinedLabels) ? "対象者・併用可否" : "",
   ];
   return items.filter(Boolean);
+}
+
+function buildConditionSummaryItems(labels: string[]) {
+  const joinedLabels = labels.join(" ");
+  const items = [
+    /購入条件|購入|定期|初回|セット/.test(joinedLabels) ? { label: "購入", detail: "数量・定期・初回・セット条件を見る" } : null,
+    /送料/.test(joinedLabels) ? { label: "送料", detail: "送料無料ライン・地域送料を見る" } : null,
+    /ポイント/.test(joinedLabels) ? { label: "ポイント", detail: "付与時期・上限・対象者を見る" } : null,
+    /クーポン/.test(joinedLabels) ? { label: "クーポン", detail: "取得条件・併用可否・対象者を見る" } : null,
+    /期間/.test(joinedLabels) ? { label: "期間", detail: "キャンペーン開始/終了日時を見る" } : null,
+  ];
+  return items.filter((item): item is { label: string; detail: string } => Boolean(item));
 }
 
 function ProductSearchPanel({

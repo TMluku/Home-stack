@@ -60,6 +60,11 @@ for (const file of jsonFiles) {
     failures.push(`${file}: expected five price-breakdown rows`);
   }
   if (!summary.breakdownItems?.some((item) => String(item).includes("実質価格"))) failures.push(`${file}: missing effective-price row`);
+  if (!Array.isArray(summary.summaryItems) || summary.summaryItems.length === 0) {
+    failures.push(`${file}: missing condition summary items`);
+  }
+  if (!summary.summaryItems?.some((item) => String(item).includes("見る")))
+    failures.push(`${file}: missing actionable condition summary text`);
   if (!Array.isArray(summary.detailRows) || summary.detailRows.length === 0) failures.push(`${file}: missing condition detail rows`);
   if (summary.detailsOpen !== true) failures.push(`${file}: condition details were not open`);
   if (!isHttpUrl(summary.sellerLink)) failures.push(`${file}: missing seller/search link`);

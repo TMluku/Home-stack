@@ -387,6 +387,7 @@ function extractPrice(snippet: string) {
   for (const match of text.matchAll(pricePattern)) {
     if (isUnitPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isPackComponentPriceContext(text, match.index ?? 0, match[0].length)) continue;
+    if (isRewardAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isDiscountAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isShippingConditionAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isTaxExcludedContext(text, match.index ?? 0, match[0].length)) continue;
@@ -872,6 +873,15 @@ function isDiscountAmountContext(text: string, index: number, length: number) {
   const labelPrefix = `${nearestBeforeToken}${text.slice(index, index + length).replace(/[0-9０-９].*$/, "")}`;
   const words = /(?:クーポン|値引き|値引|割引|割引額|off|discount|coupon|cashback)/i;
   return words.test(labelPrefix) || /^\s*(?:OFF|off|引き|値引き|値引|割引|割引額|discount|cashback)(?:\b|$)/i.test(after);
+}
+
+function isRewardAmountContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 28), index);
+  const after = text.slice(index + length, index + length + 28);
+  const nearestBeforeToken = before.trimEnd().match(/(?:^|\s)(\S{0,28})$/)?.[1] ?? "";
+  const labelPrefix = `${nearestBeforeToken}${text.slice(index, index + length).replace(/[0-9０-９].*$/, "")}`;
+  const words = /(?:ポイント|還元|付与|獲得|PayPay|楽天ポイント|point|points|reward|cashback)/i;
+  return words.test(labelPrefix) || /^\s*(?:分|相当|pt|pts)(?:\b|$)/i.test(after);
 }
 
 function isShippingConditionAmountContext(text: string, index: number, length: number) {

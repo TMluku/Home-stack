@@ -448,6 +448,30 @@ describe("replenishment domain logic", () => {
     );
   });
 
+  it("does not use point reward amounts as direct product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Reward amount before price product</title></head>
+        <body>
+          <span>ポイント 120円分 ログイン後に獲得予定</span>
+          <strong>販売価格 1,500円</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1500,
+      effectivePriceQuote: {
+        listPrice: 1500,
+        pointValue: 0,
+        effectivePrice: 1500,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["point condition requires retailer confirmation"]));
+  });
+
   it("does not deduct delayed points or first-order coupons from direct product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -1208,6 +1232,32 @@ describe("replenishment domain logic", () => {
     expect(candidates[0]?.evidence).not.toEqual(
       expect.arrayContaining(["point value inferred: 120 JPY", "coupon value inferred: 300 JPY"]),
     );
+  });
+
+  it("does not use marketplace point reward amounts as item prices", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/reward-before-price" title="Reward before price detergent">Reward before price detergent</a>
+          <span>ポイント 120円分 ログイン後に獲得予定</span>
+          <strong>販売価格 1,500円</strong>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      price: 1500,
+      effectivePriceQuote: {
+        listPrice: 1500,
+        pointValue: 0,
+        effectivePrice: 1500,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり"]));
+    expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["point condition requires retailer confirmation"]));
   });
 
   it("does not deduct marketplace delayed points or limited coupons as guaranteed discounts", () => {

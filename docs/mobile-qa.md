@@ -26,6 +26,8 @@ Before manual QA, confirm these gates are green:
 
 The `Browser E2E` GitHub Actions workflow uploads a `mobile-qa-evidence` artifact for each run. It includes the mobile Chromium screenshot `mobile-price-condition-proof.png` when the responsive price-condition proof completes, plus any Playwright report files. Use that artifact as automated display evidence before running the real-device checklist below.
 
+Automated evidence is not a substitute for the real-device rows below. Treat the objective as incomplete until at least one physical phone/browser pass is recorded with the published URL.
+
 ## Real Device Matrix
 
 Record each real-device pass here.
@@ -33,6 +35,8 @@ Record each real-device pass here.
 | Date | Device | Browser | Network | Result | Notes |
 |---|---|---|---|---|---|
 | YYYY-MM-DD | iPhone / Android model | Safari / Chrome | Wi-Fi / 5G | Pass / Fail |  |
+
+Current status: automated mobile Chromium coverage is available from GitHub Actions, but no physical phone pass is recorded in this file yet.
 
 ## Manual Steps
 
@@ -46,10 +50,20 @@ Record each real-device pass here.
 8. Tap the first inventory chip.
 9. Confirm candidate cards appear in ascending effective-price order.
 10. Confirm the first conditional candidate shows the price-condition details summary.
-11. Open the condition details and confirm evidence rows are readable.
+11. Open the condition details and confirm evidence rows are readable, with condition labels such as `購入条件あり`, `送料条件あり`, `ポイント条件あり`, or `クーポン条件あり` visible when they apply.
 12. Tap the seller-page condition link and confirm it opens a seller/search page in a new tab.
 13. Return to Home Stack and confirm the page still scrolls normally.
 14. Rotate the phone once, if practical, and confirm no major overlap or horizontal scrolling.
+
+## Evidence To Attach
+
+For a pass, keep enough evidence to reconstruct what was checked:
+
+- GitHub Actions run URL for `Browser E2E`
+- `mobile-qa-evidence` artifact name or screenshot filename
+- phone screenshot showing the price-condition proof
+- published URL tested
+- any browser/device accessibility setting that changes layout, such as text scaling
 
 ## Failure Notes
 

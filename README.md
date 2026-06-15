@@ -87,7 +87,7 @@ Manual smartphone QA for Pages:
 - On the hero, use `公開URLをコピー` or `URLを共有` to send the Pages URL to the device/browser used for real-device QA.
 - Confirm the price-search visual loads.
 - Tap an inventory chip and confirm candidates appear in price order.
-- Confirm condition-required cards show `価格条件を確認`, evidence rows, and a link to the seller page without horizontal scrolling.
+- Confirm condition-required cards show `価格条件を確認`, concrete condition badges such as `購入条件あり` or `クーポン条件あり`, evidence rows, and a link to the seller page without horizontal scrolling.
 
 Record real-device passes in `docs/mobile-qa.md`.
 
@@ -140,8 +140,9 @@ Use this checklist when changing price extraction, condition labels, static Page
 Price-condition operation notes:
 
 - Product candidates must stay sorted by `effectivePriceQuote.effectivePrice` when available, then raw price.
-- If points, coupons, free shipping, campaign windows, membership, or threshold text affect the displayed effective price, the candidate should expose `conditionLabels` and evidence.
-- Do not treat ambiguous copy such as "最大", "up to", "eligible only", or free-shipping thresholds as guaranteed discounts without preserving a condition label.
+- If points, coupons, free shipping, campaign windows, membership, threshold text, login/app eligibility, first-order pricing, subscription pricing, multipack pricing, or case pricing affect the displayed effective price, the candidate should expose `conditionLabels` and evidence.
+- Do not treat ambiguous copy such as "最大", "up to", "eligible only", login-only rewards, app-only coupons, point multipliers, threshold coupons, free-shipping thresholds, first-order discounts, subscription offers, or pack component prices as guaranteed discounts without preserving a condition label.
+- Text price extraction should skip unit prices, tax-excluded prices, reference/list prices, unavailable or sold-out prices, and pack component prices such as `80円 x 12本` when a total price is present.
 - Direct URL scans should prefer structured JSON-LD, meta tags, embedded JSON, data attributes, Amazon price spans, then broad page text.
 
 ## Optional Marketplace API Keys
@@ -202,6 +203,6 @@ Photo detection returns demo candidates by default. Set `HOME_STACK_IMAGE_RECOGN
 - Photo upload does not send images to a server in the MVP.
 - Price candidates are for validation and can differ from live checkout totals.
 - Conditional prices must always expose the conditions that make the effective price true.
-- Product search candidates include effective-price quotes when shipping, point, coupon, or campaign window assumptions are available, including inferred values from marketplace HTML and normalized values from official API results.
-- Product URL scans also return effective-price quotes when JSON-LD, meta tags, embedded JSON, data attributes, or page text expose shipping, point, or coupon signals.
+- Product search candidates include effective-price quotes when shipping, point, coupon, purchase-condition, or campaign-window assumptions are available, including inferred values from marketplace HTML and normalized values from official API results.
+- Product URL scans also return effective-price quotes when JSON-LD, meta tags, embedded JSON, data attributes, Amazon spans, or page text expose shipping, point, coupon, purchase-condition, or pack-total signals.
 - Post-MVP panels now show price fetch plans, saved condition audit logs, notification drafts, and account/server-save contracts.

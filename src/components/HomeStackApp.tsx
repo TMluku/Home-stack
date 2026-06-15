@@ -1385,8 +1385,9 @@ function EffectivePriceProof({
 }) {
   if (!quote) return null;
 
-  const proofCount = evidence?.length ?? quote.evidence.length;
-  const proofEvidence = [...new Set([...(evidence ?? []), ...quote.evidence])].filter(Boolean).slice(0, 6);
+  const rawProofEvidence = [...new Set([...(evidence ?? []), ...quote.evidence])].filter(Boolean);
+  const proofEvidence = [...new Set(rawProofEvidence.map(formatPriceEvidence))].slice(0, 6);
+  const proofCount = rawProofEvidence.length;
 
   return (
     <fieldset className="effective-proof">
@@ -1428,6 +1429,44 @@ function EffectivePriceProof({
       </details>
     </fieldset>
   );
+}
+
+function formatPriceEvidence(entry: string) {
+  const basePriceJa = entry.match(/^本体価格 ([\d,]+)円$/);
+  if (basePriceJa) return `本体価格: ${basePriceJa[1]}円`;
+
+  const shippingFeeJa = entry.match(/^送料 ([\d,]+)円$/);
+  if (shippingFeeJa) return `送料: ${shippingFeeJa[1]}円を実質価格に加算`;
+
+  const pointValueJa = entry.match(/^ポイント控除 ([\d,]+)円$/);
+  if (pointValueJa) return `ポイント: ${pointValueJa[1]}円相当を実質価格から控除`;
+
+  const couponValueJa = entry.match(/^クーポン控除 ([\d,]+)円$/);
+  if (couponValueJa) return `クーポン: ${couponValueJa[1]}円相当を実質価格から控除`;
+
+  const shippingFee = entry.match(/^(?:official )?shipping fee(?: inferred| from [^:]+)?: ([\d,]+) JPY$/i);
+  if (shippingFee) return `送料: ${shippingFee[1]}円を実質価格に加算`;
+
+  if (/^official shipping: free$/i.test(entry)) return "送料: 公式APIで送料無料を確認";
+  if (/shipping condition requires retailer confirmation/i.test(entry)) return "送料条件: 送料無料ラインや会員条件は販売ページで確認";
+
+  const pointValue = entry.match(/^(?:official )?point value(?: inferred| from [^:]+)?: ([\d,]+) JPY$/i);
+  if (pointValue) return `ポイント: ${pointValue[1]}円相当を実質価格から控除`;
+
+  const couponValue = entry.match(/^(?:official )?coupon value(?: inferred| from [^:]+)?: ([\d,]+) JPY$/i);
+  if (couponValue) return `クーポン: ${couponValue[1]}円相当を実質価格から控除`;
+
+  const pointWindow = entry.match(/^point window: (.+)$/i);
+  if (pointWindow) return `ポイント期間: ${pointWindow[1]}`;
+
+  const couponWindow = entry.match(/^coupon window: (.+)$/i);
+  if (couponWindow) return `クーポン期間: ${couponWindow[1]}`;
+
+  if (entry === "price from Amazon a-offscreen") return "価格: Amazonの商品価格表示から取得";
+  if (entry === "price from Amazon split whole/fraction") return "価格: Amazonの分割価格表示から取得";
+  if (entry === "external marketplace search link") return "外部検索リンク: 販売サイトで価格条件を確認";
+
+  return entry;
 }
 
 function ProductSearchPanel({

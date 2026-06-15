@@ -17,6 +17,8 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await page.locator(".inventory-search-chips .chip").first().click();
 
   await expect(page.locator(".market-card")).toHaveCount(5);
+  await expect(page.locator(".market-summary")).toContainText("価格順1位");
+  await expect(page.locator(".market-summary")).not.toContainText("最安候補");
   await expect(page.locator(".effective-proof")).toHaveCount(2);
 
   const conditionalProof = page.locator(".effective-proof").filter({ hasText: "価格条件を確認" }).first();

@@ -29,7 +29,7 @@ export const baseOffers: Offer[] = [
     shipping: "送料無料",
     points: "初回10%OFFクーポン込み",
     affiliateRate: 0.08,
-    detail: "初回クーポンを使うと最安候補になります。通常価格では楽天24より高くなるため、条件確認が必要です。",
+    detail: "初回クーポンを使うと価格順1位になります。通常価格では楽天24より高くなるため、条件確認が必要です。",
     reason: "同容量の商品で、クーポン適用後の実質価格が最も低い候補です。",
     linkText: "条件と商品ページを見る",
     comparedAt: "デモデータ: 2026-06-12",
@@ -148,7 +148,7 @@ export const baseOffers: Offer[] = [
         shipping: "Prime配送",
         points: "なし",
         conditions: [],
-        note: "条件なしの最安候補",
+        note: "条件なしの価格順1位",
       },
       {
         retailer: "Yahoo!ショッピング",
@@ -200,7 +200,7 @@ export const baseOffers: Offer[] = [
         shipping: "3,000円以上で送料無料",
         points: "15%OFF",
         conditions: [firstOrderCoupon, freeShippingLine],
-        note: "条件込みの最安候補",
+        note: "条件込みの価格順1位",
       },
       {
         retailer: "Amazon",
@@ -252,7 +252,7 @@ export const baseOffers: Offer[] = [
         shipping: "送料無料ライン対象",
         points: "PayPay還元込み",
         conditions: [pointBack, freeShippingLine],
-        note: "条件込みの最安候補",
+        note: "条件込みの価格順1位",
       },
       {
         retailer: "Amazon",

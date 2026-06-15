@@ -14,7 +14,7 @@ Home Stack is now a Next.js + TypeScript app using the App Router.
 | `pnpm run deploy:pages-branch` | Publish an existing `out/` export to the `gh-pages` branch. |
 | `pnpm run preview:pages` | Serve the static Pages export locally under `/Home-stack/`. |
 | `pnpm run test:e2e` | Smoke-test the published GitHub Pages URL and visual asset. |
-| `pnpm run test:e2e:browser` | Run Playwright against the static Pages export in mobile and desktop Chromium, including a mobile price-condition screenshot under `test-results/`. |
+| `pnpm run test:e2e:browser` | Run Playwright against the static Pages export in mobile and desktop Chromium, including mobile price-condition screenshot and metrics JSON under `test-results/`. |
 | `pnpm start` | Serve the production build with `next start`. |
 | `pnpm run typecheck` | Run TypeScript type checking. |
 | `pnpm test` | Run the Vitest verification suite. |

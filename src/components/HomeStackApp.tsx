@@ -1656,7 +1656,7 @@ function ProductSearchPanel({
               <strong>{result.normalizedQuery}</strong>
             </div>
             <div>
-              <span>最安候補</span>
+              <span>価格順1位</span>
               <strong>{bestCandidate?.price ? yenFormatter.format(bestCandidate.price) : "未検出"}</strong>
             </div>
             <div>
@@ -1728,7 +1728,7 @@ function PriceComparisonPanel({
         </div>
         <div className="price-orbit">
           <strong>{yenFormatter.format(bestCompetitor?.effectivePrice ?? offer.effectivePrice)}</strong>
-          <span>最安実質価格</span>
+          <span>実質価格1位</span>
         </div>
       </div>
       <div className="comparison-grid">

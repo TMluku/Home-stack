@@ -389,6 +389,7 @@ function extractPrice(snippet: string) {
     if (isPackComponentPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isRangeLowerBoundPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isEffectivePriceContext(text, match.index ?? 0, match[0].length)) continue;
+    if (isInstallmentAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isRewardAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isConditionThresholdAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isDiscountAmountContext(text, match.index ?? 0, match[0].length)) continue;
@@ -894,6 +895,14 @@ function isEffectivePriceContext(text: string, index: number, length: number) {
     /(?:実質|実質価格|還元後|割引後|クーポン適用後|ポイント還元後|effective|net price|after rewards?|after points?|after coupon)\s*$/i;
   const labelAfter =
     /^\s*(?:実質|実質価格|還元後|割引後|クーポン適用後|ポイント還元後|effective|net price|after rewards?|after points?|after coupon)/i;
+  return labelBefore.test(before) || labelAfter.test(after);
+}
+
+function isInstallmentAmountContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 32), index);
+  const after = text.slice(index + length, index + length + 36);
+  const labelBefore = /(?:月々|月額|毎月|分割|ローン|あと払い|リボ|installments?|installment|monthly|per month)\s*$/i;
+  const labelAfter = /^\s*(?:\/\s*(?:月|mo|month)|ずつ|から|の分割|分割|月額|毎月|per month|monthly|installments?)/i;
   return labelBefore.test(before) || labelAfter.test(after);
 }
 

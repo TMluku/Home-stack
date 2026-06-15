@@ -226,6 +226,30 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("adds Japanese delivery fees to direct product effective prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Delivery fee product</title></head>
+        <body>
+          <span>販売価格 1,200円</span>
+          <span>配送料 330円</span>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1200,
+      effectivePriceQuote: {
+        listPrice: 1200,
+        shippingFee: 330,
+        effectivePrice: 1530,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["送料加算"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["shipping fee from page text: 330 JPY"]));
+  });
+
   it("skips unit prices before product totals on direct product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -1357,6 +1381,34 @@ describe("replenishment domain logic", () => {
     expect(candidates[0]?.evidence).toEqual(
       expect.arrayContaining(["shipping fee inferred: 300 JPY", "point value inferred: 120 JPY", "coupon value inferred: 200 JPY"]),
     );
+  });
+
+  it("adds Japanese delivery fees to marketplace effective prices", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/delivery-fee" title="Delivery fee detergent">Delivery fee detergent</a>
+          <span>販売価格 1,200円</span>
+          <span>配送料 330円</span>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Delivery fee detergent",
+      price: 1200,
+      shipping: "送料 330円込みで再計算",
+      effectivePriceQuote: {
+        listPrice: 1200,
+        shippingFee: 330,
+        effectivePrice: 1530,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["送料加算"]));
+    expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["shipping fee inferred: 330 JPY"]));
   });
 
   it("keeps marketplace HTML effective price conservative for ambiguous reward claims", () => {

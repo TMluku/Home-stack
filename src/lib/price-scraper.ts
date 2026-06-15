@@ -683,7 +683,7 @@ function extractCouponValue(text: string, listPrice: number) {
 function extractShippingFeeFromText(text: string) {
   if (hasCertainFreeShippingCopy(text)) return 0;
   if (hasConditionalShippingCopy(text)) return undefined;
-  return extractAmountAroundLabel(text, ["送料", "shipping", "postage"]);
+  return extractAmountAroundLabel(text, ["送料", "配送料", "配送", "shipping", "postage", "delivery"]);
 }
 
 function hasCertainFreeShippingCopy(text: string) {

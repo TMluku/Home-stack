@@ -277,6 +277,23 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips unavailable prices before available totals on direct product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Available product</title></head>
+        <body>
+          <span>在庫なし 980円</span>
+          <strong>販売中 1,280円</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1280,
+      source: "html-text",
+    });
+  });
+
   it("does not deduct ambiguous max reward claims from broad product page text", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -667,6 +684,29 @@ describe("replenishment domain logic", () => {
       effectivePriceQuote: {
         listPrice: 1500,
         effectivePrice: 1500,
+      },
+    });
+  });
+
+  it("skips unavailable prices before available totals in marketplace HTML", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/available" title="Available detergent">Available detergent</a>
+          <span>在庫なし 980円</span>
+          <strong>販売中 1,280円</strong>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Available detergent",
+      price: 1280,
+      effectivePriceQuote: {
+        listPrice: 1280,
+        effectivePrice: 1280,
       },
     });
   });

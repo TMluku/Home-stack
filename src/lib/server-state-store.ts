@@ -1,5 +1,6 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { NotificationDispatchResult, NotificationDispatchSummary, NotificationJob, NotificationJobSummary } from "./notification-jobs";
 import type { ConditionAuditLogEntry, ServerSyncPayload } from "./post-mvp";
 
 export type ServerStateStoreKind = "file-json";
@@ -13,6 +14,7 @@ export type ServerStateStoreStatus = {
   supports: {
     accountState: true;
     auditEvents: true;
+    notificationEvents: true;
     replaceableRepository: true;
   };
   checkedAt: string;
@@ -46,6 +48,42 @@ export type StoredAuditEvent = ConditionAuditLogEntry & {
   appendedAt: string;
 };
 
+export type StoredNotificationEvent =
+  | {
+      id: string;
+      accountId: string;
+      eventType: "notification-prepared";
+      appendedAt: string;
+      jobs: NotificationJob[];
+      summary: NotificationJobSummary;
+    }
+  | {
+      id: string;
+      accountId: string;
+      eventType: "notification-dispatched";
+      appendedAt: string;
+      dryRun: boolean;
+      results: NotificationDispatchResult[];
+      summary: NotificationDispatchSummary;
+    };
+
+type NotificationEventInput =
+  | {
+      accountId: string;
+      eventType: "notification-prepared";
+      appendedAt: string;
+      jobs: NotificationJob[];
+      summary: NotificationJobSummary;
+    }
+  | {
+      accountId: string;
+      eventType: "notification-dispatched";
+      appendedAt: string;
+      dryRun: boolean;
+      results: NotificationDispatchResult[];
+      summary: NotificationDispatchSummary;
+    };
+
 const DEFAULT_STORE_DIR = ".server-state";
 
 export function getServerStateStoreDir() {
@@ -75,6 +113,7 @@ export async function getServerStateStoreStatus(checkedAt = new Date().toISOStri
     supports: {
       accountState: true,
       auditEvents: true,
+      notificationEvents: true,
       replaceableRepository: true,
     },
     checkedAt,
@@ -123,6 +162,7 @@ export async function resetServerState(accountId: string) {
   const normalized = normalizeAccountId(accountId);
   await rm(getStatePath(normalized), { force: true });
   await rm(getAuditPath(normalized), { force: true });
+  await rm(getNotificationPath(normalized), { force: true });
   await removeAccountSummary(normalized);
   return { accountId: normalized, deleted: true };
 }
@@ -173,12 +213,40 @@ export async function listAuditEvents(accountId: string): Promise<StoredAuditEve
   }
 }
 
+export async function appendNotificationEvent(event: NotificationEventInput) {
+  const normalized = normalizeAccountId(event.accountId);
+  const existing = await listNotificationEvents(normalized);
+  const stored = {
+    ...event,
+    id: `${normalized}-${event.eventType}-${event.appendedAt}`,
+    accountId: normalized,
+  } as StoredNotificationEvent;
+
+  await mkdir(getServerStateStoreDir(), { recursive: true });
+  await writeFile(getNotificationPath(normalized), `${JSON.stringify([stored, ...existing].slice(0, 100), null, 2)}\n`, "utf8");
+  return stored;
+}
+
+export async function listNotificationEvents(accountId: string): Promise<StoredNotificationEvent[]> {
+  try {
+    const text = await readFile(getNotificationPath(normalizeAccountId(accountId)), "utf8");
+    return JSON.parse(text) as StoredNotificationEvent[];
+  } catch (error) {
+    if (isMissingFile(error)) return [];
+    throw error;
+  }
+}
+
 function getStatePath(accountId: string) {
   return join(getServerStateStoreDir(), `${normalizeAccountId(accountId)}.json`);
 }
 
 function getAuditPath(accountId: string) {
   return join(getServerStateStoreDir(), `${normalizeAccountId(accountId)}.audit.json`);
+}
+
+function getNotificationPath(accountId: string) {
+  return join(getServerStateStoreDir(), `${normalizeAccountId(accountId)}.notifications.json`);
 }
 
 function getAccountIndexPath() {

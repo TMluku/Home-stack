@@ -78,6 +78,15 @@ type StoredConditionAuditEvent = ConditionAuditLogEntry & {
   appendedAt: string;
 };
 
+type StoredNotificationEvent = {
+  id: string;
+  accountId: string;
+  eventType: "notification-prepared" | "notification-dispatched";
+  appendedAt: string;
+  dryRun?: boolean;
+  summary: Partial<NotificationJobSummary & NotificationDispatchSummary>;
+};
+
 export function HomeStackApp() {
   const [state, setState] = useState<AppState>(() => createDefaultState());
   const [loaded, setLoaded] = useState(false);
@@ -109,6 +118,7 @@ export function HomeStackApp() {
   );
   const [notificationProviderReadiness, setNotificationProviderReadiness] = useState<NotificationProviderReadiness | null>(null);
   const [notificationDispatchSummary, setNotificationDispatchSummary] = useState<NotificationDispatchSummary | null>(null);
+  const [notificationHistory, setNotificationHistory] = useState<StoredNotificationEvent[]>([]);
   const [storedAuditEvents, setStoredAuditEvents] = useState<StoredConditionAuditEvent[]>([]);
   const [auditOpsBusy, setAuditOpsBusy] = useState(false);
   const [auditOpsMessage, setAuditOpsMessage] = useState(
@@ -585,10 +595,12 @@ export function HomeStackApp() {
         ok?: boolean;
         readiness?: NotificationProviderReadiness;
         summary?: NotificationJobSummary;
+        event?: StoredNotificationEvent;
         error?: string;
       };
       if (!response.ok || !payload.ok || !payload.summary) throw new Error(payload.error ?? "通知ジョブを準備できませんでした。");
       setNotificationProviderReadiness(payload.readiness ?? null);
+      if (payload.event) setNotificationHistory((current) => [payload.event as StoredNotificationEvent, ...current].slice(0, 12));
       setNotificationOpsMessage(`通知ジョブ: queued ${payload.summary.queued} / blocked ${payload.summary.blocked}`);
     } catch (error) {
       setNotificationOpsMessage(error instanceof Error ? error.message : "通知ジョブを準備できませんでした。");
@@ -618,16 +630,49 @@ export function HomeStackApp() {
         ok?: boolean;
         readiness?: NotificationProviderReadiness;
         summary?: NotificationDispatchSummary;
+        event?: StoredNotificationEvent;
         error?: string;
       };
       if (!response.ok || !payload.ok || !payload.summary) throw new Error(payload.error ?? "通知dry-run dispatchに失敗しました。");
       setNotificationProviderReadiness(payload.readiness ?? null);
       setNotificationDispatchSummary(payload.summary);
+      if (payload.event) setNotificationHistory((current) => [payload.event as StoredNotificationEvent, ...current].slice(0, 12));
       setNotificationOpsMessage(
         `dry-run: ${payload.summary.dryRun} / skipped ${payload.summary.skipped} / failed ${payload.summary.failed}`,
       );
     } catch (error) {
       setNotificationOpsMessage(error instanceof Error ? error.message : "通知dry-run dispatchに失敗しました。");
+    } finally {
+      setNotificationOpsBusy(false);
+    }
+  }
+
+  async function loadNotificationHistory() {
+    if (isStaticExport) {
+      setNotificationOpsMessage("GitHub Pages版では通知履歴APIは未接続です。Next.jsサーバーで有効になります。");
+      return;
+    }
+
+    const accountId = serverAccountId.trim();
+    if (!accountId) {
+      setNotificationOpsMessage("通知履歴を読み込むaccountIdを入力してください。");
+      return;
+    }
+
+    setNotificationOpsBusy(true);
+    try {
+      const response = await fetch("/api/notifications/history", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ accountId }),
+      });
+      const payload = (await response.json()) as { ok?: boolean; events?: StoredNotificationEvent[]; error?: string };
+      if (!response.ok || !payload.ok) throw new Error(payload.error ?? "通知履歴を読み込めませんでした。");
+      const events = payload.events ?? [];
+      setNotificationHistory(events);
+      setNotificationOpsMessage(`${accountId} の通知履歴を ${events.length} 件読み込みました。`);
+    } catch (error) {
+      setNotificationOpsMessage(error instanceof Error ? error.message : "通知履歴を読み込めませんでした。");
     } finally {
       setNotificationOpsBusy(false);
     }
@@ -1234,6 +1279,7 @@ export function HomeStackApp() {
           notificationDrafts={notificationDrafts}
           notificationDestination={notificationDestination}
           notificationDispatchSummary={notificationDispatchSummary}
+          notificationHistory={notificationHistory}
           notificationJobSummary={notificationJobSummary}
           notificationOpsBusy={notificationOpsBusy}
           notificationOpsMessage={notificationOpsMessage}
@@ -1250,6 +1296,7 @@ export function HomeStackApp() {
           onAppendConditionAudit={appendConditionAuditEvents}
           onLoadServerState={loadServerState}
           onLoadConditionAudit={loadConditionAuditEvents}
+          onLoadNotificationHistory={loadNotificationHistory}
           onNotificationDestinationChange={setNotificationDestination}
           onPrepareNotificationJobs={prepareNotificationJobs}
           onRefreshServerAccounts={refreshServerAccounts}
@@ -1544,6 +1591,7 @@ function PostMvpOpsPanel({
   notificationDrafts,
   notificationDestination,
   notificationDispatchSummary,
+  notificationHistory,
   notificationJobSummary,
   notificationOpsBusy,
   notificationOpsMessage,
@@ -1560,6 +1608,7 @@ function PostMvpOpsPanel({
   onAppendConditionAudit,
   onLoadServerState,
   onLoadConditionAudit,
+  onLoadNotificationHistory,
   onNotificationDestinationChange,
   onPrepareNotificationJobs,
   onRefreshServerAccounts,
@@ -1576,6 +1625,7 @@ function PostMvpOpsPanel({
   notificationDrafts: NotificationDraft[];
   notificationDestination: string;
   notificationDispatchSummary: NotificationDispatchSummary | null;
+  notificationHistory: StoredNotificationEvent[];
   notificationJobSummary: NotificationJobSummary;
   notificationOpsBusy: boolean;
   notificationOpsMessage: string;
@@ -1592,6 +1642,7 @@ function PostMvpOpsPanel({
   onAppendConditionAudit: () => void;
   onLoadServerState: () => void;
   onLoadConditionAudit: () => void;
+  onLoadNotificationHistory: () => void;
   onNotificationDestinationChange: (value: string) => void;
   onPrepareNotificationJobs: () => void;
   onRefreshServerAccounts: () => void;
@@ -1721,6 +1772,9 @@ function PostMvpOpsPanel({
             <button className="button button--primary" type="button" onClick={onDispatchNotificationDryRun} disabled={notificationOpsBusy}>
               dry-run
             </button>
+            <button className="button button--ghost" type="button" onClick={onLoadNotificationHistory} disabled={notificationOpsBusy}>
+              履歴読込
+            </button>
           </div>
           <p className="state-message" role="status">
             {notificationOpsMessage}
@@ -1742,7 +1796,24 @@ function PostMvpOpsPanel({
                   : "未実行"}
               </dd>
             </div>
+            <div>
+              <dt>履歴</dt>
+              <dd>{notificationHistory.length}件</dd>
+            </div>
           </dl>
+          {notificationHistory.length > 0 ? (
+            <div className="account-list">
+              {notificationHistory.slice(0, 3).map((event) => (
+                <article key={event.id}>
+                  <span>{event.eventType === "notification-prepared" ? "prepared" : event.dryRun ? "dry-run" : "dispatch"}</span>
+                  <small>
+                    {new Date(event.appendedAt).toLocaleString("ja-JP")} / total {event.summary.total ?? 0} / failed{" "}
+                    {event.summary.failed ?? 0} / blocked {event.summary.blocked ?? 0}
+                  </small>
+                </article>
+              ))}
+            </div>
+          ) : null}
         </section>
 
         <section className="ops-panel" aria-label="アカウントとサーバー保存準備">

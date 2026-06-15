@@ -11,6 +11,7 @@ import { POST as appendPriceScanAudit } from "../src/app/api/audit/price-scans/a
 import { POST as resolveBarcode } from "../src/app/api/barcode/resolve/route";
 import { POST as getBarcodeStatus } from "../src/app/api/barcode/status/route";
 import { POST as dispatchNotifications } from "../src/app/api/notifications/dispatch/route";
+import { POST as listNotificationHistory } from "../src/app/api/notifications/history/route";
 import { POST as prepareNotifications } from "../src/app/api/notifications/prepare/route";
 import { POST as getNotificationStatus } from "../src/app/api/notifications/status/route";
 import { POST as scanPrices } from "../src/app/api/price-scan/route";
@@ -594,45 +595,63 @@ describe("API route contracts", () => {
   });
 
   it("prepares notification jobs from a sync payload without delivering them", async () => {
-    const exportResponse = await exportState(
-      new Request("http://localhost/api/state/export", {
-        method: "POST",
-        body: JSON.stringify({
-          accountId: "acct-notify",
-          state: {
-            household: { channel: "email" },
-          },
+    const storeDir = await mkdtemp(join(tmpdir(), "home-stack-notify-prepare-"));
+    process.env.HOME_STACK_STATE_STORE_DIR = storeDir;
+
+    try {
+      const exportResponse = await exportState(
+        new Request("http://localhost/api/state/export", {
+          method: "POST",
+          body: JSON.stringify({
+            accountId: "acct-notify",
+            state: {
+              household: { channel: "email" },
+            },
+          }),
         }),
-      }),
-    );
-    const exported = await exportResponse.json();
+      );
+      const exported = await exportResponse.json();
 
-    const blockedResponse = await prepareNotifications(
-      new Request("http://localhost/api/notifications/prepare", {
-        method: "POST",
-        body: JSON.stringify({ payload: exported.payload }),
-      }),
-    );
-    const blocked = await blockedResponse.json();
-
-    expect(blockedResponse.status).toBe(200);
-    expect(blocked.summary.blocked).toBe(blocked.summary.total);
-
-    const queuedResponse = await prepareNotifications(
-      new Request("http://localhost/api/notifications/prepare", {
-        method: "POST",
-        body: JSON.stringify({
-          payload: exported.payload,
-          contactPoints: { email: "user@example.test" },
+      const blockedResponse = await prepareNotifications(
+        new Request("http://localhost/api/notifications/prepare", {
+          method: "POST",
+          body: JSON.stringify({ payload: exported.payload }),
         }),
-      }),
-    );
-    const queued = await queuedResponse.json();
+      );
+      const blocked = await blockedResponse.json();
 
-    expect(queuedResponse.status).toBe(200);
-    expect(queued.summary.queued).toBe(queued.summary.total);
-    expect(queued.readiness.providers.email).toMatchObject({ configured: false, mode: "dry-run-only" });
-    expect(queued.jobs[0].payload.message).toContain("実質価格");
+      expect(blockedResponse.status).toBe(200);
+      expect(blocked.summary.blocked).toBe(blocked.summary.total);
+
+      const queuedResponse = await prepareNotifications(
+        new Request("http://localhost/api/notifications/prepare", {
+          method: "POST",
+          body: JSON.stringify({
+            payload: exported.payload,
+            contactPoints: { email: "user@example.test" },
+          }),
+        }),
+      );
+      const queued = await queuedResponse.json();
+
+      expect(queuedResponse.status).toBe(200);
+      expect(queued.summary.queued).toBe(queued.summary.total);
+      expect(queued.event).toMatchObject({ accountId: "acct-notify", eventType: "notification-prepared" });
+      const historyResponse = await listNotificationHistory(
+        new Request("http://localhost/api/notifications/history", {
+          method: "POST",
+          body: JSON.stringify({ accountId: "acct-notify" }),
+        }),
+      );
+      const history = await historyResponse.json();
+
+      expect(historyResponse.status).toBe(200);
+      expect(history.events[0]).toMatchObject({ eventType: "notification-prepared", summary: { queued: queued.summary.total } });
+      expect(queued.readiness.providers.email).toMatchObject({ configured: false, mode: "dry-run-only" });
+      expect(queued.jobs[0].payload.message).toContain("実質価格");
+    } finally {
+      await rm(storeDir, { recursive: true, force: true });
+    }
   });
 
   it("reports notification provider readiness from environment configuration", async () => {
@@ -653,92 +672,111 @@ describe("API route contracts", () => {
   });
 
   it("dry-runs notification dispatch results through the adapter boundary", async () => {
-    const exportResponse = await exportState(
-      new Request("http://localhost/api/state/export", {
-        method: "POST",
-        body: JSON.stringify({
-          accountId: "acct-dispatch",
-          state: {
-            household: { channel: "email" },
-          },
+    const storeDir = await mkdtemp(join(tmpdir(), "home-stack-notify-dispatch-"));
+    process.env.HOME_STACK_STATE_STORE_DIR = storeDir;
+
+    try {
+      const exportResponse = await exportState(
+        new Request("http://localhost/api/state/export", {
+          method: "POST",
+          body: JSON.stringify({
+            accountId: "acct-dispatch",
+            state: {
+              household: { channel: "email" },
+            },
+          }),
         }),
-      }),
-    );
-    const exported = await exportResponse.json();
+      );
+      const exported = await exportResponse.json();
 
-    const dryRunResponse = await dispatchNotifications(
-      new Request("http://localhost/api/notifications/dispatch", {
-        method: "POST",
-        body: JSON.stringify({
-          payload: exported.payload,
-          contactPoints: { email: "user@example.test" },
-          dispatchedAt: "2026-06-15T00:00:01.000Z",
+      const dryRunResponse = await dispatchNotifications(
+        new Request("http://localhost/api/notifications/dispatch", {
+          method: "POST",
+          body: JSON.stringify({
+            payload: exported.payload,
+            contactPoints: { email: "user@example.test" },
+            dispatchedAt: "2026-06-15T00:00:01.000Z",
+          }),
         }),
-      }),
-    );
-    const dryRun = await dryRunResponse.json();
+      );
+      const dryRun = await dryRunResponse.json();
 
-    expect(dryRunResponse.status).toBe(200);
-    expect(dryRun.dryRun).toBe(true);
-    expect(dryRun.summary.dryRun).toBe(dryRun.summary.total);
-    expect(dryRun.results[0]).toMatchObject({
-      accountId: "acct-dispatch",
-      provider: "email",
-      status: "dry-run",
-      reason: "dry-run-only",
-      dispatchedAt: "2026-06-15T00:00:01.000Z",
-    });
+      expect(dryRunResponse.status).toBe(200);
+      expect(dryRun.dryRun).toBe(true);
+      expect(dryRun.summary.dryRun).toBe(dryRun.summary.total);
+      expect(dryRun.results[0]).toMatchObject({
+        accountId: "acct-dispatch",
+        provider: "email",
+        status: "dry-run",
+        reason: "dry-run-only",
+        dispatchedAt: "2026-06-15T00:00:01.000Z",
+      });
+      expect(dryRun.event).toMatchObject({ accountId: "acct-dispatch", eventType: "notification-dispatched", dryRun: true });
 
-    const blockedResponse = await dispatchNotifications(
-      new Request("http://localhost/api/notifications/dispatch", {
-        method: "POST",
-        body: JSON.stringify({
-          payload: exported.payload,
+      const historyResponse = await listNotificationHistory(
+        new Request("http://localhost/api/notifications/history", {
+          method: "POST",
+          body: JSON.stringify({ accountId: "acct-dispatch" }),
         }),
-      }),
-    );
-    const blocked = await blockedResponse.json();
+      );
+      const history = await historyResponse.json();
 
-    expect(blockedResponse.status).toBe(200);
-    expect(blocked.summary.skipped).toBe(blocked.summary.total);
-    expect(blocked.results[0].reason).toBe("missing-destination");
+      expect(historyResponse.status).toBe(200);
+      expect(history.events[0]).toMatchObject({ eventType: "notification-dispatched", summary: { dryRun: dryRun.summary.total } });
 
-    const liveAttemptResponse = await dispatchNotifications(
-      new Request("http://localhost/api/notifications/dispatch", {
-        method: "POST",
-        body: JSON.stringify({
-          payload: exported.payload,
-          contactPoints: { email: "user@example.test" },
-          dryRun: false,
+      const blockedResponse = await dispatchNotifications(
+        new Request("http://localhost/api/notifications/dispatch", {
+          method: "POST",
+          body: JSON.stringify({
+            payload: exported.payload,
+          }),
         }),
-      }),
-    );
-    const liveAttempt = await liveAttemptResponse.json();
+      );
+      const blocked = await blockedResponse.json();
 
-    expect(liveAttemptResponse.status).toBe(200);
-    expect(liveAttempt.dryRun).toBe(false);
-    expect(liveAttempt.results[0]).toMatchObject({
-      provider: "email",
-      status: "failed",
-      reason: "provider-not-configured",
-    });
+      expect(blockedResponse.status).toBe(200);
+      expect(blocked.summary.skipped).toBe(blocked.summary.total);
+      expect(blocked.results[0].reason).toBe("missing-destination");
 
-    process.env.HOME_STACK_EMAIL_FROM = "noreply@example.test";
-    process.env.HOME_STACK_EMAIL_TRANSPORT = "smtp://localhost:1025";
-    const configuredResponse = await dispatchNotifications(
-      new Request("http://localhost/api/notifications/dispatch", {
-        method: "POST",
-        body: JSON.stringify({
-          payload: exported.payload,
-          contactPoints: { email: "user@example.test" },
-          dryRun: false,
+      const liveAttemptResponse = await dispatchNotifications(
+        new Request("http://localhost/api/notifications/dispatch", {
+          method: "POST",
+          body: JSON.stringify({
+            payload: exported.payload,
+            contactPoints: { email: "user@example.test" },
+            dryRun: false,
+          }),
         }),
-      }),
-    );
-    const configured = await configuredResponse.json();
+      );
+      const liveAttempt = await liveAttemptResponse.json();
 
-    expect(configuredResponse.status).toBe(200);
-    expect(configured.summary.sent).toBe(configured.summary.total);
-    expect(configured.results[0]).toMatchObject({ provider: "email", status: "sent" });
+      expect(liveAttemptResponse.status).toBe(200);
+      expect(liveAttempt.dryRun).toBe(false);
+      expect(liveAttempt.results[0]).toMatchObject({
+        provider: "email",
+        status: "failed",
+        reason: "provider-not-configured",
+      });
+
+      process.env.HOME_STACK_EMAIL_FROM = "noreply@example.test";
+      process.env.HOME_STACK_EMAIL_TRANSPORT = "smtp://localhost:1025";
+      const configuredResponse = await dispatchNotifications(
+        new Request("http://localhost/api/notifications/dispatch", {
+          method: "POST",
+          body: JSON.stringify({
+            payload: exported.payload,
+            contactPoints: { email: "user@example.test" },
+            dryRun: false,
+          }),
+        }),
+      );
+      const configured = await configuredResponse.json();
+
+      expect(configuredResponse.status).toBe(200);
+      expect(configured.summary.sent).toBe(configured.summary.total);
+      expect(configured.results[0]).toMatchObject({ provider: "email", status: "sent" });
+    } finally {
+      await rm(storeDir, { recursive: true, force: true });
+    }
   });
 });

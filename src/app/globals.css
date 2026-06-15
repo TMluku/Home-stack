@@ -1420,7 +1420,8 @@ h3 {
   margin: 0.85rem 0;
 }
 
-.account-list button {
+.account-list button,
+.account-list article {
   background: var(--white);
   border: 1px solid var(--line);
   border-radius: 0.5rem;
@@ -1431,6 +1432,10 @@ h3 {
   min-height: 3.2rem;
   padding: 0.65rem;
   text-align: left;
+}
+
+.account-list article {
+  cursor: default;
 }
 
 .account-list button.is-active {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NotificationContactPoints } from "@/lib/notification-jobs";
 import { buildNotificationJobs, getNotificationProviderReadiness, summarizeNotificationJobs } from "@/lib/notification-jobs";
 import type { ServerSyncPayload } from "@/lib/post-mvp";
+import { appendNotificationEvent } from "@/lib/server-state-store";
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
@@ -21,8 +22,16 @@ export async function POST(request: Request) {
     drafts: body.payload.notificationDrafts,
     contactPoints: body?.contactPoints,
   });
+  const summary = summarizeNotificationJobs(jobs);
+  const event = await appendNotificationEvent({
+    accountId: body.payload.account.accountId,
+    eventType: "notification-prepared",
+    appendedAt: new Date().toISOString(),
+    jobs,
+    summary,
+  });
 
-  return NextResponse.json({ ok: true, jobs, readiness: getNotificationProviderReadiness(), summary: summarizeNotificationJobs(jobs) });
+  return NextResponse.json({ ok: true, jobs, readiness: getNotificationProviderReadiness(), summary, event });
 }
 
 function isServerSyncPayload(value: unknown): value is ServerSyncPayload {

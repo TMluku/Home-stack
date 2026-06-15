@@ -61,6 +61,34 @@ export type PriceFetchPlanStep = {
   expectedFields: Array<"title" | "price" | "currency" | "shipping" | "points" | "conditions">;
 };
 
+export type BarcodeResolution = {
+  input: string;
+  normalized: string;
+  format: "jan-13" | "jan-8" | "unknown";
+  valid: boolean;
+  product?: {
+    janCode: string;
+    name: string;
+    category: string;
+    unitHint: string;
+  };
+  corrections: string[];
+};
+
+export type EffectivePriceInput = {
+  listPrice: number;
+  shippingFee?: number;
+  pointValue?: number;
+  couponValue?: number;
+};
+
+export type EffectivePriceQuote = EffectivePriceInput & {
+  effectivePrice: number;
+  conditionLabels: string[];
+  conditionRequired: boolean;
+  evidence: string[];
+};
+
 const JAN_CATALOG: Record<string, { name: string; category: string; unitHint: string }> = {
   "4900000000016": { name: "猫砂 5L", category: "ペット用品", unitHint: "5L" },
   "4900000000023": { name: "洗濯洗剤 詰め替え", category: "洗濯・掃除", unitHint: "720g" },
@@ -74,15 +102,48 @@ export function normalizeJanCode(value: string) {
 export function isValidJanCode(value: string) {
   const code = normalizeJanCode(value);
   if (code.length !== 13) return false;
-  const digits = [...code].map(Number);
-  const check = digits.pop();
-  const sum = digits.reduce((total, digit, index) => total + digit * (index % 2 === 0 ? 1 : 3), 0);
-  return (10 - (sum % 10)) % 10 === check;
+  return computeJanCheckDigit(code.slice(0, 12)) === Number(code.at(-1));
 }
 
 export function resolveJanProduct(value: string) {
   const code = normalizeJanCode(value);
   return JAN_CATALOG[code] ? { janCode: code, ...JAN_CATALOG[code] } : undefined;
+}
+
+export function resolveBarcode(value: string): BarcodeResolution {
+  const normalized = normalizeJanCode(value);
+  const format = normalized.length === 13 ? "jan-13" : normalized.length === 8 ? "jan-8" : "unknown";
+  const valid = format === "jan-13" ? isValidJanCode(normalized) : format === "jan-8" ? isValidJan8Code(normalized) : false;
+  const corrections = valid ? [] : suggestJanCorrections(normalized);
+  const product = valid ? resolveJanProduct(normalized) : corrections.map(resolveJanProduct).find(Boolean);
+
+  return {
+    input: value,
+    normalized,
+    format,
+    valid,
+    product,
+    corrections,
+  };
+}
+
+export function suggestJanCorrections(value: string) {
+  const normalized = normalizeJanCode(value);
+  const base =
+    normalized.length === 12
+      ? normalized
+      : normalized.length === 13
+        ? normalized.slice(0, 12)
+        : normalized.length === 7
+          ? normalized
+          : normalized.length === 8
+            ? normalized.slice(0, 7)
+            : "";
+  if (!base) return [];
+
+  const corrected =
+    base.length === 12 ? `${base}${computeJanCheckDigit(base)}` : base.length === 7 ? `${base}${computeJan8CheckDigit(base)}` : "";
+  return corrected ? [corrected] : [];
 }
 
 export function buildMarketplaceSearchUrls(query: string) {
@@ -93,6 +154,35 @@ export function buildMarketplaceSearchUrls(query: string) {
     { label: "Yahoo!ショッピング", url: `https://shopping.yahoo.co.jp/search?p=${encoded}` },
     { label: "Amazon", url: `https://www.amazon.co.jp/s?k=${encoded}` },
   ];
+}
+
+export function buildEffectivePriceQuote(input: EffectivePriceInput): EffectivePriceQuote {
+  const shippingFee = Math.max(0, input.shippingFee ?? 0);
+  const pointValue = Math.max(0, input.pointValue ?? 0);
+  const couponValue = Math.max(0, input.couponValue ?? 0);
+  const listPrice = Math.max(0, input.listPrice);
+  const effectivePrice = Math.max(0, Math.round(listPrice + shippingFee - pointValue - couponValue));
+  const conditionLabels = [
+    shippingFee > 0 ? "送料加算" : "",
+    pointValue > 0 ? "ポイント還元込み" : "",
+    couponValue > 0 ? "クーポン適用" : "",
+  ].filter(Boolean);
+
+  return {
+    listPrice,
+    shippingFee,
+    pointValue,
+    couponValue,
+    effectivePrice,
+    conditionLabels,
+    conditionRequired: conditionLabels.length > 0,
+    evidence: [
+      `本体価格 ${listPrice.toLocaleString("ja-JP")}円`,
+      `送料 ${shippingFee.toLocaleString("ja-JP")}円`,
+      `ポイント控除 ${pointValue.toLocaleString("ja-JP")}円`,
+      `クーポン控除 ${couponValue.toLocaleString("ja-JP")}円`,
+    ],
+  };
 }
 
 export function buildStaticProductSearchResult(query: string, offers: Offer[], searchedAt = new Date().toISOString()): ProductSearchResult {
@@ -289,4 +379,22 @@ function slugify(value: string) {
     .replace(/[^\p{Letter}\p{Number}]+/gu, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 40);
+}
+
+function isValidJan8Code(value: string) {
+  const code = normalizeJanCode(value);
+  if (code.length !== 8) return false;
+  return computeJan8CheckDigit(code.slice(0, 7)) === Number(code.at(-1));
+}
+
+function computeJanCheckDigit(base: string) {
+  const digits = [...base].map(Number);
+  const sum = digits.reduce((total, digit, index) => total + digit * (index % 2 === 0 ? 1 : 3), 0);
+  return (10 - (sum % 10)) % 10;
+}
+
+function computeJan8CheckDigit(base: string) {
+  const digits = [...base].map(Number);
+  const sum = digits.reduce((total, digit, index) => total + digit * (index % 2 === 0 ? 3 : 1), 0);
+  return (10 - (sum % 10)) % 10;
 }

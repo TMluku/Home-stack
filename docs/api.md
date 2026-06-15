@@ -32,6 +32,7 @@ Current MVP routes still return a lightweight shape so the client can stay simpl
 
 | Method | Path | Purpose |
 |---|---|---|
+| `POST` | `/api/barcode/resolve` | Normalize JAN/barcode input, validate check digits, suggest correction candidates, and return static search candidates. |
 | `POST` | `/api/product-search` | Search marketplace sources for a product query and return normalized price candidates. Uses official API credentials when configured, otherwise tries public search-result HTML extraction. |
 | `POST` | `/api/price-scan` | Fetch specific product page URLs and extract price candidates from JSON-LD, meta tags, or HTML text. |
 | `POST` | `/api/state/export` | Build a server-sync payload from demo or posted account state, including condition audit logs and notification drafts. |
@@ -118,5 +119,6 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 - Replace the file-backed repository with PostgreSQL, Supabase, or another durable store before multi-user production launch.
 - Preserve explicit condition details for coupons, point returns, shipping thresholds, account eligibility, and campaign windows.
 - Never rank a conditional effective price without exposing the conditions that make that price true.
+- JAN/barcode input should preserve the raw input, normalized digits, validation result, and suggested check-digit correction before searching marketplaces.
 - Notification preparation must keep delivery as a separate adapter step. Missing LINE/email/Web Push destinations should produce blocked jobs, not silent drops.
 - Store click events and queue decisions as append-only events once the backend exists.

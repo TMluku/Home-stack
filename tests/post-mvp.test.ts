@@ -4,6 +4,7 @@ import { buildNotificationJobs, summarizeNotificationJobs } from "../src/lib/not
 import { baseOffers } from "../src/lib/offers";
 import {
   buildConditionAuditLog,
+  buildEffectivePriceQuote,
   buildMarketplaceSearchUrls,
   buildNotificationDrafts,
   buildPriceFetchPlan,
@@ -11,6 +12,7 @@ import {
   buildStaticPriceScanResults,
   buildStaticProductSearchResult,
   isValidJanCode,
+  resolveBarcode,
   resolveJanProduct,
 } from "../src/lib/post-mvp";
 import { buildReplenishmentQueue } from "../src/lib/replenishment";
@@ -20,6 +22,12 @@ describe("post-MVP static helpers", () => {
     expect(isValidJanCode("4900000000016")).toBe(true);
     expect(isValidJanCode("4900000000017")).toBe(false);
     expect(resolveJanProduct("490-0000-000016")).toMatchObject({ name: "猫砂 5L", unitHint: "5L" });
+    expect(resolveBarcode("490000000001").corrections).toEqual(["4900000000016"]);
+    expect(resolveBarcode("4900000000017")).toMatchObject({
+      valid: false,
+      corrections: ["4900000000016"],
+      product: { name: "猫砂 5L" },
+    });
   });
 
   it("builds marketplace search links for static GitHub Pages mode", () => {
@@ -50,6 +58,20 @@ describe("post-MVP static helpers", () => {
     expect(plan.some((step) => step.source === "rakuten-api" && step.extractionPriority[0] === "official-api")).toBe(true);
     expect(plan.some((step) => step.source === "direct-page" && step.extractionPriority.includes("json-ld"))).toBe(true);
     expect(plan.every((step) => step.expectedFields.includes("price"))).toBe(true);
+  });
+
+  it("normalizes effective price with shipping, points, coupons, and condition evidence", () => {
+    const quote = buildEffectivePriceQuote({
+      listPrice: 2500,
+      shippingFee: 300,
+      pointValue: 120,
+      couponValue: 200,
+    });
+
+    expect(quote.effectivePrice).toBe(2480);
+    expect(quote.conditionRequired).toBe(true);
+    expect(quote.conditionLabels).toEqual(["送料加算", "ポイント還元込み", "クーポン適用"]);
+    expect(quote.evidence).toContain("本体価格 2,500円");
   });
 
   it("builds effective-price condition audit rows sorted by price", () => {

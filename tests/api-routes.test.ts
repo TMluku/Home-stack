@@ -2,6 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { POST as resolveBarcode } from "../src/app/api/barcode/resolve/route";
 import { POST as prepareNotifications } from "../src/app/api/notifications/prepare/route";
 import { POST as scanPrices } from "../src/app/api/price-scan/route";
 import { POST as searchProducts } from "../src/app/api/product-search/route";
@@ -77,6 +78,24 @@ describe("API route contracts", () => {
 
     expect(response.status).toBe(400);
     expect(payload.ok).toBe(false);
+  });
+
+  it("resolves barcodes and returns correction-aware search candidates", async () => {
+    const response = await resolveBarcode(
+      new Request("http://localhost/api/barcode/resolve", {
+        method: "POST",
+        body: JSON.stringify({ barcode: "4900000000017" }),
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.resolution).toMatchObject({
+      valid: false,
+      corrections: ["4900000000016"],
+      product: { name: "猫砂 5L" },
+    });
+    expect(payload.searchResult.candidates.length).toBeGreaterThan(0);
   });
 
   it("exports the default sync payload for server persistence", async () => {

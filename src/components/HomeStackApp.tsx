@@ -17,6 +17,7 @@ import {
   buildStaticPriceScanResults,
   buildStaticProductSearchResult,
   isValidJanCode,
+  resolveBarcode,
   resolveJanProduct,
 } from "@/lib/post-mvp";
 import {
@@ -339,12 +340,18 @@ export function HomeStackApp() {
   }
 
   function searchJanProduct() {
-    if (!isValidJanCode(janCode)) {
+    const resolution = resolveBarcode(janCode);
+    const searchCode = resolution.valid ? resolution.normalized : resolution.corrections[0];
+    if (!searchCode || !isValidJanCode(searchCode)) {
       setProductSearchStatus("JANコードは13桁とチェックデジットを確認してください。");
       return;
     }
-    const product = resolveJanProduct(janCode);
-    searchMarketPrices(product ? `${product.name} ${product.unitHint}` : janCode);
+    if (!resolution.valid) {
+      setJanCode(searchCode);
+      setProductSearchStatus(`チェックデジット候補 ${searchCode} で検索します。`);
+    }
+    const product = resolveJanProduct(searchCode);
+    searchMarketPrices(product ? `${product.name} ${product.unitHint}` : searchCode);
   }
 
   function updateQueue(itemId: string, action: QueueDecision, estimatedRevenue = 0) {

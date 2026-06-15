@@ -258,6 +258,85 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["shipping fee from page text: 330 JPY"]));
   });
 
+  it("keeps conditional JSON-LD shipping fees out of effective prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Region conditional shipping product</title>
+          <script type="application/ld+json">
+            {
+              "@type": "Product",
+              "name": "Region conditional shipping product",
+              "offers": {
+                "@type": "Offer",
+                "price": "1,800",
+                "priceCurrency": "JPY",
+                "shippingDetails": {
+                  "@type": "OfferShippingDetails",
+                  "shippingRate": { "@type": "MonetaryAmount", "value": 550, "currency": "JPY" },
+                  "description": "北海道・沖縄・離島は送料が変わるため注文確認画面で計算"
+                }
+              }
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1800,
+      source: "json-ld",
+      effectivePriceQuote: {
+        listPrice: 1800,
+        shippingFee: 0,
+        effectivePrice: 1800,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["送料条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["shipping condition requires retailer confirmation"]));
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(expect.arrayContaining(["shipping fee from JSON-LD: 550 JPY"]));
+  });
+
+  it("keeps conditional embedded JSON shipping fees out of effective prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Checkout conditional shipping product</title>
+          <script id="__NEXT_DATA__" type="application/json">
+            {
+              "props": {
+                "pageProps": {
+                  "product": {
+                    "productName": "Checkout conditional shipping product",
+                    "currentPrice": "2,200",
+                    "currency": "JPY",
+                    "shippingFee": 660,
+                    "shippingNote": "delivery fee varies by region and is calculated at checkout"
+                  }
+                }
+              }
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2200,
+      source: "embedded-json",
+      effectivePriceQuote: {
+        listPrice: 2200,
+        shippingFee: 0,
+        effectivePrice: 2200,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["送料条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["shipping condition requires retailer confirmation"]));
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(expect.arrayContaining(["shipping fee from embedded JSON: 660 JPY"]));
+  });
+
   it("skips unit prices before product totals on direct product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>

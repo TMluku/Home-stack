@@ -376,19 +376,21 @@ function evidenceToConditionLabels(evidence: string[]) {
 }
 
 function extractStructuredAdjustments(record: Record<string, unknown>): PriceAdjustments {
-  const shippingFee = extractJsonLdAmount(record.shippingDetails ?? record.shippingRate, ["shippingRate", "price", "value", "amount"]);
+  const shippingSignal = extractJsonLdShippingSignal(record.shippingDetails ?? record.shippingRate);
   const pointSignal = extractAdditionalPropertyReward(record, ["point", "points", "ポイント"]);
   const couponSignal = extractAdditionalPropertyReward(record, ["coupon", "discount", "クーポン", "値引"]);
   return {
-    shippingFee,
+    shippingFee: shippingSignal.value,
     pointValue: pointSignal.value,
     couponValue: couponSignal.value,
     conditionLabels: [
+      shippingSignal.conditionRequired ? "送料条件あり" : "",
       pointSignal.conditionRequired ? "ポイント条件あり" : "",
       couponSignal.conditionRequired ? "クーポン条件あり" : "",
     ].filter(Boolean),
     evidence: [
-      typeof shippingFee === "number" ? `shipping fee from JSON-LD: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
+      typeof shippingSignal.value === "number" ? `shipping fee from JSON-LD: ${shippingSignal.value.toLocaleString("ja-JP")} JPY` : "",
+      shippingSignal.conditionRequired ? "shipping condition requires retailer confirmation" : "",
       pointSignal.value ? `point value from JSON-LD: ${pointSignal.value.toLocaleString("ja-JP")} JPY` : "",
       pointSignal.conditionRequired ? "point condition requires retailer confirmation" : "",
       couponSignal.value ? `coupon value from JSON-LD: ${couponSignal.value.toLocaleString("ja-JP")} JPY` : "",
@@ -398,7 +400,7 @@ function extractStructuredAdjustments(record: Record<string, unknown>): PriceAdj
 }
 
 function extractEmbeddedAdjustments(record: Record<string, unknown>): PriceAdjustments {
-  const shippingFee = extractFirstAmountForKeys(record, ["shippingFee", "shipping", "postage", "deliveryFee"]);
+  const shippingSignal = extractFirstShippingForKeys(record, ["shippingFee", "shipping", "postage", "deliveryFee"]);
   const pointSignal = extractFirstRewardForKeys(
     record,
     ["pointValue", "pointAmount", "points", "rewardPoint"],
@@ -410,21 +412,31 @@ function extractEmbeddedAdjustments(record: Record<string, unknown>): PriceAdjus
     ["coupon", "discount", "off", "クーポン", "値引"],
   );
   return {
-    shippingFee,
+    shippingFee: shippingSignal.value,
     pointValue: pointSignal.value,
     couponValue: couponSignal.value,
     conditionLabels: [
+      shippingSignal.conditionRequired ? "送料条件あり" : "",
       pointSignal.conditionRequired ? "ポイント条件あり" : "",
       couponSignal.conditionRequired ? "クーポン条件あり" : "",
     ].filter(Boolean),
     evidence: [
-      typeof shippingFee === "number" ? `shipping fee from embedded JSON: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
+      typeof shippingSignal.value === "number"
+        ? `shipping fee from embedded JSON: ${shippingSignal.value.toLocaleString("ja-JP")} JPY`
+        : "",
+      shippingSignal.conditionRequired ? "shipping condition requires retailer confirmation" : "",
       pointSignal.value ? `point value from embedded JSON: ${pointSignal.value.toLocaleString("ja-JP")} JPY` : "",
       pointSignal.conditionRequired ? "point condition requires retailer confirmation" : "",
       couponSignal.value ? `coupon value from embedded JSON: ${couponSignal.value.toLocaleString("ja-JP")} JPY` : "",
       couponSignal.conditionRequired ? "coupon condition requires retailer confirmation" : "",
     ].filter(Boolean),
   };
+}
+
+function extractJsonLdShippingSignal(value: unknown): RewardSignal {
+  if (hasConditionalShippingCopy(stringifyRewardPayload(value))) return { conditionRequired: true };
+  const amount = extractJsonLdAmount(value, ["shippingRate", "price", "value", "amount"]);
+  return typeof amount === "number" ? { value: amount } : {};
 }
 
 function extractJsonLdAmount(value: unknown, keys: string[]): number | undefined {
@@ -508,6 +520,33 @@ function extractFirstAmountForKeys(value: unknown, keys: string[]): number | und
     if (typeof found === "number") return found;
   }
   return undefined;
+}
+
+function extractFirstShippingForKeys(value: unknown, keys: string[]): RewardSignal {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = extractFirstShippingForKeys(item, keys);
+      if (found.value || found.conditionRequired) return found;
+    }
+    return {};
+  }
+
+  if (!value || typeof value !== "object") return {};
+  const record = value as Record<string, unknown>;
+  for (const [key, rawValue] of Object.entries(record)) {
+    if (keys.some((candidate) => key.toLowerCase() === candidate.toLowerCase())) {
+      const descriptor = `${key} ${stringifyRewardPayload(record)}`;
+      if (hasConditionalShippingCopy(descriptor)) return { conditionRequired: true };
+      const amount = parseAmountPayload(rawValue);
+      if (amount) return { value: amount };
+    }
+  }
+
+  for (const nested of Object.values(record)) {
+    const found = extractFirstShippingForKeys(nested, keys);
+    if (found.value || found.conditionRequired) return found;
+  }
+  return {};
 }
 
 function extractFirstRewardForKeys(value: unknown, keys: string[], labels: string[]): RewardSignal {

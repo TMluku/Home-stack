@@ -887,4 +887,65 @@ describe("API route contracts", () => {
       await rm(storeDir, { recursive: true, force: true });
     }
   });
+
+  it("sends configured LINE notification jobs through the push API", async () => {
+    const storeDir = await mkdtemp(join(tmpdir(), "home-stack-line-dispatch-"));
+    process.env.HOME_STACK_STATE_STORE_DIR = storeDir;
+    process.env.HOME_STACK_LINE_CHANNEL_ACCESS_TOKEN = "line-token";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 200 }));
+
+    try {
+      const exportResponse = await exportState(
+        new Request("http://localhost/api/state/export", {
+          method: "POST",
+          body: JSON.stringify({
+            accountId: "acct-line-dispatch",
+            state: {
+              household: { channel: "line" },
+            },
+          }),
+        }),
+      );
+      const exported = await exportResponse.json();
+
+      const response = await dispatchNotifications(
+        new Request("http://localhost/api/notifications/dispatch", {
+          method: "POST",
+          body: JSON.stringify({
+            payload: exported.payload,
+            contactPoints: { line: "U1234567890" },
+            dryRun: false,
+            dispatchedAt: "2026-06-15T00:00:01.000Z",
+          }),
+        }),
+      );
+      const payload = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(payload.summary.sent).toBe(payload.summary.total);
+      expect(payload.results[0]).toMatchObject({
+        provider: "line",
+        deliveryMethod: "line-push-api",
+        status: "sent",
+        providerStatus: 200,
+      });
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://api.line.me/v2/bot/message/push",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            authorization: "Bearer line-token",
+            "content-type": "application/json",
+          }),
+        }),
+      );
+      const requestBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+      expect(requestBody).toMatchObject({
+        to: "U1234567890",
+        messages: [expect.objectContaining({ type: "text" })],
+      });
+    } finally {
+      await rm(storeDir, { recursive: true, force: true });
+    }
+  });
 });

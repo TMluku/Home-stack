@@ -83,6 +83,7 @@ This checklist defines the current acceptance target for the Home Stack MVP.
 - [x] Add notification provider readiness API and non-dry-run adapter-ready dispatch contract.
 - [x] Connect Post-MVP notification panel to provider status, job preparation, and dry-run dispatch routes.
 - [x] Store and load account-scoped notification prepare/dispatch history.
+- [x] Add real LINE push delivery for configured server dispatch.
 - [x] Add account/server-save migration contract panel.
 - [x] Add account profile resolution for email-link/OAuth handoff without storing raw email addresses.
 - [x] Connect Post-MVP account panel to account profile resolution.
@@ -97,6 +98,6 @@ This checklist defines the current acceptance target for the Home Stack MVP.
 - [ ] Add production server-side persistence and user accounts.
 - [ ] Add production image recognition and barcode/JAN master data.
 - [ ] Add official retailer API integrations with normalized shipping, point, and coupon windows.
-- [ ] Add real notification delivery.
+- [ ] Add real email and Web Push notification delivery.
 - [ ] Add purchase intent confirmation and cancellation-window flows.
 - [x] Add server-side audit logs for effective-price conditions and ranking decisions.

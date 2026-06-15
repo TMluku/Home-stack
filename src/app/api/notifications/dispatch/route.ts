@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { resolveAccountAccess } from "@/lib/account-auth";
 import type { NotificationContactPoints, NotificationJob } from "@/lib/notification-jobs";
 import {
-  buildNotificationDispatchResults,
   buildNotificationJobs,
+  dispatchNotificationJobs,
   getNotificationProviderReadiness,
   summarizeNotificationDispatchResults,
 } from "@/lib/notification-jobs";
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
   const dryRun = body?.dryRun !== false;
   const dispatchedAt = typeof body?.dispatchedAt === "string" && body.dispatchedAt.trim() ? body.dispatchedAt : undefined;
   const readiness = getNotificationProviderReadiness(dispatchedAt);
-  const results = buildNotificationDispatchResults({ jobs, dryRun, dispatchedAt, providerReadiness: readiness });
+  const results = await dispatchNotificationJobs({ jobs, dryRun, dispatchedAt, providerReadiness: readiness });
   const summary = summarizeNotificationDispatchResults(results);
   const event = await appendNotificationEvent({
     accountId: jobs[0].accountId,

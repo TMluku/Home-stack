@@ -28,7 +28,7 @@ Implemented:
 Not implemented in the MVP:
 
 - Real payments or purchase confirmation.
-- Real LINE, email, or Web Push delivery.
+- Real email or Web Push delivery. LINE delivery requires a server build and `HOME_STACK_LINE_CHANNEL_ACCESS_TOKEN`.
 - Server-side user accounts or persistence.
 - Production image recognition.
 - Guaranteed retailer stock, delivery date, or final checkout price.
@@ -118,7 +118,7 @@ Saved account summaries can be selected from the Post-MVP panel to load that acc
 Set `HOME_STACK_ACCOUNT_AUTH_REQUIRED=true` on a server deployment to require the trusted account header on account-scoped APIs. The default trusted header is `x-home-stack-account-id`; override it with `HOME_STACK_TRUSTED_ACCOUNT_HEADER` when an upstream auth proxy or identity provider emits a different header.
 Condition audit routes append and list effective-price condition events so ranking decisions can be inspected later, including product-search candidate quotes and direct URL scan quotes.
 The Post-MVP panel can save the current condition audit payload and load stored audit events for the active account when the app is running on a Next.js server.
-Notification preparation builds queued or blocked jobs, status reports configured providers, dispatch can dry-run provider handoff or mark adapter-ready providers as sent without calling external services yet, and notification history stores prepare/dispatch events per account.
+Notification preparation builds queued or blocked jobs, status reports configured providers, dispatch can dry-run provider handoff, and notification history stores prepare/dispatch events per account. With `dryRun: false`, configured LINE jobs call the LINE Messaging API push endpoint; configured email and Web Push jobs still stop at the adapter boundary until real senders are wired in.
 Set `HOME_STACK_LINE_CHANNEL_ACCESS_TOKEN`, `HOME_STACK_EMAIL_FROM` plus `HOME_STACK_EMAIL_TRANSPORT`, or the Web Push VAPID env values to move a channel from dry-run-only to adapter-ready.
 The Post-MVP panel can check provider status, prepare jobs, run a dry-run dispatch, and load notification history when the app is running on a Next.js server.
 Barcode resolution validates JAN check digits, suggests corrected candidates, and returns search candidates without needing a production barcode master yet.

@@ -5,6 +5,9 @@ const root = process.argv[2] ?? "test-results";
 const expectedAssertions = [
   "document width fits viewport",
   "no mobile horizontal overflow candidates",
+  "price-search visual asset renders on mobile",
+  "public Pages QR renders on mobile",
+  "real-device QA checklist is present on the hero",
   "effective price proof details are visible",
   "condition evidence remains readable on mobile width",
   "static URL scan condition banner jumps to proof details",
@@ -32,6 +35,24 @@ for (const file of jsonFiles) {
   if (!payload.metrics || payload.metrics.bodyWidth > payload.metrics.viewportWidth || payload.metrics.overflowCount !== 0) {
     failures.push(`${file}: mobile overflow metrics failed`);
   }
+
+  const heroAssets = payload.heroAssetSummary ?? {};
+  const visual = heroAssets.visual ?? {};
+  if (!String(visual.src ?? "").includes("price-insight-visual.png")) failures.push(`${file}: missing price-search visual src`);
+  if (visual.complete !== true) failures.push(`${file}: price-search visual was not fully loaded`);
+  if (visual.naturalWidth !== 1693 || visual.naturalHeight !== 929) {
+    failures.push(`${file}: unexpected price-search visual dimensions`);
+  }
+  if (visual.renderedWidth < 250 || visual.renderedHeight < 130) {
+    failures.push(`${file}: rendered price-search visual is too small`);
+  }
+
+  const qr = heroAssets.qr ?? {};
+  if (!String(qr.src ?? "").includes("pages-qr.svg")) failures.push(`${file}: missing public Pages QR src`);
+  if (qr.complete !== true) failures.push(`${file}: public Pages QR was not fully loaded`);
+  if (qr.naturalWidth < 120 || qr.naturalHeight < 120) failures.push(`${file}: public Pages QR natural dimensions are too small`);
+  if (qr.renderedWidth < 80 || qr.renderedHeight < 80) failures.push(`${file}: rendered public Pages QR is too small`);
+  if (heroAssets.qaPointCount !== 3) failures.push(`${file}: expected three real-device QA checklist points`);
 
   const summary = payload.conditionSummary ?? {};
   if (!Array.isArray(summary.badges) || summary.badges.length === 0) failures.push(`${file}: missing condition badges`);

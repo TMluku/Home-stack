@@ -138,6 +138,29 @@ test("links live scan condition banners to proof details on the static Pages bui
 
 test("keeps the price condition proof usable on mobile width", async ({ page }, testInfo) => {
   await page.goto("/");
+  const heroAssetSummary = await page.evaluate(() => {
+    const visual = document.querySelector(".price-insight-visual img");
+    const qr = document.querySelector('img[alt="Home Stack GitHub Pages 公開URLのQRコード"]');
+    const readImage = (image: Element | null) => {
+      if (!(image instanceof HTMLImageElement)) return null;
+      const rect = image.getBoundingClientRect();
+      return {
+        src: image.getAttribute("src"),
+        complete: image.complete,
+        naturalWidth: image.naturalWidth,
+        naturalHeight: image.naturalHeight,
+        renderedWidth: Math.round(rect.width),
+        renderedHeight: Math.round(rect.height),
+      };
+    };
+
+    return {
+      visual: readImage(visual),
+      qr: readImage(qr),
+      qaPointCount: document.querySelectorAll('[aria-label="実機スマホQA確認ポイント"] li').length,
+    };
+  });
+
   await page.locator(".inventory-search-chips .chip").first().click();
 
   const metrics = await page.evaluate(() => ({
@@ -193,11 +216,15 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
           url: page.url(),
           viewport: page.viewportSize(),
           metrics,
+          heroAssetSummary,
           conditionSummary,
           liveScanSummary,
           assertions: [
             "document width fits viewport",
             "no mobile horizontal overflow candidates",
+            "price-search visual asset renders on mobile",
+            "public Pages QR renders on mobile",
+            "real-device QA checklist is present on the hero",
             "effective price proof details are visible",
             "condition evidence remains readable on mobile width",
             "static URL scan condition banner jumps to proof details",

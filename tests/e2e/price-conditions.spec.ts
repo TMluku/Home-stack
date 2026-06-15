@@ -79,6 +79,12 @@ test("keeps offer cards sorted by effective price while filtering by conditions"
   await page.goto("/");
   await page.getByRole("link", { name: "価格順リストを見る" }).click();
 
+  await expect(page.locator(".comparison-breakdown").first()).toHaveAttribute("aria-label", /の実質価格内訳/);
+  await expect(page.locator(".comparison-breakdown").first()).toContainText("表示");
+  await expect(page.locator(".comparison-breakdown").first()).toContainText("条件差分");
+  await expect(page.locator(".comparison-breakdown").first()).toContainText("実質");
+  await expect(page.locator(".comparison-breakdown__adjustment--subtract").first()).toBeVisible();
+
   const prices = await page
     .locator(".offer-card__price")
     .evaluateAll((nodes) =>

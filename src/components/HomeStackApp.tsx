@@ -1757,6 +1757,7 @@ function PriceComparisonPanel({
             <small>
               {competitor.shipping} / {competitor.points}
             </small>
+            <ComparisonPriceBreakdown competitor={competitor} />
             {competitor.conditions.length > 0 ? (
               <a className="condition-banner" href={`#conditions-${offer.id}`}>
                 条件あり
@@ -1793,6 +1794,34 @@ function PriceComparisonPanel({
         ))}
       </div>
     </section>
+  );
+}
+
+function ComparisonPriceBreakdown({ competitor }: { competitor: Offer["competitors"][number] }) {
+  const adjustment = competitor.effectivePrice - competitor.listPrice;
+  const adjustmentLabel =
+    adjustment === 0
+      ? "差分なし"
+      : adjustment > 0
+        ? `+${yenFormatter.format(adjustment)}`
+        : `-${yenFormatter.format(Math.abs(adjustment))}`;
+  const adjustmentTone = adjustment === 0 ? "plain" : adjustment > 0 ? "add" : "subtract";
+
+  return (
+    <dl className="comparison-breakdown" aria-label={`${competitor.retailer}の実質価格内訳`}>
+      <div>
+        <dt>表示</dt>
+        <dd>{yenFormatter.format(competitor.listPrice)}</dd>
+      </div>
+      <div className={`comparison-breakdown__adjustment comparison-breakdown__adjustment--${adjustmentTone}`}>
+        <dt>条件差分</dt>
+        <dd>{adjustmentLabel}</dd>
+      </div>
+      <div>
+        <dt>実質</dt>
+        <dd>{yenFormatter.format(competitor.effectivePrice)}</dd>
+      </div>
+    </dl>
   );
 }
 

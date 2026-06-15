@@ -1342,6 +1342,55 @@ h3 {
   margin-bottom: 0;
 }
 
+.comparison-breakdown {
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  display: grid;
+  gap: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0.2rem 0;
+  overflow: hidden;
+}
+
+.comparison-breakdown div {
+  background: #ffffff;
+  border-right: 1px solid var(--line);
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+  padding: 0.45rem;
+}
+
+.comparison-breakdown div:last-child {
+  border-right: 0;
+}
+
+.comparison-breakdown dt {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+}
+
+.comparison-breakdown dd {
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 900;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.comparison-breakdown__adjustment--subtract dd {
+  color: #23614f;
+}
+
+.comparison-breakdown__adjustment--add dd {
+  color: #7a5a12;
+}
+
+.comparison-breakdown__adjustment--plain dd {
+  color: var(--muted);
+}
+
 .condition-banner {
   background: #fbf3db;
   border: 1px solid #ecd58f;

@@ -303,6 +303,7 @@ function extractTextPrice(html: string) {
     if (isRangeLowerBoundPriceContext(text, match.index ?? 0, priceText.length)) continue;
     if (isEffectivePriceContext(text, match.index ?? 0, priceText.length)) continue;
     if (isInstallmentAmountContext(text, match.index ?? 0, priceText.length)) continue;
+    if (isNonProductFeeAmountContext(text, match.index ?? 0, priceText.length)) continue;
     if (isRewardAmountContext(text, match.index ?? 0, priceText.length)) continue;
     if (isConditionThresholdAmountContext(text, match.index ?? 0, priceText.length)) continue;
     if (isDiscountAmountContext(text, match.index ?? 0, priceText.length)) continue;
@@ -979,6 +980,14 @@ function isInstallmentAmountContext(text: string, index: number, length: number)
   const labelBefore = /(?:月々|月額|毎月|分割|ローン|あと払い|リボ|installments?|installment|monthly|per month)\s*$/i;
   const labelAfter = /^\s*(?:\/\s*(?:月|mo|month)|ずつ|から|の分割|分割|月額|毎月|per month|monthly|installments?)/i;
   return labelBefore.test(before) || labelAfter.test(after);
+}
+
+function isNonProductFeeAmountContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 30), index);
+  const after = text.slice(index + length, index + length + 26);
+  const feeWords = /(?:代引|決済|支払|支払い|事務|取扱|取扱い|手数料|fee|fees|handling|processing|payment|cod|cash on delivery)\s*$/i;
+  const feeAfter = /^\s*(?:の)?\s*(?:手数料|fee|fees|handling|processing)/i;
+  return feeWords.test(before) || feeAfter.test(after);
 }
 
 function isDiscountAmountContext(text: string, index: number, length: number) {

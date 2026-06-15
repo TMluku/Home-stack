@@ -383,6 +383,27 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips payment fee amounts before direct product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Fee copy product</title></head>
+        <body>
+          <span>代引手数料 330円</span>
+          <strong>販売価格 1,980円</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1980,
+      effectivePriceQuote: {
+        listPrice: 1980,
+        effectivePrice: 1980,
+      },
+      source: "html-text",
+    });
+  });
+
   it("skips unavailable prices before available totals on direct product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -1252,6 +1273,29 @@ describe("replenishment domain logic", () => {
 
     expect(candidates[0]).toMatchObject({
       title: "Installment detergent",
+      price: 1980,
+      effectivePriceQuote: {
+        listPrice: 1980,
+        effectivePrice: 1980,
+      },
+    });
+  });
+
+  it("skips marketplace payment fee amounts before item prices", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/fee-copy" title="Fee copy detergent">Fee copy detergent</a>
+          <span>決済手数料 250円</span>
+          <strong>販売価格 1,980円</strong>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Fee copy detergent",
       price: 1980,
       effectivePriceQuote: {
         listPrice: 1980,

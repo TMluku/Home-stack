@@ -294,6 +294,7 @@ function extractTextPrice(html: string) {
   for (const match of text.matchAll(pricePattern)) {
     const priceText = match[0];
     if (isUnitPriceContext(text, match.index ?? 0, priceText.length)) continue;
+    if (isTaxExcludedContext(text, match.index ?? 0, priceText.length)) continue;
     const price = parsePrice(priceText);
     if (price) return { price, currency: inferCurrency(priceText) };
   }
@@ -745,6 +746,15 @@ function isUnitPriceContext(text: string, index: number, length: number) {
   return (
     /(?:\/|／|per\s*)\s*(?:100)?\s*(?:g|kg|ml|l|個|枚|本|袋|回)/i.test(after) ||
     /(?:100\s*)?(?:g|kg|ml|l|個|枚|本|袋|回)\s*(?:あたり|当たり|単価)\s*$/i.test(before)
+  );
+}
+
+function isTaxExcludedContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 18), index);
+  const after = text.slice(index + length, index + length + 18);
+  return (
+    /(?:税抜|税別|本体価格|excluding tax|tax excluded|excl\.?\s*tax)\s*$/i.test(before) ||
+    /^\s*(?:税抜|税別|excluding tax|tax excluded|excl\.?\s*tax)/i.test(after)
   );
 }
 

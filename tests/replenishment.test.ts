@@ -243,6 +243,23 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips tax-excluded prices before tax-included totals on direct product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Tax included product</title></head>
+        <body>
+          <span>税抜 1,000円</span>
+          <strong>税込 1,100円</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1100,
+      source: "html-text",
+    });
+  });
+
   it("does not deduct ambiguous max reward claims from broad product page text", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -587,6 +604,29 @@ describe("replenishment domain logic", () => {
       effectivePriceQuote: {
         listPrice: 1280,
         effectivePrice: 1280,
+      },
+    });
+  });
+
+  it("skips tax-excluded prices before tax-included totals in marketplace HTML", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/tax" title="Tax included detergent">Tax included detergent</a>
+          <span>税抜 1,000円</span>
+          <strong>税込 1,100円</strong>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Tax included detergent",
+      price: 1100,
+      effectivePriceQuote: {
+        listPrice: 1100,
+        effectivePrice: 1100,
       },
     });
   });

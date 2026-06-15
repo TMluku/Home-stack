@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createDefaultState } from "../src/lib/demo-state";
 import { recordOutboundClick, recordQueueDecision } from "../src/lib/metrics";
 import { baseOffers } from "../src/lib/offers";
 import { extractPriceFromHtml } from "../src/lib/price-scraper";
-import { extractSearchCandidatesFromHtml } from "../src/lib/product-search";
+import { extractSearchCandidatesFromHtml, searchProductPrices } from "../src/lib/product-search";
 import {
   buildPurchaseIntent,
   buildReplenishmentQueue,
@@ -1973,5 +1973,76 @@ describe("replenishment domain logic", () => {
     });
     expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["送料条件あり"]));
     expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["shipping condition requires retailer confirmation"]));
+  });
+
+  it("does not deduct expired official API campaign rewards", async () => {
+    const previousRakutenId = process.env.RAKUTEN_APPLICATION_ID;
+    const previousYahooId = process.env.YAHOO_SHOPPING_APP_ID;
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "Expired campaign detergent",
+                  itemPrice: 2000,
+                  itemUrl: "https://example.com/rakuten-expired",
+                  postageFlag: 0,
+                  pointRate: 10,
+                  pointRateEndTime: "2020-01-01T00:00:00+09:00",
+                  couponAmount: 300,
+                  couponEndTime: "2020-01-01T00:00:00+09:00",
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (requestUrl.includes("shopping.yahooapis.jp")) {
+        return new Response(JSON.stringify({ hits: [] }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response("not found", { status: 404 });
+    });
+
+    try {
+      const result = await searchProductPrices("detergent");
+      const candidate = result.candidates.find((entry) => entry.url === "https://example.com/rakuten-expired");
+
+      expect(candidate).toMatchObject({
+        price: 2000,
+        effectivePriceQuote: {
+          listPrice: 2000,
+          shippingFee: 0,
+          pointValue: 0,
+          couponValue: 0,
+          effectivePrice: 2000,
+          conditionRequired: true,
+        },
+      });
+      expect(candidate?.effectivePriceQuote?.conditionLabels).toEqual(
+        expect.arrayContaining(["ポイント期間あり", "ポイント条件あり", "クーポン期間あり", "クーポン条件あり"]),
+      );
+      expect(candidate?.evidence).toEqual(
+        expect.arrayContaining([
+          "official point condition requires retailer confirmation",
+          "official point window expired before fetch",
+          "official coupon condition requires retailer confirmation",
+          "official coupon window expired before fetch",
+        ]),
+      );
+      expect(candidate?.evidence).not.toEqual(expect.arrayContaining(["official point value: 200 JPY", "official coupon value: 300 JPY"]));
+    } finally {
+      if (previousRakutenId === undefined) delete process.env.RAKUTEN_APPLICATION_ID;
+      else process.env.RAKUTEN_APPLICATION_ID = previousRakutenId;
+      if (previousYahooId === undefined) delete process.env.YAHOO_SHOPPING_APP_ID;
+      else process.env.YAHOO_SHOPPING_APP_ID = previousYahooId;
+      vi.restoreAllMocks();
+    }
   });
 });

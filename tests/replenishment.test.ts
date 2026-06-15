@@ -763,6 +763,38 @@ describe("replenishment domain logic", () => {
     );
   });
 
+  it("does not deduct review, selected-store, or payment-limited rewards from direct product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Limited reward product</title></head>
+        <body>
+          <span>販売価格 2,000円</span>
+          <span>レビュー投稿でポイント 200円相当</span>
+          <span>対象ストア限定 クーポン 300円OFF</span>
+          <span>指定カード決済で discount 100 JPY</span>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2000,
+      effectivePriceQuote: {
+        listPrice: 2000,
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 2000,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(
+      expect.arrayContaining(["point value from page text: 200 JPY", "coupon value from page text: 300 JPY"]),
+    );
+  });
+
   it("marks subscription and first-order direct prices as purchase conditions", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -1220,6 +1252,40 @@ describe("replenishment domain logic", () => {
       shipping: "送料無料候補",
     });
     expect(candidates[0]?.url).toBe("https://search.rakuten.co.jp/item/123");
+  });
+
+  it("keeps selected-store and review rewards conditional in marketplace HTML", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/limited-reward" title="Limited reward detergent">Limited reward detergent</a>
+          <span>販売価格 2,000円</span>
+          <span>レビュー投稿でポイント 200円相当</span>
+          <span>payment method coupon 300 JPY selected sellers only</span>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Limited reward detergent",
+      price: 2000,
+      effectivePriceQuote: {
+        listPrice: 2000,
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 2000,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(candidates[0]?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(candidates[0]?.evidence).not.toEqual(
+      expect.arrayContaining(["point value inferred: 200 JPY", "coupon value inferred: 300 JPY"]),
+    );
   });
 
   it("skips unit prices before product totals in marketplace HTML", () => {

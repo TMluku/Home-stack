@@ -370,6 +370,37 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.evidence).not.toEqual(expect.arrayContaining(["coupon value from page text: 300 JPY"]));
   });
 
+  it("does not deduct login or app-only reward claims from direct product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Login reward product</title></head>
+        <body>
+          <span>price 1,500 JPY</span>
+          <span>ポイント 120円分 ログイン後に獲得予定</span>
+          <span>クーポン 300円 アプリ限定</span>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1500,
+      effectivePriceQuote: {
+        listPrice: 1500,
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 1500,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(
+      expect.arrayContaining(["point value from page text: 120 JPY", "coupon value from page text: 300 JPY"]),
+    );
+  });
+
   it("keeps conditional free-shipping thresholds as retailer-confirmed conditions", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -828,6 +859,39 @@ describe("replenishment domain logic", () => {
     });
     expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["coupon condition requires retailer confirmation"]));
     expect(candidates[0]?.evidence).not.toEqual(expect.arrayContaining(["coupon value inferred: 300 JPY"]));
+  });
+
+  it("does not deduct marketplace login or app-only rewards as guaranteed discounts", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/login-reward" title="Login reward detergent">Login reward detergent</a>
+          <span>price 1,500 JPY</span>
+          <span>ポイント 120円分 ログイン後に獲得予定</span>
+          <span>クーポン 300円 アプリ限定</span>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/detergent/",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      price: 1500,
+      effectivePriceQuote: {
+        listPrice: 1500,
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 1500,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(candidates[0]?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(candidates[0]?.evidence).not.toEqual(
+      expect.arrayContaining(["point value inferred: 120 JPY", "coupon value inferred: 300 JPY"]),
+    );
   });
 
   it("keeps marketplace free-shipping thresholds out of effective-price shipping deductions", () => {

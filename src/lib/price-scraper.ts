@@ -290,9 +290,14 @@ function extractTextPrice(html: string) {
       .replace(/<[^>]+>/g, " ")
       .replace(/\s+/g, " "),
   );
-  const priceText = text.match(/(?:税込|価格|price)?\s*(?:¥|￥)?\s*([0-9０-９][0-9０-９,，]*)(?:\s*(?:円|yen|JPY))/i)?.[0];
-  const price = parsePrice(priceText);
-  return price ? { price, currency: inferCurrency(priceText) } : {};
+  const pricePattern = /(?:税込|価格|price)?\s*(?:¥|￥)?\s*([0-9０-９][0-9０-９,，]*)(?:\s*(?:円|yen|JPY))/gi;
+  for (const match of text.matchAll(pricePattern)) {
+    const priceText = match[0];
+    if (isUnitPriceContext(text, match.index ?? 0, priceText.length)) continue;
+    const price = parsePrice(priceText);
+    if (price) return { price, currency: inferCurrency(priceText) };
+  }
+  return {};
 }
 
 function withEffectivePriceQuote<T extends Pick<LivePriceResult, "title" | "price" | "currency" | "source">>(
@@ -732,6 +737,15 @@ function parsePrice(value: unknown) {
     .match(/[0-9]+(?:\.[0-9]+)?/)?.[0];
   const price = normalized ? Number(normalized) : NaN;
   return Number.isFinite(price) ? Math.round(price) : undefined;
+}
+
+function isUnitPriceContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 18), index);
+  const after = text.slice(index + length, index + length + 28);
+  return (
+    /(?:\/|／|per\s*)\s*(?:100)?\s*(?:g|kg|ml|l|個|枚|本|袋|回)/i.test(after) ||
+    /(?:100\s*)?(?:g|kg|ml|l|個|枚|本|袋|回)\s*(?:あたり|当たり|単価)\s*$/i.test(before)
+  );
 }
 
 function inferCurrency(value?: string) {

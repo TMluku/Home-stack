@@ -383,11 +383,15 @@ function extractImageUrl(snippet: string, baseUrl: string) {
 
 function extractPrice(snippet: string) {
   const text = cleanText(snippet) ?? "";
-  const priceText = text.match(/(?:¥|￥)\s*([0-9０-９][0-9０-９,，]*)|([0-9０-９][0-9０-９,，]*)\s*(?:円|JPY)/i);
-  const raw = priceText?.[1] ?? priceText?.[2];
-  if (!raw) return undefined;
-  const price = Number(toHalfWidth(raw).replace(/[,，]/g, ""));
-  return Number.isFinite(price) ? price : undefined;
+  const pricePattern = /(?:¥|￥)\s*([0-9０-９][0-9０-９,，]*)|([0-9０-９][0-9０-９,，]*)\s*(?:円|JPY)/gi;
+  for (const match of text.matchAll(pricePattern)) {
+    if (isUnitPriceContext(text, match.index ?? 0, match[0].length)) continue;
+    const raw = match[1] ?? match[2];
+    if (!raw) continue;
+    const price = Number(toHalfWidth(raw).replace(/[,，]/g, ""));
+    if (Number.isFinite(price)) return price;
+  }
+  return undefined;
 }
 
 function inferPriceAdjustments(snippet: string, listPrice: number) {
@@ -742,6 +746,15 @@ function parseSearchAmount(value?: string) {
   if (!value) return undefined;
   const amount = Number(toHalfWidth(value).replace(/[,，]/g, ""));
   return Number.isFinite(amount) && amount > 0 ? amount : undefined;
+}
+
+function isUnitPriceContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 18), index);
+  const after = text.slice(index + length, index + length + 28);
+  return (
+    /(?:\/|／|per\s*)\s*(?:100)?\s*(?:g|kg|ml|l|個|枚|本|袋|回)/i.test(after) ||
+    /(?:100\s*)?(?:g|kg|ml|l|個|枚|本|袋|回)\s*(?:あたり|当たり|単価)\s*$/i.test(before)
+  );
 }
 
 function escapeRegExp(value: string) {

@@ -226,6 +226,23 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips unit prices before product totals on direct product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Unit price product</title></head>
+        <body>
+          <span>単価 128円 / 100g</span>
+          <strong>価格 1,280円</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1280,
+      source: "html-text",
+    });
+  });
+
   it("does not deduct ambiguous max reward claims from broad product page text", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -549,6 +566,29 @@ describe("replenishment domain logic", () => {
       shipping: "送料無料候補",
     });
     expect(candidates[0]?.url).toBe("https://search.rakuten.co.jp/item/123");
+  });
+
+  it("skips unit prices before product totals in marketplace HTML", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/unit" title="Unit price detergent">Unit price detergent</a>
+          <span>単価 128円 / 100g</span>
+          <strong>1,280円</strong>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/detergent/",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Unit price detergent",
+      price: 1280,
+      effectivePriceQuote: {
+        listPrice: 1280,
+        effectivePrice: 1280,
+      },
+    });
   });
 
   it("normalizes marketplace HTML shipping, point, and coupon conditions into effective quotes", () => {

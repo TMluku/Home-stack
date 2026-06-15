@@ -865,6 +865,12 @@ function hasRewardThresholdCopy(text: string, labels: string[]) {
     "まとめ買い",
     "利用",
     "併用",
+    "取得",
+    "獲得",
+    "入力",
+    "コード",
+    "クーポンコード",
+    "事前取得",
     "税込",
     "when",
     "if",
@@ -877,6 +883,11 @@ function hasRewardThresholdCopy(text: string, labels: string[]) {
     "or more",
     "with",
     "cannot be combined",
+    "coupon code",
+    "promo code",
+    "code required",
+    "enter code",
+    "apply code",
   ];
   return labels.some((label) =>
     conditionWords.some((word) => {

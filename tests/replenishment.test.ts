@@ -563,6 +563,31 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.evidence).not.toEqual(expect.arrayContaining(["coupon value from page text: 300 JPY"]));
   });
 
+  it("does not deduct coupon-code discounts from direct product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Coupon code product</title></head>
+        <body>
+          <span>price 1,200 JPY</span>
+          <span>クーポンコード入力で300円OFF</span>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1200,
+      effectivePriceQuote: {
+        listPrice: 1200,
+        couponValue: 0,
+        effectivePrice: 1200,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["クーポン条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["coupon condition requires retailer confirmation"]));
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(expect.arrayContaining(["coupon value from page text: 300 JPY"]));
+  });
+
   it("does not use coupon threshold amounts as direct product prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -1582,6 +1607,33 @@ describe("replenishment domain logic", () => {
         conditionRequired: true,
       },
     });
+    expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["coupon condition requires retailer confirmation"]));
+    expect(candidates[0]?.evidence).not.toEqual(expect.arrayContaining(["coupon value inferred: 300 JPY"]));
+  });
+
+  it("does not deduct marketplace coupon-code discounts as guaranteed discounts", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/coupon-code" title="Coupon code detergent">Coupon code detergent</a>
+          <span>price 1,200 JPY</span>
+          <span>coupon code required for 300 JPY off</span>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/detergent/",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      price: 1200,
+      effectivePriceQuote: {
+        listPrice: 1200,
+        couponValue: 0,
+        effectivePrice: 1200,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["クーポン条件あり"]));
     expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["coupon condition requires retailer confirmation"]));
     expect(candidates[0]?.evidence).not.toEqual(expect.arrayContaining(["coupon value inferred: 300 JPY"]));
   });

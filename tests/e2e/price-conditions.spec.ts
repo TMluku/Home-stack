@@ -33,6 +33,29 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(unconditionalProof.locator(".effective-proof__notice--plain")).toContainText("控除条件なし");
 });
 
+test("keeps offer cards sorted by effective price while filtering by conditions", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: "価格順リストを見る" }).click();
+
+  const prices = await page
+    .locator(".offer-card__price")
+    .evaluateAll((nodes) =>
+      nodes.map((node) => Number((node.textContent ?? "").replace(/[^\d]/g, ""))).filter((price) => Number.isFinite(price)),
+    );
+  expect(prices.length).toBeGreaterThan(1);
+  expect(prices).toEqual([...prices].sort((a, b) => a - b));
+
+  await page.getByRole("button", { name: "条件なし" }).click();
+  await expect(page.locator(".offer-card")).not.toHaveCount(0);
+  await expect(page.locator(".offer-card__label--conditions")).toHaveCount(0);
+  await expect(page.locator(".offer-card__label--plain").first()).toContainText("条件なし");
+
+  await page.getByRole("button", { name: "条件あり" }).click();
+  await expect(page.locator(".offer-card")).not.toHaveCount(0);
+  await expect(page.locator(".offer-card__label--plain")).toHaveCount(0);
+  await expect(page.locator(".offer-card__label--conditions").first()).toContainText("条件あり");
+});
+
 test("keeps the price condition proof usable on mobile width", async ({ page }, testInfo) => {
   await page.goto("/");
   await page.locator(".inventory-search-chips .chip").first().click();

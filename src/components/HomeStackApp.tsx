@@ -1562,15 +1562,15 @@ function isConditionEvidence(entry: string) {
 }
 
 function buildConditionCheckItems(labels: string[]) {
-  const items = labels.flatMap((label) => {
-    if (/購入条件|購入|定期|初回|セット/.test(label)) return ["数量・定期・初回条件"];
-    if (/送料/.test(label)) return ["送料無料ライン・配送条件"];
-    if (/ポイント/.test(label)) return ["付与時期・利用先"];
-    if (/クーポン/.test(label)) return ["対象者・併用可否"];
-    if (/期間/.test(label)) return ["キャンペーン期間"];
-    return [];
-  });
-  return [...new Set(items)].slice(0, 4);
+  const joinedLabels = labels.join(" ");
+  const items = [
+    /期間/.test(joinedLabels) ? "キャンペーン期間" : "",
+    /購入条件|購入|定期|初回|セット/.test(joinedLabels) ? "数量・定期・初回条件" : "",
+    /送料/.test(joinedLabels) ? "送料無料ライン・配送条件" : "",
+    /ポイント/.test(joinedLabels) ? "付与時期・利用先" : "",
+    /クーポン/.test(joinedLabels) ? "対象者・併用可否" : "",
+  ];
+  return items.filter(Boolean);
 }
 
 function ProductSearchPanel({

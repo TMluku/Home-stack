@@ -7,6 +7,7 @@ const expectedAssertions = [
   "no mobile horizontal overflow candidates",
   "effective price proof details are visible",
   "condition evidence remains readable on mobile width",
+  "static URL scan condition banner jumps to proof details",
 ];
 
 const files = await listFiles(root).catch(() => []);
@@ -41,6 +42,14 @@ for (const file of jsonFiles) {
   if (!Array.isArray(summary.detailRows) || summary.detailRows.length === 0) failures.push(`${file}: missing condition detail rows`);
   if (summary.detailsOpen !== true) failures.push(`${file}: condition details were not open`);
   if (!isHttpUrl(summary.sellerLink)) failures.push(`${file}: missing seller/search link`);
+
+  const liveScanSummary = payload.liveScanSummary ?? {};
+  if (!String(liveScanSummary.bannerText ?? "").includes("条件あり")) failures.push(`${file}: missing live scan condition banner`);
+  if (liveScanSummary.bannerHref !== "#live-conditions-0") failures.push(`${file}: missing live scan proof anchor`);
+  if (!Array.isArray(liveScanSummary.badges) || liveScanSummary.badges.length === 0)
+    failures.push(`${file}: missing live scan condition badges`);
+  if (liveScanSummary.detailsOpen !== true) failures.push(`${file}: live scan condition details were not open`);
+  if (!isHttpUrl(liveScanSummary.sellerLink)) failures.push(`${file}: missing live scan seller/search link`);
 
   for (const assertion of expectedAssertions) {
     if (!payload.assertions?.includes(assertion)) failures.push(`${file}: missing assertion "${assertion}"`);

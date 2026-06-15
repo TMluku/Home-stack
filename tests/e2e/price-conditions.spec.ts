@@ -151,6 +151,25 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
         detailsOpen: proof.querySelector(".effective-proof__details")?.hasAttribute("open") ?? false,
         sellerLink: proof.querySelector(".effective-proof__details a")?.getAttribute("href") ?? null,
       }));
+    await page.getByLabel("商品ページURL").fill("https://example.com/demo-condition-item");
+    await page.getByRole("button", { name: "ライブ価格を取得" }).click();
+    const liveConditionBanner = page.locator(".live-price-card .condition-banner").first();
+    await expect(liveConditionBanner).toBeVisible();
+    await liveConditionBanner.click();
+    await expect(page.locator("#live-conditions-0")).toBeInViewport();
+    const liveScanSummary = await page
+      .locator(".live-price-card")
+      .first()
+      .evaluate((card) => {
+        const proof = card.querySelector("#live-conditions-0");
+        return {
+          bannerText: card.querySelector(".condition-banner")?.textContent?.trim() ?? null,
+          bannerHref: card.querySelector(".condition-banner")?.getAttribute("href") ?? null,
+          badges: [...card.querySelectorAll(".effective-proof__badge")].map((badge) => badge.textContent?.trim()).filter(Boolean),
+          detailsOpen: proof?.querySelector(".effective-proof__details")?.hasAttribute("open") ?? false,
+          sellerLink: proof?.querySelector(".effective-proof__details a")?.getAttribute("href") ?? null,
+        };
+      });
     await writeFile(
       testInfo.outputPath("mobile-price-condition-proof.json"),
       JSON.stringify(
@@ -160,11 +179,13 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
           viewport: page.viewportSize(),
           metrics,
           conditionSummary,
+          liveScanSummary,
           assertions: [
             "document width fits viewport",
             "no mobile horizontal overflow candidates",
             "effective price proof details are visible",
             "condition evidence remains readable on mobile width",
+            "static URL scan condition banner jumps to proof details",
           ],
         },
         null,

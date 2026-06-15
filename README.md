@@ -104,6 +104,7 @@ By default, saved JSON files are written under `.server-state/`. Set `HOME_STACK
 `POST /api/state/status` reports the active state repository kind, configured store directory, write readiness, and normalized account ID.
 Account resolution creates stable account IDs and email hashes for email-link/OAuth handoff without storing raw email addresses in sync payloads.
 Account listing reads the server-side account index that is updated whenever account state is saved or reset.
+The Post-MVP panel can call these routes from a Next.js server build to save, load, delete, and refresh account state; the GitHub Pages build keeps the controls visible but reports that API persistence is unavailable.
 Condition audit routes append and list effective-price condition events so ranking decisions can be inspected later, including product-search candidate quotes and direct URL scan quotes.
 Notification preparation builds queued or blocked jobs, and dispatch can dry-run provider handoff without sending real LINE, email, or Web Push messages yet.
 Barcode resolution validates JAN check digits, suggests corrected candidates, and returns search candidates without needing a production barcode master yet.

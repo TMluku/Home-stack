@@ -62,6 +62,16 @@ const filterLabels: Record<OfferFilter, string> = {
 const isStaticExport = process.env.NEXT_PUBLIC_STATIC_EXPORT === "true";
 const serverSyncAccountId = "demo-account";
 
+type ServerAccountSummary = {
+  accountId: string;
+  authMode: string;
+  displayName?: string;
+  lastSavedAt: string;
+  inventoryCount: number;
+  conditionalAuditCount: number;
+  notificationDraftCount: number;
+};
+
 export function HomeStackApp() {
   const [state, setState] = useState<AppState>(() => createDefaultState());
   const [loaded, setLoaded] = useState(false);
@@ -80,6 +90,12 @@ export function HomeStackApp() {
   const [janCode, setJanCode] = useState("");
   const [productSearchResult, setProductSearchResult] = useState<ProductSearchResult | null>(null);
   const [productSearchStatus, setProductSearchStatus] = useState("商品名から複数ECサイトの価格候補を検索できます。");
+  const [serverAccountId, setServerAccountId] = useState(serverSyncAccountId);
+  const [serverAccounts, setServerAccounts] = useState<ServerAccountSummary[]>([]);
+  const [serverSyncBusy, setServerSyncBusy] = useState(false);
+  const [serverSyncMessage, setServerSyncMessage] = useState(
+    isStaticExport ? "GitHub Pages版ではAPI保存は未接続です。" : "Next.jsサーバー起動時に保存・読込できます。",
+  );
 
   useEffect(() => {
     try {
@@ -112,12 +128,12 @@ export function HomeStackApp() {
     () =>
       summarizeNotificationJobs(
         buildNotificationJobs({
-          accountId: serverSyncAccountId,
+          accountId: serverAccountId,
           drafts: notificationDrafts,
           contactPoints: {},
         }),
       ),
-    [notificationDrafts],
+    [serverAccountId, notificationDrafts],
   );
   const priceFetchPlan = useMemo(
     () => buildPriceFetchPlan(productSearchQuery || janCode || activeOffer?.title || "", livePriceUrls.split(/\r?\n/)),
@@ -126,11 +142,12 @@ export function HomeStackApp() {
   const serverSyncPayload = useMemo(
     () =>
       buildServerSyncPayload({
+        accountId: serverAccountId,
         state,
         auditLog: conditionAuditLog,
         notificationDrafts,
       }),
-    [state, conditionAuditLog, notificationDrafts],
+    [serverAccountId, state, conditionAuditLog, notificationDrafts],
   );
   const bestConditionSavings = useMemo(
     () =>
@@ -385,6 +402,117 @@ export function HomeStackApp() {
   function resetState() {
     setState(createDefaultState());
     setPrivacyMessage("端末内データをリセットしました");
+  }
+
+  async function refreshServerAccounts(nextMessage?: string) {
+    if (isStaticExport) {
+      setServerSyncMessage("GitHub Pages版ではサーバー側アカウント一覧は使えません。");
+      return;
+    }
+
+    setServerSyncBusy(true);
+    try {
+      const response = await fetch("/api/account/list", { method: "POST" });
+      const payload = (await response.json()) as { ok?: boolean; accounts?: ServerAccountSummary[]; error?: string };
+      if (!response.ok || !payload.ok) throw new Error(payload.error ?? "保存済みアカウント一覧を取得できませんでした。");
+      setServerAccounts(payload.accounts ?? []);
+      setServerSyncMessage(
+        nextMessage ??
+          ((payload.accounts?.length ?? 0) > 0 ? "保存済みアカウント一覧を更新しました。" : "保存済みアカウントはまだありません。"),
+      );
+    } catch (error) {
+      setServerSyncMessage(error instanceof Error ? error.message : "保存済みアカウント一覧を取得できませんでした。");
+    } finally {
+      setServerSyncBusy(false);
+    }
+  }
+
+  async function saveServerState() {
+    if (isStaticExport) {
+      setServerSyncMessage("GitHub Pages版ではAPI保存は未接続です。Next.jsサーバーで有効になります。");
+      return;
+    }
+
+    setServerSyncBusy(true);
+    try {
+      const response = await fetch("/api/state/save", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ payload: serverSyncPayload }),
+      });
+      const payload = (await response.json()) as { ok?: boolean; stored?: { accountId: string; savedAt: string }; error?: string };
+      if (!response.ok || !payload.ok || !payload.stored) throw new Error(payload.error ?? "サーバー保存に失敗しました。");
+      setServerAccountId(payload.stored.accountId);
+      await refreshServerAccounts(`${payload.stored.accountId} を保存しました。`);
+    } catch (error) {
+      setServerSyncMessage(error instanceof Error ? error.message : "サーバー保存に失敗しました。");
+    } finally {
+      setServerSyncBusy(false);
+    }
+  }
+
+  async function loadServerState() {
+    if (isStaticExport) {
+      setServerSyncMessage("GitHub Pages版ではAPI読込は未接続です。Next.jsサーバーで有効になります。");
+      return;
+    }
+
+    const accountId = serverAccountId.trim();
+    if (!accountId) {
+      setServerSyncMessage("読み込むaccountIdを入力してください。");
+      return;
+    }
+
+    setServerSyncBusy(true);
+    try {
+      const response = await fetch("/api/state/load", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ accountId }),
+      });
+      const payload = (await response.json()) as {
+        ok?: boolean;
+        stored?: { accountId: string; payload: ServerSyncPayload };
+        error?: string;
+      };
+      if (!response.ok || !payload.ok || !payload.stored) throw new Error(payload.error ?? "保存済み状態を読み込めませんでした。");
+      setState(normalizeState(payload.stored.payload.state));
+      setServerAccountId(payload.stored.accountId);
+      setServerSyncMessage(`${payload.stored.accountId} を読み込みました。`);
+    } catch (error) {
+      setServerSyncMessage(error instanceof Error ? error.message : "保存済み状態を読み込めませんでした。");
+    } finally {
+      setServerSyncBusy(false);
+    }
+  }
+
+  async function resetServerSavedState() {
+    if (isStaticExport) {
+      setServerSyncMessage("GitHub Pages版ではAPI削除は未接続です。Next.jsサーバーで有効になります。");
+      return;
+    }
+
+    const accountId = serverAccountId.trim();
+    if (!accountId) {
+      setServerSyncMessage("削除するaccountIdを入力してください。");
+      return;
+    }
+
+    setServerSyncBusy(true);
+    try {
+      const response = await fetch("/api/state/reset", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ accountId }),
+      });
+      const payload = (await response.json()) as { ok?: boolean; result?: { accountId: string }; error?: string };
+      if (!response.ok || !payload.ok || !payload.result) throw new Error(payload.error ?? "保存済み状態を削除できませんでした。");
+      await refreshServerAccounts(`${payload.result.accountId} の保存済み状態を削除しました。`);
+    } catch (error) {
+      setServerSyncMessage(error instanceof Error ? error.message : "保存済み状態を削除できませんでした。");
+    } finally {
+      setServerSyncBusy(false);
+    }
   }
 
   return (
@@ -925,7 +1053,16 @@ export function HomeStackApp() {
           priceFetchPlan={priceFetchPlan}
           queueItemCount={queueSummary.itemCount}
           queueTotal={queueSummary.totalEffectivePrice}
+          serverAccountId={serverAccountId}
+          serverAccounts={serverAccounts}
+          serverSyncBusy={serverSyncBusy}
+          serverSyncMessage={serverSyncMessage}
           serverSyncPayload={serverSyncPayload}
+          onLoadServerState={loadServerState}
+          onRefreshServerAccounts={refreshServerAccounts}
+          onResetServerState={resetServerSavedState}
+          onSaveServerState={saveServerState}
+          onServerAccountIdChange={setServerAccountId}
         />
       </main>
 
@@ -1211,7 +1348,16 @@ function PostMvpOpsPanel({
   priceFetchPlan,
   queueItemCount,
   queueTotal,
+  serverAccountId,
+  serverAccounts,
+  serverSyncBusy,
+  serverSyncMessage,
   serverSyncPayload,
+  onLoadServerState,
+  onRefreshServerAccounts,
+  onResetServerState,
+  onSaveServerState,
+  onServerAccountIdChange,
 }: {
   conditionAuditLog: ConditionAuditLogEntry[];
   notificationDrafts: NotificationDraft[];
@@ -1219,7 +1365,16 @@ function PostMvpOpsPanel({
   priceFetchPlan: PriceFetchPlanStep[];
   queueItemCount: number;
   queueTotal: number;
+  serverAccountId: string;
+  serverAccounts: ServerAccountSummary[];
+  serverSyncBusy: boolean;
+  serverSyncMessage: string;
   serverSyncPayload: ServerSyncPayload;
+  onLoadServerState: () => void;
+  onRefreshServerAccounts: () => void;
+  onResetServerState: () => void;
+  onSaveServerState: () => void;
+  onServerAccountIdChange: (value: string) => void;
 }) {
   const auditPreview = conditionAuditLog.slice(0, 8);
   const latestDraft = notificationDrafts[0];
@@ -1316,6 +1471,45 @@ function PostMvpOpsPanel({
               </dd>
             </div>
           </dl>
+          <label className="field-label" htmlFor="server-account-id">
+            accountId
+          </label>
+          <input
+            id="server-account-id"
+            type="text"
+            value={serverAccountId}
+            onChange={(event) => onServerAccountIdChange(event.target.value)}
+            placeholder="demo-account"
+          />
+          <div className="ops-actions">
+            <button className="button button--primary" type="button" onClick={onSaveServerState} disabled={serverSyncBusy}>
+              サーバー保存
+            </button>
+            <button className="button button--ghost" type="button" onClick={onLoadServerState} disabled={serverSyncBusy}>
+              読込
+            </button>
+            <button className="button button--ghost" type="button" onClick={onRefreshServerAccounts} disabled={serverSyncBusy}>
+              一覧更新
+            </button>
+            <button className="button button--ghost danger-button" type="button" onClick={onResetServerState} disabled={serverSyncBusy}>
+              削除
+            </button>
+          </div>
+          <p className="state-message" role="status">
+            {serverSyncMessage}
+          </p>
+          {serverAccounts.length > 0 ? (
+            <div className="account-list">
+              {serverAccounts.slice(0, 3).map((account) => (
+                <button type="button" key={account.accountId} onClick={() => onServerAccountIdChange(account.accountId)}>
+                  <span>{account.displayName ?? account.accountId}</span>
+                  <small>
+                    inventory {account.inventoryCount} / audit {account.conditionalAuditCount} / notice {account.notificationDraftCount}
+                  </small>
+                </button>
+              ))}
+            </div>
+          ) : null}
           <p>GitHub Pages版は静的フロントとして動作し、将来のAPI endpointへ同じ状態構造を送れるように保ちます。</p>
         </section>
       </div>

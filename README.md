@@ -53,6 +53,7 @@ On Windows PowerShell, use `pnpm.cmd` instead of `pnpm` if script execution poli
 pnpm.cmd run check
 pnpm.cmd run build
 pnpm.cmd run build:pages
+pnpm.cmd run check:pages
 ```
 
 `check` runs:
@@ -77,6 +78,7 @@ The repository includes a GitHub Pages deployment workflow at `.github/workflows
 - The Pages build uses `/Home-stack` as the base path.
 - The workflow adds `out/.nojekyll` so GitHub Pages serves the Next.js `_next/` assets.
 - Because GitHub Pages is static hosting, product search and URL price scan fall back to local demo candidates, JAN lookup, and external marketplace search links until a server API is connected.
+- `pnpm run check:pages` reports whether `main`, `gh-pages`, the public Pages URL, and optional GitHub API Pages settings look ready.
 - If `https://tmluku.github.io/Home-stack/` still returns 404 after `gh-pages` is published, confirm that repository Settings > Pages is enabled. Private repositories may require a paid GitHub plan or a visibility change before Pages can be created.
 
 ## Optional Marketplace API Keys

@@ -10,6 +10,7 @@ Home Stack is now a Next.js + TypeScript app using the App Router.
 | `pnpm dev` | Run the Next.js development server. |
 | `pnpm build` | Build the production Next.js app. |
 | `pnpm run build:pages` | Build the static GitHub Pages export and add `out/.nojekyll`. |
+| `pnpm run check:pages` | Check remote branch, Pages URL, and optional GitHub API readiness for the Pages deployment. |
 | `pnpm run deploy:pages-branch` | Publish an existing `out/` export to the `gh-pages` branch. |
 | `pnpm start` | Serve the production build with `next start`. |
 | `pnpm run typecheck` | Run TypeScript type checking. |

@@ -4,6 +4,12 @@ Home Stack is a mobile-first MVP for managing household consumables and finding 
 
 Published app: https://tmluku.github.io/Home-stack/
 
+Operational docs:
+
+- `docs/mobile-qa.md` records real-device GitHub Pages QA.
+- `docs/tooling.md` lists local, Pages, E2E, and cleanup commands.
+- `docs/api.md` documents server API contracts for product search, direct price scans, state sync, notifications, and condition audit logs.
+
 The MVP focuses on local validation of the product flow:
 
 - Register demo inventory from a photo upload simulation.
@@ -96,11 +102,44 @@ The repository publishes GitHub Pages from the `gh-pages` branch with `.github/w
 - CI builds the normal Next.js app.
 - Pages branch publishing runs `pnpm run check`, runs `pnpm run build:pages`, and publishes the static `out/` directory to `gh-pages`.
 - Browser E2E runs separately in `.github/workflows/e2e.yml` against the same static Pages export.
+- Workflows run on Node 24-compatible action versions.
 - The Pages build uses `/Home-stack` as the base path.
 - The workflow adds `out/.nojekyll` so GitHub Pages serves the Next.js `_next/` assets.
 - Because GitHub Pages is static hosting, product search and URL price scan fall back to local demo candidates, JAN lookup, and external marketplace search links until a server API is connected.
 - `pnpm run check:pages` reports whether `main`, `gh-pages`, the public Pages URL, and optional GitHub API Pages settings look ready.
 - If `https://tmluku.github.io/Home-stack/` still returns 404 after `gh-pages` is published, confirm that repository Settings > Pages is enabled. Private repositories may require a paid GitHub plan or a visibility change before Pages can be created.
+
+## Release And Operations Checklist
+
+Use this checklist when changing price extraction, condition labels, static Pages behavior, or visual UI assets.
+
+1. Run local gates:
+
+   ```powershell
+   pnpm.cmd run check
+   pnpm.cmd run build
+   pnpm.cmd run build:pages
+   pnpm.cmd run check:pages
+   pnpm.cmd run test:e2e
+   pnpm.cmd run test:e2e:browser
+   ```
+
+2. Publish through `main`; `.github/workflows/pages-branch.yml` updates `gh-pages` automatically.
+3. Confirm GitHub Actions are green: `CI`, `Browser E2E`, `Publish GitHub Pages Branch`, and `pages-build-deployment`.
+4. Confirm the public app responds at `https://tmluku.github.io/Home-stack/`.
+5. For UI or price-condition changes, complete the real-device checklist in `docs/mobile-qa.md`.
+6. Clean local generated artifacts before committing unrelated follow-up work:
+
+   ```powershell
+   pnpm.cmd run clean:generated
+   ```
+
+Price-condition operation notes:
+
+- Product candidates must stay sorted by `effectivePriceQuote.effectivePrice` when available, then raw price.
+- If points, coupons, free shipping, campaign windows, membership, or threshold text affect the displayed effective price, the candidate should expose `conditionLabels` and evidence.
+- Do not treat ambiguous copy such as "最大", "up to", "eligible only", or free-shipping thresholds as guaranteed discounts without preserving a condition label.
+- Direct URL scans should prefer structured JSON-LD, meta tags, embedded JSON, data attributes, Amazon price spans, then broad page text.
 
 ## Optional Marketplace API Keys
 

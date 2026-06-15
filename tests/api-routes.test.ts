@@ -280,6 +280,87 @@ describe("API route contracts", () => {
     expect(yahooCandidate.evidence).not.toEqual(expect.arrayContaining(["official shipping: free"]));
   });
 
+  it("keeps official ambiguous reward strings as conditions instead of discounts", async () => {
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "Ambiguous official Rakuten item",
+                  itemPrice: 2000,
+                  itemUrl: "https://rakuten.example.test/ambiguous",
+                  pointRate: "最大50% 要エントリー",
+                  couponAmount: "最大900円 対象者限定",
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          hits: [
+            {
+              name: "Ambiguous official Yahoo item",
+              url: "https://shopping.example.test/ambiguous",
+              price: 2100,
+              point: { amount: "up to 500 points entry required" },
+              coupon: { amount: "coupon up to 900 eligible only" },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+
+    const response = await searchProducts(
+      new Request("http://localhost/api/product-search", {
+        method: "POST",
+        body: JSON.stringify({ query: "ambiguous official" }),
+      }),
+    );
+    const payload = await response.json();
+    const rakutenCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "rakuten");
+    const yahooCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "yahoo-shopping");
+
+    expect(response.status).toBe(200);
+    expect(rakutenCandidate.effectivePriceQuote).toMatchObject({
+      listPrice: 2000,
+      pointValue: 0,
+      couponValue: 0,
+      effectivePrice: 2000,
+      conditionRequired: true,
+    });
+    expect(rakutenCandidate.effectivePriceQuote.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(rakutenCandidate.evidence).toEqual(
+      expect.arrayContaining([
+        "official point condition requires retailer confirmation",
+        "official coupon condition requires retailer confirmation",
+      ]),
+    );
+    expect(yahooCandidate.effectivePriceQuote).toMatchObject({
+      listPrice: 2100,
+      pointValue: 0,
+      couponValue: 0,
+      effectivePrice: 2100,
+      conditionRequired: true,
+    });
+    expect(yahooCandidate.effectivePriceQuote.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(yahooCandidate.evidence).toEqual(
+      expect.arrayContaining([
+        "official point condition requires retailer confirmation",
+        "official coupon condition requires retailer confirmation",
+      ]),
+    );
+  });
+
   it("normalizes external photo detection responses into inventory candidates", async () => {
     process.env.HOME_STACK_IMAGE_RECOGNITION_URL = "https://vision.example.test/detect";
     process.env.HOME_STACK_IMAGE_RECOGNITION_TOKEN = "vision-token";

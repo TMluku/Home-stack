@@ -431,18 +431,21 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   const shippingName = readStringPath(record, ["shipping.name", "shippingLabel", "postageLabel"]);
   const shippingConditionRequired = Boolean(shippingName && hasConditionalShippingCopy(shippingName));
   const pointValue =
-    readNumberPath(record, ["point.amount", "pointValue", "pointAmount", "points", "rewardPoint"]) ??
-    inferPointValueFromRate(listPrice, readNumberPath(record, ["pointRate", "point.rate", "pointRateValue"]));
+    readRewardNumberPath(record, ["point.amount", "pointValue", "pointAmount", "points", "rewardPoint"], ["point", "points", "ポイント"]) ??
+    inferPointValueFromRate(
+      listPrice,
+      readRewardNumberPath(record, ["pointRate", "point.rate", "pointRateValue"], ["point", "points", "ポイント"]),
+    );
   const couponValue =
-    readNumberPath(record, [
-      "coupon.amount",
-      "coupon.value",
-      "couponAmount",
-      "couponValue",
-      "coupon.price",
-      "discountAmount",
-      "discount.amount",
-    ]) ?? inferPointValueFromRate(listPrice, readNumberPath(record, ["coupon.rate", "couponRate", "discountRate"]));
+    readRewardNumberPath(
+      record,
+      ["coupon.amount", "coupon.value", "couponAmount", "couponValue", "coupon.price", "discountAmount", "discount.amount"],
+      ["coupon", "discount", "off", "クーポン"],
+    ) ??
+    inferPointValueFromRate(
+      listPrice,
+      readRewardNumberPath(record, ["coupon.rate", "couponRate", "discountRate"], ["coupon", "discount", "off", "クーポン"]),
+    );
   const pointStart = readStringPath(record, [
     "point.startTime",
     "point.start",
@@ -455,11 +458,16 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   const couponEnd = readStringPath(record, ["coupon.endTime", "coupon.end", "couponEndTime", "discountEndTime"]);
   const pointWindowRequired = Boolean(pointValue && (pointStart || pointEnd));
   const couponWindowRequired = Boolean(couponValue && (couponStart || couponEnd));
+  const officialText = collectRecordText(record);
+  const pointConditionRequired = !pointValue && hasAmbiguousRewardCopy(officialText, ["point", "points", "ポイント"]);
+  const couponConditionRequired = !couponValue && hasAmbiguousRewardCopy(officialText, ["coupon", "discount", "off", "クーポン"]);
   const evidence = [
     typeof shippingFee === "number" ? (shippingFee === 0 ? "official shipping: free" : `official shipping fee: ${shippingFee} JPY`) : "",
     shippingConditionRequired ? "official shipping condition requires retailer confirmation" : "",
     pointValue ? `official point value: ${pointValue} JPY` : "",
+    pointConditionRequired ? "official point condition requires retailer confirmation" : "",
     couponValue ? `official coupon value: ${couponValue} JPY` : "",
+    couponConditionRequired ? "official coupon condition requires retailer confirmation" : "",
     pointStart || pointEnd ? `point window: ${pointStart ?? "unknown"} - ${pointEnd ?? "unknown"}` : "",
     couponStart || couponEnd ? `coupon window: ${couponStart ?? "unknown"} - ${couponEnd ?? "unknown"}` : "",
   ].filter(Boolean);
@@ -471,7 +479,9 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
     conditionLabels: [
       shippingConditionRequired ? "送料条件あり" : "",
       pointWindowRequired ? "ポイント期間あり" : "",
+      pointConditionRequired ? "ポイント条件あり" : "",
       couponWindowRequired ? "クーポン期間あり" : "",
+      couponConditionRequired ? "クーポン条件あり" : "",
     ].filter(Boolean),
     shippingLabel:
       shippingFee === 0
@@ -507,6 +517,17 @@ function readNumberPath(record: OfficialApiRecord, paths: string[]) {
   return undefined;
 }
 
+function readRewardNumberPath(record: OfficialApiRecord, paths: string[], labels: string[]) {
+  for (const path of paths) {
+    const value = readPath(record, path);
+    if (typeof value === "number") return value;
+    if (typeof value !== "string" || hasAmbiguousRewardCopy(`${path} ${value}`, labels)) continue;
+    const numeric = parseSearchAmount(value);
+    if (typeof numeric === "number") return numeric;
+  }
+  return undefined;
+}
+
 function readStringPath(record: OfficialApiRecord, paths: string[]) {
   for (const path of paths) {
     const value = readPath(record, path);
@@ -520,6 +541,14 @@ function readPath(record: OfficialApiRecord, path: string): unknown {
     if (!current || typeof current !== "object") return undefined;
     return (current as Record<string, unknown>)[key];
   }, record);
+}
+
+function collectRecordText(value: unknown): string {
+  if (Array.isArray(value)) return value.map(collectRecordText).join(" ");
+  if (!value || typeof value !== "object") return typeof value === "string" ? value : "";
+  return Object.entries(value as Record<string, unknown>)
+    .map(([key, nested]) => `${key} ${collectRecordText(nested)}`)
+    .join(" ");
 }
 
 function extractPointValue(text: string, listPrice: number) {

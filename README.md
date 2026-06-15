@@ -52,6 +52,7 @@ On Windows PowerShell, use `pnpm.cmd` instead of `pnpm` if script execution poli
 ```powershell
 pnpm.cmd run check
 pnpm.cmd run build
+pnpm.cmd run build:pages
 ```
 
 `check` runs:
@@ -71,7 +72,8 @@ pnpm.cmd run clean:generated
 The repository includes a GitHub Pages deployment workflow at `.github/workflows/pages.yml`.
 
 - CI builds the normal Next.js app.
-- Pages runs `pnpm run check`, builds with `NEXT_OUTPUT_EXPORT=true`, and publishes the static `out/` directory.
+- Pages runs `pnpm run check`, runs `pnpm run build:pages`, and publishes the static `out/` directory.
+- `.github/workflows/pages-branch.yml` also publishes the same export to the `gh-pages` branch so repositories configured for branch-source Pages have a deploy target.
 - The Pages build uses `/Home-stack` as the base path.
 - The workflow adds `out/.nojekyll` so GitHub Pages serves the Next.js `_next/` assets.
 - Because GitHub Pages is static hosting, product search and URL price scan fall back to local demo candidates, JAN lookup, and external marketplace search links until a server API is connected.

@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:pages": "node scripts/build-pages.mjs",
+    "deploy:pages-branch": "node scripts/publish-pages-branch.mjs",
     "start": "next start",
     "check": "pnpm run typecheck && pnpm run lint && pnpm test",
     "test": "vitest run",

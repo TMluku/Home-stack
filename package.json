@@ -13,6 +13,7 @@
     "test:e2e": "node scripts/e2e-pages-smoke.mjs",
     "test:e2e:browser": "playwright test",
     "check:mobile-qa-evidence": "node scripts/check-mobile-qa-evidence.mjs",
+    "check:real-device-qa": "node scripts/check-real-device-qa.mjs",
     "start": "next start",
     "check": "tsc --noEmit && biome check . && vitest run",
     "test": "vitest run",

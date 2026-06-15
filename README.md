@@ -66,6 +66,7 @@ pnpm.cmd run check:pages
 pnpm.cmd run test:e2e
 pnpm.cmd run test:e2e:browser
 pnpm.cmd run check:mobile-qa-evidence
+pnpm.cmd run check:real-device-qa
 ```
 
 `check` runs:
@@ -81,6 +82,8 @@ pnpm.cmd run check:mobile-qa-evidence
 ```powershell
 pnpm.cmd exec playwright install chromium
 ```
+
+`check:real-device-qa` is a manual release gate. It intentionally fails until `docs/mobile-qa.md` contains a non-placeholder real-phone `Pass` row with the tested Pages URL and screenshot or `mobile-qa-evidence` notes.
 
 Manual smartphone QA for Pages:
 
@@ -137,7 +140,13 @@ Use this checklist when changing price extraction, condition labels, static Page
 4. Download the `mobile-qa-evidence` artifact from the latest `Browser E2E` run and inspect `mobile-price-condition-proof.png` plus `mobile-price-condition-proof.json`; the JSON should include hero visual/QR metrics, mobile overflow metrics, condition summaries, and condition-proof rows.
 5. Confirm the public app responds at `https://tmluku.github.io/Home-stack/`.
 6. For UI or price-condition changes, complete the real-device checklist in `docs/mobile-qa.md`; use the hero `QA記録をコピー` button to seed the matrix row, then replace the device/browser/result placeholders.
-7. Clean local generated artifacts before committing unrelated follow-up work:
+7. Run the manual real-device gate after recording the phone pass:
+
+   ```powershell
+   pnpm.cmd run check:real-device-qa
+   ```
+
+8. Clean local generated artifacts before committing unrelated follow-up work:
 
    ```powershell
    pnpm.cmd run clean:generated

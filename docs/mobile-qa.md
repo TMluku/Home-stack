@@ -38,6 +38,8 @@ Run `pnpm.cmd run check:mobile-qa-evidence` after `pnpm.cmd run test:e2e:browser
 
 Automated evidence is not a substitute for the real-device rows below. Treat the objective as incomplete until at least one physical phone/browser pass is recorded with the published URL.
 
+After a physical phone pass is recorded, run `pnpm.cmd run check:real-device-qa`. It fails while the matrix only contains placeholder rows, and passes when at least one non-placeholder `Pass` row includes the tested Pages URL plus screenshot or `mobile-qa-evidence` notes.
+
 ## Real Device Matrix
 
 Record each real-device pass here.

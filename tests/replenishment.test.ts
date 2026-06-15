@@ -243,6 +243,29 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips pack component prices before set totals on direct product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Set total product</title></head>
+        <body>
+          <span>単品 80円 × 12本</span>
+          <strong>ケース価格 960円</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 960,
+      source: "html-text",
+      effectivePriceQuote: {
+        listPrice: 960,
+        effectivePrice: 960,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["購入条件あり"]));
+  });
+
   it("skips tax-excluded prices before tax-included totals on direct product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -694,6 +717,31 @@ describe("replenishment domain logic", () => {
         effectivePrice: 1280,
       },
     });
+  });
+
+  it("skips pack component prices before set totals in marketplace HTML", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/case" title="Case water">Case water</a>
+          <span>1本 80円 × 12本</span>
+          <strong>ケース価格 960円</strong>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=water",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Case water",
+      price: 960,
+      effectivePriceQuote: {
+        listPrice: 960,
+        effectivePrice: 960,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["購入条件あり"]));
   });
 
   it("skips tax-excluded prices before tax-included totals in marketplace HTML", () => {

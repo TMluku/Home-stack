@@ -294,6 +294,7 @@ function extractTextPrice(html: string) {
   for (const match of text.matchAll(pricePattern)) {
     const priceText = match[0];
     if (isUnitPriceContext(text, match.index ?? 0, priceText.length)) continue;
+    if (isPackComponentPriceContext(text, match.index ?? 0, priceText.length)) continue;
     if (isTaxExcludedContext(text, match.index ?? 0, priceText.length)) continue;
     if (isReferencePriceContext(text, match.index ?? 0, priceText.length)) continue;
     if (isUnavailablePriceContext(text, match.index ?? 0, priceText.length)) continue;
@@ -644,6 +645,8 @@ function hasPurchaseConditionCopy(text: string) {
     "2個",
     "3個",
     "箱買い",
+    "ケース",
+    "ケース価格",
     "first order",
     "first purchase",
     "first-time",
@@ -653,7 +656,9 @@ function hasPurchaseConditionCopy(text: string) {
     "bundle",
     "multi-pack",
     "multipack",
+    "pack of",
     "set of",
+    "case",
   ];
   return purchaseWords.some((word) => new RegExp(escapeRegExp(word), "i").test(text));
 }
@@ -791,6 +796,16 @@ function isUnitPriceContext(text: string, index: number, length: number) {
   return (
     /(?:\/|／|per\s*)\s*(?:100)?\s*(?:g|kg|ml|l|個|枚|本|袋|回)/i.test(after) ||
     /(?:100\s*)?(?:g|kg|ml|l|個|枚|本|袋|回)\s*(?:あたり|当たり|単価)\s*$/i.test(before)
+  );
+}
+
+function isPackComponentPriceContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 18), index);
+  const after = text.slice(index + length, index + length + 36);
+  return (
+    /(?:単品|1\s*(?:個|枚|本|袋|箱)|一\s*(?:個|枚|本|袋|箱))\s*$/i.test(before) ||
+    /^\s*(?:x|×|✕|\*)\s*[0-9０-９]+\s*(?:個|枚|本|袋|箱|ケース|セット|pack|packs|pcs|pieces|count)/i.test(after) ||
+    /^\s*(?:for|each in)\s*[0-9０-９]+\s*(?:pack|packs|pcs|pieces|count)/i.test(after)
   );
 }
 

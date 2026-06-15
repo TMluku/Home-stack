@@ -3,6 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { POST as resolveAccount } from "../src/app/api/account/resolve/route";
+import { POST as appendConditionAudit } from "../src/app/api/audit/conditions/append/route";
+import { POST as listConditionAudit } from "../src/app/api/audit/conditions/list/route";
 import { POST as resolveBarcode } from "../src/app/api/barcode/resolve/route";
 import { POST as prepareNotifications } from "../src/app/api/notifications/prepare/route";
 import { POST as scanPrices } from "../src/app/api/price-scan/route";
@@ -226,6 +228,65 @@ describe("API route contracts", () => {
         }),
       );
       expect(missingResponse.status).toBe(404);
+    } finally {
+      await rm(storeDir, { recursive: true, force: true });
+    }
+  });
+
+  it("appends and lists condition audit events for an account", async () => {
+    const storeDir = await mkdtemp(join(tmpdir(), "home-stack-audit-"));
+    process.env.HOME_STACK_STATE_STORE_DIR = storeDir;
+
+    try {
+      const exportResponse = await exportState(
+        new Request("http://localhost/api/state/export", {
+          method: "POST",
+          body: JSON.stringify({ accountId: "acct-audit" }),
+        }),
+      );
+      const exported = await exportResponse.json();
+
+      const appendResponse = await appendConditionAudit(
+        new Request("http://localhost/api/audit/conditions/append", {
+          method: "POST",
+          body: JSON.stringify({
+            payload: exported.payload,
+            eventType: "condition-price-ranked",
+          }),
+        }),
+      );
+      const appended = await appendResponse.json();
+
+      expect(appendResponse.status).toBe(200);
+      expect(appended.appended.length).toBe(exported.payload.auditLog.length);
+      expect(appended.appended[0]).toMatchObject({ accountId: "acct-audit", eventType: "condition-price-ranked" });
+
+      const listResponse = await listConditionAudit(
+        new Request("http://localhost/api/audit/conditions/list", {
+          method: "POST",
+          body: JSON.stringify({ accountId: "acct-audit" }),
+        }),
+      );
+      const listed = await listResponse.json();
+
+      expect(listResponse.status).toBe(200);
+      expect(listed.events.length).toBe(appended.appended.length);
+      expect(listed.events.some((event: { conditionCount: number }) => event.conditionCount > 0)).toBe(true);
+
+      await resetState(
+        new Request("http://localhost/api/state/reset", {
+          method: "POST",
+          body: JSON.stringify({ accountId: "acct-audit" }),
+        }),
+      );
+      const afterResetResponse = await listConditionAudit(
+        new Request("http://localhost/api/audit/conditions/list", {
+          method: "POST",
+          body: JSON.stringify({ accountId: "acct-audit" }),
+        }),
+      );
+      const afterReset = await afterResetResponse.json();
+      expect(afterReset.events).toEqual([]);
     } finally {
       await rm(storeDir, { recursive: true, force: true });
     }

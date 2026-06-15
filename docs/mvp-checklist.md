@@ -65,6 +65,7 @@ This checklist defines the current acceptance target for the Home Stack MVP.
 - [x] Add effective-price normalization for shipping fees, point value, and coupon value.
 - [x] Add condition audit rows for effective-price ranking decisions.
 - [x] Add API-ready condition audit log entries with evidence and ranking basis.
+- [x] Add append/list APIs for server-side condition-price audit events.
 - [x] Add notification adapter readiness panel.
 - [x] Add notification draft payloads for LINE/email/Web Push handoff.
 - [x] Add notification job preparation that queues configured destinations and blocks missing destinations.

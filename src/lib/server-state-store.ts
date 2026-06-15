@@ -1,11 +1,17 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { ServerSyncPayload } from "./post-mvp";
+import type { ConditionAuditLogEntry, ServerSyncPayload } from "./post-mvp";
 
 export type StoredServerState = {
   accountId: string;
   savedAt: string;
   payload: ServerSyncPayload;
+};
+
+export type StoredAuditEvent = ConditionAuditLogEntry & {
+  accountId: string;
+  eventType: "condition-price-ranked" | "condition-price-clicked" | "condition-price-exported";
+  appendedAt: string;
 };
 
 const DEFAULT_STORE_DIR = ".server-state";
@@ -54,11 +60,51 @@ export async function loadServerState(accountId: string): Promise<StoredServerSt
 export async function resetServerState(accountId: string) {
   const normalized = normalizeAccountId(accountId);
   await rm(getStatePath(normalized), { force: true });
+  await rm(getAuditPath(normalized), { force: true });
   return { accountId: normalized, deleted: true };
+}
+
+export async function appendAuditEvents({
+  accountId,
+  events,
+  eventType = "condition-price-exported",
+  appendedAt = new Date().toISOString(),
+}: {
+  accountId: string;
+  events: ConditionAuditLogEntry[];
+  eventType?: StoredAuditEvent["eventType"];
+  appendedAt?: string;
+}): Promise<StoredAuditEvent[]> {
+  const normalized = normalizeAccountId(accountId);
+  const existing = await listAuditEvents(normalized);
+  const nextEvents = events.map((event) => ({
+    ...event,
+    accountId: normalized,
+    eventType,
+    appendedAt,
+  }));
+
+  await mkdir(getServerStateStoreDir(), { recursive: true });
+  await writeFile(getAuditPath(normalized), `${JSON.stringify([...existing, ...nextEvents], null, 2)}\n`, "utf8");
+  return nextEvents;
+}
+
+export async function listAuditEvents(accountId: string): Promise<StoredAuditEvent[]> {
+  try {
+    const text = await readFile(getAuditPath(normalizeAccountId(accountId)), "utf8");
+    return JSON.parse(text) as StoredAuditEvent[];
+  } catch (error) {
+    if (isMissingFile(error)) return [];
+    throw error;
+  }
 }
 
 function getStatePath(accountId: string) {
   return join(getServerStateStoreDir(), `${normalizeAccountId(accountId)}.json`);
+}
+
+function getAuditPath(accountId: string) {
+  return join(getServerStateStoreDir(), `${normalizeAccountId(accountId)}.audit.json`);
 }
 
 function isMissingFile(error: unknown) {

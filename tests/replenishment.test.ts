@@ -386,6 +386,27 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips used or open-box prices before new direct product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>New condition product</title></head>
+        <body>
+          <span>開封済み アウトレット 980円</span>
+          <strong>新品 販売価格 1,480円</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1480,
+      effectivePriceQuote: {
+        listPrice: 1480,
+        effectivePrice: 1480,
+      },
+      source: "html-text",
+    });
+  });
+
   it("skips range lower-bound prices before exact direct product prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -1295,6 +1316,29 @@ describe("replenishment domain logic", () => {
 
     expect(candidates[0]).toMatchObject({
       title: "Current sale detergent",
+      price: 1480,
+      effectivePriceQuote: {
+        listPrice: 1480,
+        effectivePrice: 1480,
+      },
+    });
+  });
+
+  it("skips used or open-box prices before new marketplace item prices", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/new-condition" title="New condition detergent">New condition detergent</a>
+          <span>open box 980 JPY</span>
+          <strong>new item price 1,480 JPY</strong>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "New condition detergent",
       price: 1480,
       effectivePriceQuote: {
         listPrice: 1480,

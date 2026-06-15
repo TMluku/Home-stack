@@ -399,6 +399,7 @@ function extractPrice(snippet: string) {
     if (isTaxExcludedContext(text, match.index ?? 0, match[0].length)) continue;
     if (isReferencePriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isExpiredSalePriceContext(text, match.index ?? 0, match[0].length)) continue;
+    if (isUsedConditionPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isUnavailablePriceContext(text, match.index ?? 0, match[0].length)) continue;
     const raw = match[1] ?? match[2];
     if (!raw) continue;
@@ -995,6 +996,17 @@ function isExpiredSalePriceContext(text: string, index: number, length: number) 
     /(?:終了|終了済み|過去価格|旧価格|セール終了|タイムセール終了|期限切れ|販売終了価格|expired|ended|previous sale|past price|old price|deal ended|sale ended)\s*$/i;
   const wordsAfter =
     /^\s*(?:終了|終了済み|過去価格|旧価格|セール終了|タイムセール終了|期限切れ|販売終了価格|expired|ended|previous sale|past price|old price|deal ended|sale ended)/i;
+  return words.test(labelPrefix) || words.test(before) || wordsAfter.test(after);
+}
+
+function isUsedConditionPriceContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 32), index);
+  const after = text.slice(index + length, index + length + 26);
+  const labelPrefix = `${before.replace(/^.*[0-9０-９][^0-9０-９]*/, "")}${text.slice(index, index + length).replace(/[0-9０-９].*$/, "")}`;
+  const words =
+    /(?:中古|中古品|訳あり|アウトレット|開封済み|展示品|再生品|箱潰れ|箱つぶれ|used|pre-owned|preowned|open box|open-box|outlet|refurbished|renewed|damaged box)\s*$/i;
+  const wordsAfter =
+    /^\s*(?:中古|中古品|訳あり|アウトレット|開封済み|展示品|再生品|箱潰れ|箱つぶれ|used|pre-owned|preowned|open box|open-box|outlet|refurbished|renewed|damaged box)/i;
   return words.test(labelPrefix) || words.test(before) || wordsAfter.test(after);
 }
 

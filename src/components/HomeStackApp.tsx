@@ -1412,7 +1412,17 @@ function EffectivePriceProof({
         <span>実質</span>
         <strong>{yenFormatter.format(quote.effectivePrice)}</strong>
       </div>
-      <p>{quote.conditionLabels.length > 0 ? quote.conditionLabels.join(" / ") : "控除条件なし"}</p>
+      <ul className="effective-proof__badges" aria-label="価格条件">
+        {quote.conditionLabels.length > 0 ? (
+          quote.conditionLabels.map((label) => (
+            <li className="effective-proof__badge" key={label}>
+              {label}
+            </li>
+          ))
+        ) : (
+          <li className="effective-proof__badge effective-proof__badge--plain">控除条件なし</li>
+        )}
+      </ul>
       <small>根拠 {proofCount}件 / 条件は購入前に販売サイトで再確認</small>
       <details className="effective-proof__details" open={quote.conditionRequired}>
         <summary>{quote.conditionRequired ? "価格条件を確認" : "価格根拠を確認"}</summary>

@@ -11,11 +11,12 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(page.locator(".effective-proof")).toHaveCount(2);
 
   const conditionalProof = page.locator(".effective-proof").filter({ hasText: "価格条件を確認" }).first();
+  await expect(conditionalProof.locator(".effective-proof__badge")).toHaveCount(1);
   await expect(conditionalProof.locator("details")).toHaveAttribute("open", "");
   await expect(conditionalProof).toContainText("販売ページで条件を見る");
   await expect(conditionalProof).toContainText("送料:");
   await expect(conditionalProof).toContainText("ポイント:");
-  await expect(conditionalProof.locator("li")).toHaveCount(6);
+  await expect(conditionalProof.locator(".effective-proof__details li")).toHaveCount(6);
 
   const unconditionalProof = page.locator(".effective-proof").filter({ hasText: "価格根拠を確認" }).first();
   await expect(unconditionalProof.locator("details")).not.toHaveAttribute("open", "");

@@ -10,6 +10,7 @@ const expectedAssertions = [
   "real-device QA checklist is present on the hero",
   "effective price proof details are visible",
   "condition evidence remains readable on mobile width",
+  "condition fallback recompare price is visible",
   "condition decision rows show confirm and reject guidance",
   "static URL scan condition banner jumps to proof details",
 ];
@@ -66,6 +67,9 @@ for (const file of jsonFiles) {
   }
   if (!summary.summaryItems?.some((item) => String(item).includes("見る")))
     failures.push(`${file}: missing actionable condition summary text`);
+  if (!String(summary.recompareText ?? "").includes("条件不成立時") || !String(summary.recompareText ?? "").includes("再比較")) {
+    failures.push(`${file}: missing condition fallback recompare price`);
+  }
   if (!Array.isArray(summary.decisionRows) || summary.decisionRows.length === 0) {
     failures.push(`${file}: missing condition decision rows`);
   }

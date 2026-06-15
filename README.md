@@ -93,7 +93,7 @@ Manual smartphone QA for Pages:
 - Tap `QA記録をコピー` on the hero and paste the generated row into the real-device matrix in `docs/mobile-qa.md`; the copied memo includes the public URL, Browser E2E workflow URL, `mobile-qa-evidence` artifact name, and expected evidence filenames.
 - Confirm the price-search visual loads.
 - Tap an inventory chip and confirm candidates appear in price order.
-- Confirm condition-required cards show `価格成立条件の要約`, concrete condition badges such as `購入条件あり` or `クーポン条件あり`, the condition decision rows for what to confirm/reject on the seller page, evidence rows, and a link to the seller page without horizontal scrolling.
+- Confirm condition-required cards show `価格成立条件の要約`, concrete condition badges such as `購入条件あり` or `クーポン条件あり`, the fallback recompare price when conditions do not apply, the condition decision rows for what to confirm/reject on the seller page, evidence rows, and a link to the seller page without horizontal scrolling.
 - Open `価格順リストを見る` and confirm comparison cards show a compact condition summary before the detailed condition rows.
 - Paste `https://example.com/demo-condition-item` into `商品ページURL`, tap `ライブ価格を取得`, then confirm the URL-scan `条件あり` banner jumps to the same style of price-condition proof.
 

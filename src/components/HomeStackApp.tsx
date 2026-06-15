@@ -1490,6 +1490,7 @@ function EffectivePriceProof({
   const priceFormula = `表示 ${yenFormatter.format(quote.listPrice)} + 送料 ${yenFormatter.format(quote.shippingFee ?? 0)} - ポイント ${yenFormatter.format(
     quote.pointValue ?? 0,
   )} - クーポン ${yenFormatter.format(quote.couponValue ?? 0)} = 実質 ${yenFormatter.format(quote.effectivePrice)}`;
+  const recomparePrice = quote.listPrice + (quote.shippingFee ?? 0);
 
   return (
     <fieldset className="effective-proof" id={proofId}>
@@ -1524,6 +1525,11 @@ function EffectivePriceProof({
         </dl>
       ) : null}
       <p className="effective-proof__formula">{priceFormula}</p>
+      {quote.conditionRequired ? (
+        <div className="effective-proof__recompare" role="note" aria-label="条件不成立時の再比較価格">
+          条件不成立時は {yenFormatter.format(recomparePrice)} で再比較。送料条件が未確定なら販売ページの送料を優先します。
+        </div>
+      ) : null}
       <p className={quote.conditionRequired ? "effective-proof__notice" : "effective-proof__notice effective-proof__notice--plain"}>
         {quote.conditionRequired
           ? "この実質価格は条件成立時の見込みです。購入前に販売ページで対象者・期間・併用可否を確認してください。"

@@ -1123,6 +1123,19 @@ h3 {
   overflow-wrap: anywhere;
 }
 
+.effective-proof__recompare {
+  background: #fffaf0;
+  border: 1px solid #efd6a8;
+  border-radius: 0.45rem;
+  color: #62430b;
+  font-size: 0.75rem;
+  font-weight: 900;
+  grid-column: 1 / -1;
+  line-height: 1.45;
+  padding: 0.45rem 0.5rem;
+  overflow-wrap: anywhere;
+}
+
 .effective-proof__notice {
   background: #fff7e8;
   border: 1px solid #ead39f;

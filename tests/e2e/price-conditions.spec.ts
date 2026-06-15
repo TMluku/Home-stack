@@ -75,6 +75,9 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(conditionalProof.locator(".effective-proof__breakdown-item")).toHaveCount(5);
   await expect(conditionalProof.locator(".effective-proof__breakdown-item--total")).toContainText("実質価格");
   await expect(conditionalProof.locator(".effective-proof__formula")).toContainText(/表示.*送料.*ポイント.*クーポン.*実質/);
+  await expect(conditionalProof.locator(".effective-proof__recompare")).toHaveAttribute("aria-label", "条件不成立時の再比較価格");
+  await expect(conditionalProof.locator(".effective-proof__recompare")).toContainText("条件不成立時");
+  await expect(conditionalProof.locator(".effective-proof__recompare")).toContainText("再比較");
   await expect(conditionalProof.locator(".effective-proof__notice")).toContainText("条件成立時の見込み");
   await expect(conditionalProof.locator(".effective-proof__checklist")).toContainText("数量・定期・初回条件");
   await expect(conditionalProof.locator(".effective-proof__checklist")).toContainText("送料無料ライン・配送条件");
@@ -202,6 +205,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
           .map((item) => item.textContent?.trim())
           .filter(Boolean),
         summaryItems: [...proof.querySelectorAll(".effective-proof__summary div")].map((item) => item.textContent?.trim()).filter(Boolean),
+        recompareText: proof.querySelector(".effective-proof__recompare")?.textContent?.trim() ?? null,
         decisionRows: [...proof.querySelectorAll(".effective-proof__decision div")].map((item) => item.textContent?.trim()).filter(Boolean),
         detailRows: [...proof.querySelectorAll(".effective-proof__details li")].map((item) => item.textContent?.trim()).filter(Boolean),
         detailsOpen: proof.querySelector(".effective-proof__details")?.hasAttribute("open") ?? false,
@@ -245,6 +249,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
             "real-device QA checklist is present on the hero",
             "effective price proof details are visible",
             "condition evidence remains readable on mobile width",
+            "condition fallback recompare price is visible",
             "condition decision rows show confirm and reject guidance",
             "static URL scan condition banner jumps to proof details",
           ],

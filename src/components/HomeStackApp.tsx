@@ -1428,10 +1428,12 @@ export function HomeStackApp() {
 function EffectivePriceProof({
   quote,
   evidence,
+  proofId,
   verificationUrl,
 }: {
   quote?: ProductSearchResult["candidates"][number]["effectivePriceQuote"] | LivePriceResult["effectivePriceQuote"];
   evidence?: string[];
+  proofId?: string;
   verificationUrl?: string;
 }) {
   if (!quote) return null;
@@ -1452,7 +1454,7 @@ function EffectivePriceProof({
   )} - クーポン ${yenFormatter.format(quote.couponValue ?? 0)} = 実質 ${yenFormatter.format(quote.effectivePrice)}`;
 
   return (
-    <fieldset className="effective-proof">
+    <fieldset className="effective-proof" id={proofId}>
       <legend className="visually-hidden">実質価格の内訳</legend>
       <ul className="effective-proof__breakdown" aria-label="実質価格の計算内訳">
         {breakdownItems.map((item) => (
@@ -1694,9 +1696,16 @@ function ProductSearchPanel({
                   一致度 {candidate.matchScore}% / {candidate.confidence} / {candidate.shipping ?? "送料条件は要確認"}
                 </p>
                 {candidate.effectivePriceQuote?.conditionLabels.length ? (
-                  <p>{candidate.effectivePriceQuote.conditionLabels.join(" / ")}</p>
+                  <a className="condition-banner" href={`#candidate-conditions-${candidate.id}`}>
+                    条件あり: {candidate.effectivePriceQuote.conditionLabels.join(" / ")}
+                  </a>
                 ) : null}
-                <EffectivePriceProof quote={candidate.effectivePriceQuote} evidence={candidate.evidence} verificationUrl={candidate.url} />
+                <EffectivePriceProof
+                  quote={candidate.effectivePriceQuote}
+                  evidence={candidate.evidence}
+                  proofId={`candidate-conditions-${candidate.id}`}
+                  verificationUrl={candidate.url}
+                />
                 <small>{candidate.evidence.join(" / ")}</small>
                 <a href={candidate.url} target="_blank" rel="noreferrer">
                   商品ページを見る
@@ -1824,7 +1833,7 @@ function LivePriceScanner({
       </p>
       {results.length > 0 ? (
         <div className="live-price-results">
-          {results.map((result) => (
+          {results.map((result, index) => (
             <article className={result.ok ? "live-price-card is-ok" : "live-price-card"} key={result.url}>
               <span>{result.source}</span>
               <strong>
@@ -1834,8 +1843,12 @@ function LivePriceScanner({
                     ? yenFormatter.format(result.price)
                     : "取得不可"}
               </strong>
-              {result.effectivePriceQuote?.conditionLabels.length ? <p>{result.effectivePriceQuote.conditionLabels.join(" / ")}</p> : null}
-              <EffectivePriceProof quote={result.effectivePriceQuote} verificationUrl={result.url} />
+              {result.effectivePriceQuote?.conditionLabels.length ? (
+                <a className="condition-banner" href={`#live-conditions-${index}`}>
+                  条件あり: {result.effectivePriceQuote.conditionLabels.join(" / ")}
+                </a>
+              ) : null}
+              <EffectivePriceProof quote={result.effectivePriceQuote} proofId={`live-conditions-${index}`} verificationUrl={result.url} />
               <p>{result.title ?? result.url}</p>
               <small>
                 {new Date(result.fetchedAt).toLocaleString("ja-JP")} / {result.error ?? result.url}

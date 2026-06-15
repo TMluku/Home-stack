@@ -46,6 +46,8 @@ Record each real-device pass here.
 |---|---|---|---|---|---|
 | YYYY-MM-DD | iPhone / Android model | Safari / Chrome | Wi-Fi / 5G | Pass / Fail |  |
 
+The published app hero includes `QA記録をコピー`. Use it on the tested phone to copy a matrix row, paste it here, then replace the device, browser, network, result, and evidence placeholders with the real values.
+
 Current status: automated mobile Chromium coverage is available from GitHub Actions, but no physical phone pass is recorded in this file yet.
 
 ## Manual Steps
@@ -55,18 +57,19 @@ Current status: automated mobile Chromium coverage is available from GitHub Acti
 3. If opening from a desktop screen, scan the hero QR code and confirm it opens the same published Pages URL on the phone.
 4. Tap `公開URLをコピー` and confirm the success message appears.
 5. Tap `URLを共有` and confirm the native share sheet opens, or that the app falls back to copying the URL.
-6. Scroll to `Price Search Lab`.
-7. Confirm the price-search visual image loads.
-8. Tap the first inventory chip.
-9. Confirm candidate cards appear in ascending effective-price order.
-10. Confirm the first conditional candidate shows the price-condition details summary.
-11. Open the condition details and confirm evidence rows are readable, with condition labels such as `購入条件あり`, `送料条件あり`, `ポイント条件あり`, or `クーポン条件あり` visible when they apply.
-12. Tap the seller-page condition link and confirm it opens a seller/search page in a new tab.
-13. Paste `https://example.com/demo-condition-item` into `商品ページURL`.
-14. Tap `ライブ価格を取得`.
-15. Confirm the URL-scan result shows a `条件あり` banner and that tapping it jumps to the proof details for the same result.
-16. Return to Home Stack and confirm the page still scrolls normally.
-17. Rotate the phone once, if practical, and confirm no major overlap or horizontal scrolling.
+6. Tap `QA記録をコピー`, paste the row into the matrix above, and replace placeholder values after the test.
+7. Scroll to `Price Search Lab`.
+8. Confirm the price-search visual image loads.
+9. Tap the first inventory chip.
+10. Confirm candidate cards appear in ascending effective-price order.
+11. Confirm the first conditional candidate shows the price-condition details summary.
+12. Open the condition details and confirm evidence rows are readable, with condition labels such as `購入条件あり`, `送料条件あり`, `ポイント条件あり`, or `クーポン条件あり` visible when they apply.
+13. Tap the seller-page condition link and confirm it opens a seller/search page in a new tab.
+14. Paste `https://example.com/demo-condition-item` into `商品ページURL`.
+15. Tap `ライブ価格を取得`.
+16. Confirm the URL-scan result shows a `条件あり` banner and that tapping it jumps to the proof details for the same result.
+17. Return to Home Stack and confirm the page still scrolls normally.
+18. Rotate the phone once, if practical, and confirm no major overlap or horizontal scrolling.
 
 ## Evidence To Attach
 

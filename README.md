@@ -87,6 +87,7 @@ Manual smartphone QA for Pages:
 - Open `https://tmluku.github.io/Home-stack/` on a real phone.
 - Or scan the hero QR code from another device to open the published Pages URL.
 - On the hero, use `公開URLをコピー` or `URLを共有` to send the Pages URL to the device/browser used for real-device QA.
+- Tap `QA記録をコピー` on the hero and paste the generated row into the real-device matrix in `docs/mobile-qa.md`.
 - Confirm the price-search visual loads.
 - Tap an inventory chip and confirm candidates appear in price order.
 - Confirm condition-required cards show `価格条件を確認`, concrete condition badges such as `購入条件あり` or `クーポン条件あり`, evidence rows, and a link to the seller page without horizontal scrolling.
@@ -134,7 +135,7 @@ Use this checklist when changing price extraction, condition labels, static Page
 3. Confirm GitHub Actions are green: `CI`, `Browser E2E`, `Publish GitHub Pages Branch`, and `pages-build-deployment`.
 4. Download the `mobile-qa-evidence` artifact from the latest `Browser E2E` run and inspect `mobile-price-condition-proof.png` plus `mobile-price-condition-proof.json`.
 5. Confirm the public app responds at `https://tmluku.github.io/Home-stack/`.
-6. For UI or price-condition changes, complete the real-device checklist in `docs/mobile-qa.md`.
+6. For UI or price-condition changes, complete the real-device checklist in `docs/mobile-qa.md`; use the hero `QA記録をコピー` button to seed the matrix row, then replace the device/browser/result placeholders.
 7. Clean local generated artifacts before committing unrelated follow-up work:
 
    ```powershell

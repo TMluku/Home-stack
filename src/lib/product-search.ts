@@ -396,18 +396,26 @@ function inferPriceAdjustments(snippet: string, listPrice: number) {
   const shippingFee = extractShippingFeeFromText(text);
   const pointValue = extractPointValue(text, listPrice);
   const couponValue = extractCouponValue(text, listPrice);
+  const pointConditionRequired = !pointValue && hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"]);
+  const couponConditionRequired = !couponValue && hasAmbiguousRewardCopy(text, ["coupon", "discount", "off", "クーポン"]);
   const evidence = [
     typeof shippingFee === "number" ? `shipping fee inferred: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
     shippingConditionRequired ? "shipping condition requires retailer confirmation" : "",
     pointValue ? `point value inferred: ${pointValue.toLocaleString("ja-JP")} JPY` : "",
+    pointConditionRequired ? "point condition requires retailer confirmation" : "",
     couponValue ? `coupon value inferred: ${couponValue.toLocaleString("ja-JP")} JPY` : "",
+    couponConditionRequired ? "coupon condition requires retailer confirmation" : "",
   ].filter(Boolean);
 
   return {
     shippingFee,
     pointValue,
     couponValue,
-    conditionLabels: shippingConditionRequired ? ["送料条件あり"] : [],
+    conditionLabels: [
+      shippingConditionRequired ? "送料条件あり" : "",
+      pointConditionRequired ? "ポイント条件あり" : "",
+      couponConditionRequired ? "クーポン条件あり" : "",
+    ].filter(Boolean),
     shippingLabel:
       shippingFee === 0
         ? "送料無料候補"

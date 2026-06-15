@@ -560,6 +560,10 @@ describe("replenishment domain logic", () => {
     expect(candidates[0]?.evidence).not.toEqual(
       expect.arrayContaining(["point value inferred: 500 JPY", "coupon value inferred: 900 JPY"]),
     );
+    expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(candidates[0]?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
   });
 
   it("keeps marketplace free-shipping thresholds out of effective-price shipping deductions", () => {

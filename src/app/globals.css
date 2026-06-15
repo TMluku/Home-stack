@@ -254,6 +254,31 @@ h3 {
   margin: 0.7rem 0 1rem;
 }
 
+.hero__qr {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  display: inline-grid;
+  gap: 0.45rem;
+  grid-template-columns: auto minmax(0, 12rem);
+  margin: 0 0 1rem;
+  max-width: 100%;
+  padding: 0.5rem;
+}
+
+.hero__qr img {
+  block-size: 5.25rem;
+  inline-size: 5.25rem;
+}
+
+.hero__qr figcaption {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.45;
+}
+
 .hero__actions,
 .trust-list {
   display: flex;
@@ -1710,6 +1735,11 @@ h3 {
   }
 
   .hero__actions .button {
+    width: 100%;
+  }
+
+  .hero__qr {
+    grid-template-columns: auto minmax(0, 1fr);
     width: 100%;
   }
 }

@@ -83,6 +83,7 @@ pnpm.cmd exec playwright install chromium
 Manual smartphone QA for Pages:
 
 - Open `https://tmluku.github.io/Home-stack/` on a real phone.
+- Or scan the hero QR code from another device to open the published Pages URL.
 - On the hero, use `公開URLをコピー` or `URLを共有` to send the Pages URL to the device/browser used for real-device QA.
 - Confirm the price-search visual loads.
 - Tap an inventory chip and confirm candidates appear in price order.

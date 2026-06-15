@@ -63,6 +63,7 @@ const filterLabels: Record<OfferFilter, string> = {
 const isStaticExport = process.env.NEXT_PUBLIC_STATIC_EXPORT === "true";
 const staticAssetBasePath = isStaticExport ? "/Home-stack" : "";
 const publicPagesUrl = "https://tmluku.github.io/Home-stack/";
+const publicPagesQrPath = `${staticAssetBasePath}/pages-qr.svg`;
 const serverSyncAccountId = "demo-account";
 
 type ServerAccountSummary = {
@@ -867,6 +868,10 @@ export function HomeStackApp() {
               </button>
             </div>
             <p className="hero__hint">{publicUrlMessage}</p>
+            <figure className="hero__qr">
+              <Image src={publicPagesQrPath} alt="Home Stack GitHub Pages 公開URLのQRコード" width={128} height={128} />
+              <figcaption>スマホのカメラで読み取って実機表示を確認</figcaption>
+            </figure>
             <dl className="radar-strip">
               <div>
                 <dt>10日以内</dt>

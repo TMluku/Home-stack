@@ -4,6 +4,7 @@ import { createDefaultState } from "../src/lib/demo-state";
 import { buildNotificationJobs, summarizeNotificationJobs } from "../src/lib/notification-jobs";
 import { baseOffers } from "../src/lib/offers";
 import {
+  buildCandidateConditionAuditLog,
   buildConditionAuditLog,
   buildEffectivePriceQuote,
   buildMarketplaceSearchUrls,
@@ -107,6 +108,23 @@ describe("post-MVP static helpers", () => {
     expect(auditLog[0]?.effectivePrice).toBeLessThanOrEqual(auditLog[1]?.effectivePrice ?? Number.POSITIVE_INFINITY);
     expect(auditLog.some((entry) => entry.conditionCount > 0 && entry.conditionDetails.length > 0)).toBe(true);
     expect(auditLog[0]).toMatchObject({ generatedAt: "2026-06-15T00:00:00.000Z" });
+  });
+
+  it("builds candidate audit rows from effective price quotes", () => {
+    const result = buildStaticProductSearchResult("4900000000016", baseOffers, "2026-06-15T00:00:00.000Z");
+    const auditLog = buildCandidateConditionAuditLog({
+      candidates: result.candidates,
+      generatedAt: "2026-06-15T00:00:00.000Z",
+      sourceQuery: result.normalizedQuery,
+    });
+
+    expect(auditLog.length).toBeGreaterThan(0);
+    expect(auditLog[0]).toMatchObject({
+      generatedAt: "2026-06-15T00:00:00.000Z",
+      rankingBasis: "ranked by candidate effectivePriceQuote.effectivePrice with raw price fallback",
+    });
+    expect(auditLog.some((entry) => entry.evidence.some((evidence) => evidence.startsWith("search query: ")))).toBe(true);
+    expect(auditLog.some((entry) => entry.conditionCount > 0 && entry.conditionDetails.length > 0)).toBe(true);
   });
 
   it("builds notification drafts and account sync payloads for server persistence", () => {

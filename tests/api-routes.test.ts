@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { POST as resolveAccount } from "../src/app/api/account/resolve/route";
+import { POST as appendCandidateAudit } from "../src/app/api/audit/candidates/append/route";
 import { POST as appendConditionAudit } from "../src/app/api/audit/conditions/append/route";
 import { POST as listConditionAudit } from "../src/app/api/audit/conditions/list/route";
 import { POST as resolveBarcode } from "../src/app/api/barcode/resolve/route";
@@ -287,6 +288,58 @@ describe("API route contracts", () => {
       );
       const afterReset = await afterResetResponse.json();
       expect(afterReset.events).toEqual([]);
+    } finally {
+      await rm(storeDir, { recursive: true, force: true });
+    }
+  });
+
+  it("appends search candidate price audit events for an account", async () => {
+    const storeDir = await mkdtemp(join(tmpdir(), "home-stack-candidate-audit-"));
+    process.env.HOME_STACK_STATE_STORE_DIR = storeDir;
+
+    try {
+      const searchResponse = await resolveBarcode(
+        new Request("http://localhost/api/barcode/resolve", {
+          method: "POST",
+          body: JSON.stringify({ barcode: "4900000000016" }),
+        }),
+      );
+      const searched = await searchResponse.json();
+
+      const appendResponse = await appendCandidateAudit(
+        new Request("http://localhost/api/audit/candidates/append", {
+          method: "POST",
+          body: JSON.stringify({
+            accountId: "acct-candidate-audit",
+            searchResult: searched.searchResult,
+            generatedAt: "2026-06-15T00:00:00.000Z",
+          }),
+        }),
+      );
+      const appended = await appendResponse.json();
+
+      expect(appendResponse.status).toBe(200);
+      expect(appended.appended.length).toBeGreaterThan(0);
+      expect(appended.appended[0]).toMatchObject({
+        accountId: "acct-candidate-audit",
+        eventType: "condition-price-ranked",
+        generatedAt: "2026-06-15T00:00:00.000Z",
+      });
+      expect(appended.appended.some((event: { rankingBasis: string }) => event.rankingBasis.includes("effectivePriceQuote"))).toBe(true);
+
+      const listResponse = await listConditionAudit(
+        new Request("http://localhost/api/audit/conditions/list", {
+          method: "POST",
+          body: JSON.stringify({ accountId: "acct-candidate-audit" }),
+        }),
+      );
+      const listed = await listResponse.json();
+
+      expect(listResponse.status).toBe(200);
+      expect(listed.events.length).toBe(appended.appended.length);
+      expect(
+        listed.events.some((event: { evidence: string[] }) => event.evidence.some((evidence) => evidence.startsWith("search query: "))),
+      ).toBe(true);
     } finally {
       await rm(storeDir, { recursive: true, force: true });
     }

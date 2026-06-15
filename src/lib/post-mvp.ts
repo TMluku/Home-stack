@@ -321,6 +321,53 @@ export function buildConditionAuditLog(offers: Offer[], generatedAt = new Date()
     .sort((a, b) => a.effectivePrice - b.effectivePrice || a.listPrice - b.listPrice || a.retailer.localeCompare(b.retailer, "ja"));
 }
 
+export function buildCandidateConditionAuditLog({
+  candidates,
+  generatedAt = new Date().toISOString(),
+  sourceQuery,
+}: {
+  candidates: ProductSearchCandidate[];
+  generatedAt?: string;
+  sourceQuery?: string;
+}): ConditionAuditLogEntry[] {
+  return candidates
+    .filter((candidate) => typeof candidate.price === "number" || candidate.effectivePriceQuote)
+    .map((candidate, index) => {
+      const quote = candidate.effectivePriceQuote;
+      const listPrice = quote?.listPrice ?? candidate.price ?? 0;
+      const effectivePrice = quote?.effectivePrice ?? candidate.price ?? listPrice;
+      const conditionLabels = quote?.conditionLabels ?? [];
+      const queryEvidence = sourceQuery ? [`search query: ${sourceQuery}`] : [];
+      const sourceEvidence = [
+        ...queryEvidence,
+        `source: ${candidate.sourceLabel}`,
+        `match score: ${candidate.matchScore}`,
+        `confidence: ${candidate.confidence}`,
+        ...candidate.evidence,
+        ...(quote?.evidence ?? []),
+      ];
+
+      return {
+        id: `candidate-${slugify(candidate.id || `${candidate.source}-${index}`)}`,
+        offerId: candidate.id,
+        offerTitle: candidate.title,
+        retailer: candidate.sourceLabel,
+        url: candidate.url,
+        listPrice,
+        effectivePrice,
+        shipping: describeCandidateShipping(candidate),
+        points: describeCandidatePoints(candidate),
+        conditionCount: conditionLabels.length,
+        conditionLabels,
+        conditionDetails: conditionLabels.map((label) => `${label}: see retailer terms and captured evidence before purchase`),
+        evidence: sourceEvidence,
+        rankingBasis: "ranked by candidate effectivePriceQuote.effectivePrice with raw price fallback",
+        generatedAt,
+      };
+    })
+    .sort((a, b) => a.effectivePrice - b.effectivePrice || a.listPrice - b.listPrice || a.retailer.localeCompare(b.retailer, "ja"));
+}
+
 export function buildNotificationDrafts(
   queue: QueueEntry[],
   channel: Channel,
@@ -398,6 +445,22 @@ function slugify(value: string) {
     .replace(/[^\p{Letter}\p{Number}]+/gu, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 40);
+}
+
+function describeCandidateShipping(candidate: ProductSearchCandidate) {
+  const quote = candidate.effectivePriceQuote;
+  if (candidate.shipping) return candidate.shipping;
+  if (quote?.shippingFee && quote.shippingFee > 0) return `shipping fee included: ${quote.shippingFee.toLocaleString("ja-JP")} JPY`;
+  return "shipping terms require retailer confirmation";
+}
+
+function describeCandidatePoints(candidate: ProductSearchCandidate) {
+  const quote = candidate.effectivePriceQuote;
+  const parts = [
+    quote?.pointValue && quote.pointValue > 0 ? `points deducted: ${quote.pointValue.toLocaleString("ja-JP")} JPY` : "",
+    quote?.couponValue && quote.couponValue > 0 ? `coupon deducted: ${quote.couponValue.toLocaleString("ja-JP")} JPY` : "",
+  ].filter(Boolean);
+  return parts.length ? parts.join(" / ") : "points and coupon terms require retailer confirmation";
 }
 
 function isValidJan8Code(value: string) {

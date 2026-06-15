@@ -33,6 +33,7 @@ Current MVP routes still return a lightweight shape so the client can stay simpl
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/api/account/resolve` | Resolve demo, email-link, or OAuth-style account metadata without storing raw email addresses. |
+| `POST` | `/api/audit/candidates/append` | Convert product search candidates with effective-price quotes into stored condition-price audit events. |
 | `POST` | `/api/audit/conditions/append` | Append condition-price audit events from a sync payload or explicit event list. |
 | `POST` | `/api/audit/conditions/list` | List stored condition-price audit events for an account. |
 | `POST` | `/api/barcode/resolve` | Normalize JAN/barcode input, validate check digits, suggest correction candidates, and return static search candidates. |
@@ -123,6 +124,7 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 - Account profiles should use stable account IDs and email hashes. Do not place raw email addresses inside saved sync payloads.
 - Preserve explicit condition details for coupons, point returns, shipping thresholds, account eligibility, and campaign windows.
 - Append condition-price audit events before replacing or clearing account state so ranking and click decisions remain inspectable.
+- Append candidate audit events after product search when effective-price quotes should be kept with source query, match score, source label, and price evidence.
 - Never rank a conditional effective price without exposing the conditions that make that price true.
 - Product search candidates should carry an `effectivePriceQuote` so sorting can use normalized price rather than raw extracted price.
 - JAN/barcode input should preserve the raw input, normalized digits, validation result, and suggested check-digit correction before searching marketplaces.

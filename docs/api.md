@@ -34,6 +34,10 @@ Current MVP routes still return a lightweight shape so the client can stay simpl
 |---|---|---|
 | `POST` | `/api/product-search` | Search marketplace sources for a product query and return normalized price candidates. Uses official API credentials when configured, otherwise tries public search-result HTML extraction. |
 | `POST` | `/api/price-scan` | Fetch specific product page URLs and extract price candidates from JSON-LD, meta tags, or HTML text. |
+| `POST` | `/api/state/export` | Build a server-sync payload from demo or posted account state, including condition audit logs and notification drafts. |
+| `POST` | `/api/state/save` | Save a server-sync payload for an account in the configured server state store. |
+| `POST` | `/api/state/load` | Load saved account state from the configured server state store. |
+| `POST` | `/api/state/reset` | Delete saved account state from the configured server state store. |
 
 ### `POST /api/product-search`
 
@@ -105,13 +109,12 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 | `GET` | `/api/offers` | Return effective-price ranked offers with condition details. |
 | `POST` | `/api/offers/:id/click` | Record offer clicks and whether the clicked price had conditions. |
 | `PATCH` | `/api/queue/:itemId` | Approve, auto-reserve, snooze, or cancel a queue item. |
-| `GET` | `/api/state/export` | Export demo or account state. |
-| `POST` | `/api/state/reset` | Reset demo state. |
 
 ## Implementation Notes
 
 - Keep `src/lib/replenishment.ts` as pure domain logic so it can be reused by API routes and tests.
-- Add a repository boundary before connecting PostgreSQL, Supabase, or another persistent store.
+- `src/lib/server-state-store.ts` is the repository boundary for account state. It writes JSON files to `.server-state/` by default, or `HOME_STACK_STATE_STORE_DIR` when configured.
+- Replace the file-backed repository with PostgreSQL, Supabase, or another durable store before multi-user production launch.
 - Preserve explicit condition details for coupons, point returns, shipping thresholds, account eligibility, and campaign windows.
 - Never rank a conditional effective price without exposing the conditions that make that price true.
 - Store click events and queue decisions as append-only events once the backend exists.

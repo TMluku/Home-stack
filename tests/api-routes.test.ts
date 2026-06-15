@@ -1,11 +1,18 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { POST as scanPrices } from "../src/app/api/price-scan/route";
 import { POST as searchProducts } from "../src/app/api/product-search/route";
 import { POST as exportState } from "../src/app/api/state/export/route";
+import { POST as loadState } from "../src/app/api/state/load/route";
+import { POST as resetState } from "../src/app/api/state/reset/route";
+import { POST as saveState } from "../src/app/api/state/save/route";
 
 describe("API route contracts", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    delete process.env.HOME_STACK_STATE_STORE_DIR;
   });
 
   it("rejects empty price scan requests", async () => {
@@ -107,5 +114,64 @@ describe("API route contracts", () => {
     expect(response.status).toBe(200);
     expect(payload.payload.account).toEqual({ accountId: "acct-123", authMode: "oauth" });
     expect(payload.payload.state.household.channel).toBe("email");
+  });
+
+  it("saves, loads, and resets account state on the server", async () => {
+    const storeDir = await mkdtemp(join(tmpdir(), "home-stack-state-"));
+    process.env.HOME_STACK_STATE_STORE_DIR = storeDir;
+
+    try {
+      const exportResponse = await exportState(
+        new Request("http://localhost/api/state/export", {
+          method: "POST",
+          body: JSON.stringify({
+            accountId: "acct/server test",
+            authMode: "email-link",
+          }),
+        }),
+      );
+      const exported = await exportResponse.json();
+
+      const saveResponse = await saveState(
+        new Request("http://localhost/api/state/save", {
+          method: "POST",
+          body: JSON.stringify({ payload: exported.payload }),
+        }),
+      );
+      const saved = await saveResponse.json();
+
+      expect(saveResponse.status).toBe(200);
+      expect(saved.stored.accountId).toBe("acct-server-test");
+
+      const loadResponse = await loadState(
+        new Request("http://localhost/api/state/load", {
+          method: "POST",
+          body: JSON.stringify({ accountId: "acct/server test" }),
+        }),
+      );
+      const loaded = await loadResponse.json();
+
+      expect(loadResponse.status).toBe(200);
+      expect(loaded.stored.payload.auditLog.length).toBeGreaterThan(0);
+      expect(loaded.stored.payload.notificationDrafts).toEqual(saved.stored.payload.notificationDrafts);
+
+      const resetResponse = await resetState(
+        new Request("http://localhost/api/state/reset", {
+          method: "POST",
+          body: JSON.stringify({ accountId: "acct/server test" }),
+        }),
+      );
+      expect(resetResponse.status).toBe(200);
+
+      const missingResponse = await loadState(
+        new Request("http://localhost/api/state/load", {
+          method: "POST",
+          body: JSON.stringify({ accountId: "acct/server test" }),
+        }),
+      );
+      expect(missingResponse.status).toBe(404);
+    } finally {
+      await rm(storeDir, { recursive: true, force: true });
+    }
   });
 });

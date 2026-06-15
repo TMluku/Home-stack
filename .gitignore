@@ -7,5 +7,6 @@ node_modules/
 .next-start*.log
 .pages-static*.log
 .pages-preview/
+.server-state/
 pnpm-lock.yaml.tmp
 tsconfig.tsbuildinfo

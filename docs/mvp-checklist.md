@@ -67,9 +67,10 @@ This checklist defines the current acceptance target for the Home Stack MVP.
 - [x] Add notification draft payloads for LINE/email/Web Push handoff.
 - [x] Add account/server-save migration contract panel.
 - [x] Add `/api/state/export` sync payload for server-side account persistence handoff.
+- [x] Add POST-only server save/load/reset endpoints backed by a replaceable JSON repository.
 - [ ] Add production server-side persistence and user accounts.
 - [ ] Add production image recognition and barcode/JAN master data.
 - [ ] Add official retailer API integrations with normalized shipping, point, and coupon windows.
 - [ ] Add real notification delivery.
 - [ ] Add purchase intent confirmation and cancellation-window flows.
-- [ ] Add server-side audit logs for effective-price conditions and ranking decisions.
+- [x] Add server-side audit logs for effective-price conditions and ranking decisions.

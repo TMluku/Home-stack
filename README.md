@@ -80,10 +80,21 @@ $env:YAHOO_SHOPPING_APP_ID="..."
 pnpm.cmd run dev
 ```
 
+## Optional Server State Store
+
+When the app runs as a Next.js server, account sync payloads can be saved through the POST-only state routes:
+
+- `POST /api/state/export`
+- `POST /api/state/save`
+- `POST /api/state/load`
+- `POST /api/state/reset`
+
+By default, saved JSON files are written under `.server-state/`. Set `HOME_STACK_STATE_STORE_DIR` to use another local directory. GitHub Pages remains static and does not run these API routes.
+
 ## Important Data Notes
 
 - Demo state is stored in the browser under `home-stack-state-v7`.
 - Photo upload does not send images to a server in the MVP.
 - Price candidates are for validation and can differ from live checkout totals.
 - Conditional prices must always expose the conditions that make the effective price true.
-- Post-MVP panels now show condition audit rows, notification adapter readiness, and account/server-save migration contracts.
+- Post-MVP panels now show price fetch plans, condition audit logs, notification drafts, and account/server-save contracts.

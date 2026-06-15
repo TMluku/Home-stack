@@ -361,6 +361,54 @@ describe("API route contracts", () => {
     );
   });
 
+  it("keeps official threshold coupons as conditions instead of guaranteed discounts", async () => {
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "Threshold official Rakuten item",
+                  itemPrice: 2000,
+                  itemUrl: "https://rakuten.example.test/threshold-coupon",
+                  couponAmount: 300,
+                  couponCondition: "coupon applies when buying 2 or more",
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(JSON.stringify({ hits: [] }), { status: 200 });
+    });
+
+    const response = await searchProducts(
+      new Request("http://localhost/api/product-search", {
+        method: "POST",
+        body: JSON.stringify({ query: "threshold coupon official" }),
+      }),
+    );
+    const payload = await response.json();
+    const rakutenCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "rakuten");
+
+    expect(response.status).toBe(200);
+    expect(rakutenCandidate.effectivePriceQuote).toMatchObject({
+      listPrice: 2000,
+      couponValue: 0,
+      effectivePrice: 2000,
+      conditionRequired: true,
+    });
+    expect(rakutenCandidate.effectivePriceQuote.conditionLabels).toEqual(expect.arrayContaining(["クーポン条件あり"]));
+    expect(rakutenCandidate.evidence).toEqual(expect.arrayContaining(["official coupon condition requires retailer confirmation"]));
+    expect(rakutenCandidate.evidence).not.toEqual(expect.arrayContaining(["official coupon value: 300 JPY"]));
+  });
+
   it("normalizes external photo detection responses into inventory candidates", async () => {
     process.env.HOME_STACK_IMAGE_RECOGNITION_URL = "https://vision.example.test/detect";
     process.env.HOME_STACK_IMAGE_RECOGNITION_TOKEN = "vision-token";

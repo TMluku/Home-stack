@@ -398,8 +398,13 @@ function inferPriceAdjustments(snippet: string, listPrice: number) {
   const couponValue = extractCouponValue(text, listPrice);
   const pointConditionRequired =
     !pointValue &&
-    (hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"]) || hasRewardMultiplierCopy(text, ["point", "points", "ポイント"]));
-  const couponConditionRequired = !couponValue && hasAmbiguousRewardCopy(text, ["coupon", "discount", "off", "クーポン"]);
+    (hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"]) ||
+      hasRewardMultiplierCopy(text, ["point", "points", "ポイント"]) ||
+      hasRewardThresholdCopy(text, ["point", "points", "ポイント"]));
+  const couponConditionRequired =
+    !couponValue &&
+    (hasAmbiguousRewardCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
+      hasRewardThresholdCopy(text, ["coupon", "discount", "off", "クーポン"]));
   const evidence = [
     typeof shippingFee === "number" ? `shipping fee inferred: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
     shippingConditionRequired ? "shipping condition requires retailer confirmation" : "",
@@ -432,13 +437,19 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   const shippingFee = extractOfficialShippingFee(record, source);
   const shippingName = readStringPath(record, ["shipping.name", "shippingLabel", "postageLabel"]);
   const shippingConditionRequired = Boolean(shippingName && hasConditionalShippingCopy(shippingName));
-  const pointValue =
+  const officialText = collectRecordText(record);
+  const pointHasConditionalText =
+    hasRewardMultiplierCopy(officialText, ["point", "points", "ポイント"]) ||
+    hasRewardThresholdCopy(officialText, ["point", "points", "ポイント"]);
+  const couponHasConditionalText = hasRewardThresholdCopy(officialText, ["coupon", "discount", "off", "クーポン"]);
+  const rawPointValue =
     readRewardNumberPath(record, ["point.amount", "pointValue", "pointAmount", "points", "rewardPoint"], ["point", "points", "ポイント"]) ??
     inferPointValueFromRate(
       listPrice,
       readRewardNumberPath(record, ["pointRate", "point.rate", "pointRateValue"], ["point", "points", "ポイント"]),
     );
-  const couponValue =
+  const pointValue = pointHasConditionalText ? undefined : rawPointValue;
+  const rawCouponValue =
     readRewardNumberPath(
       record,
       ["coupon.amount", "coupon.value", "couponAmount", "couponValue", "coupon.price", "discountAmount", "discount.amount"],
@@ -448,6 +459,7 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
       listPrice,
       readRewardNumberPath(record, ["coupon.rate", "couponRate", "discountRate"], ["coupon", "discount", "off", "クーポン"]),
     );
+  const couponValue = couponHasConditionalText ? undefined : rawCouponValue;
   const pointStart = readStringPath(record, [
     "point.startTime",
     "point.start",
@@ -460,12 +472,15 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   const couponEnd = readStringPath(record, ["coupon.endTime", "coupon.end", "couponEndTime", "discountEndTime"]);
   const pointWindowRequired = Boolean(pointValue && (pointStart || pointEnd));
   const couponWindowRequired = Boolean(couponValue && (couponStart || couponEnd));
-  const officialText = collectRecordText(record);
   const pointConditionRequired =
     !pointValue &&
     (hasAmbiguousRewardCopy(officialText, ["point", "points", "ポイント"]) ||
-      hasRewardMultiplierCopy(officialText, ["point", "points", "ポイント"]));
-  const couponConditionRequired = !couponValue && hasAmbiguousRewardCopy(officialText, ["coupon", "discount", "off", "クーポン"]);
+      hasRewardMultiplierCopy(officialText, ["point", "points", "ポイント"]) ||
+      hasRewardThresholdCopy(officialText, ["point", "points", "ポイント"]));
+  const couponConditionRequired =
+    !couponValue &&
+    (hasAmbiguousRewardCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
+      hasRewardThresholdCopy(officialText, ["coupon", "discount", "off", "クーポン"]));
   const evidence = [
     typeof shippingFee === "number" ? (shippingFee === 0 ? "official shipping: free" : `official shipping fee: ${shippingFee} JPY`) : "",
     shippingConditionRequired ? "official shipping condition requires retailer confirmation" : "",
@@ -559,6 +574,7 @@ function collectRecordText(value: unknown): string {
 function extractPointValue(text: string, listPrice: number) {
   if (hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"])) return undefined;
   if (hasRewardMultiplierCopy(text, ["point", "points", "ポイント"])) return undefined;
+  if (hasRewardThresholdCopy(text, ["point", "points", "ポイント"])) return undefined;
   const explicit = extractAmountAroundLabel(text, ["ポイント", "point", "points"]);
   if (explicit && explicit / listPrice <= 0.35) return explicit;
   const rate = extractRateAroundLabel(text, ["ポイント", "point", "points"]);
@@ -567,6 +583,7 @@ function extractPointValue(text: string, listPrice: number) {
 
 function extractCouponValue(text: string, listPrice: number) {
   if (hasAmbiguousRewardCopy(text, ["coupon", "discount", "off", "クーポン"])) return undefined;
+  if (hasRewardThresholdCopy(text, ["coupon", "discount", "off", "クーポン"])) return undefined;
   const explicit = extractAmountAroundLabel(text, ["クーポン", "coupon", "値引", "discount"]);
   if (explicit && explicit / listPrice <= 0.6) return explicit;
   const rate = extractRateAroundLabel(text, ["クーポン", "coupon", "off", "discount"]);
@@ -654,6 +671,36 @@ function hasRewardMultiplierCopy(text: string, labels: string[]) {
       new RegExp(`[0-9０-９]{1,2}\\s*(?:x|times|倍|倍率).{0,20}${escapedLabel}`, "i").test(text)
     );
   });
+}
+
+function hasRewardThresholdCopy(text: string, labels: string[]) {
+  const conditionWords = [
+    "以上",
+    "未満",
+    "対象",
+    "条件",
+    "購入",
+    "まとめ買い",
+    "when",
+    "if",
+    "buy",
+    "buying",
+    "purchase",
+    "spend",
+    "orders over",
+    "minimum",
+    "or more",
+  ];
+  return labels.some((label) =>
+    conditionWords.some((word) => {
+      const escapedLabel = escapeRegExp(label);
+      const escapedWord = escapeRegExp(word);
+      return (
+        new RegExp(`${escapedLabel}.{0,40}${escapedWord}`, "i").test(text) ||
+        new RegExp(`${escapedWord}.{0,40}${escapedLabel}`, "i").test(text)
+      );
+    }),
+  );
 }
 
 function extractAmountAroundLabel(text: string, labels: string[]) {

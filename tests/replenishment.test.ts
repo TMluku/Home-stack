@@ -278,6 +278,30 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.evidence).not.toEqual(expect.arrayContaining(["point value from page text: 10 JPY"]));
   });
 
+  it("does not deduct threshold coupon claims from broad product page text", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Threshold coupon product</title></head>
+        <body>
+          <span>price 1,200 JPY</span>
+          <span>coupon 300 JPY when buying 2 or more</span>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1200,
+      effectivePriceQuote: {
+        listPrice: 1200,
+        couponValue: 0,
+        effectivePrice: 1200,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["coupon condition requires retailer confirmation"]));
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(expect.arrayContaining(["coupon value from page text: 300 JPY"]));
+  });
+
   it("keeps conditional free-shipping thresholds as retailer-confirmed conditions", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -618,6 +642,32 @@ describe("replenishment domain logic", () => {
     });
     expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["point condition requires retailer confirmation"]));
     expect(candidates[0]?.evidence).not.toEqual(expect.arrayContaining(["point value inferred: 10 JPY"]));
+  });
+
+  it("does not deduct marketplace threshold coupons as guaranteed discounts", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/threshold-coupon" title="Threshold coupon detergent">Threshold coupon detergent</a>
+          <span>price 1,200 JPY</span>
+          <span>coupon 300 JPY when buying 2 or more</span>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      price: 1200,
+      effectivePriceQuote: {
+        listPrice: 1200,
+        couponValue: 0,
+        effectivePrice: 1200,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["coupon condition requires retailer confirmation"]));
+    expect(candidates[0]?.evidence).not.toEqual(expect.arrayContaining(["coupon value inferred: 300 JPY"]));
   });
 
   it("keeps marketplace free-shipping thresholds out of effective-price shipping deductions", () => {

@@ -517,8 +517,13 @@ function inferPriceAdjustments(html: string, listPrice: number): PriceAdjustment
   const couponValue = extractCouponValue(text, listPrice);
   const pointConditionRequired =
     !pointValue &&
-    (hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"]) || hasRewardMultiplierCopy(text, ["point", "points", "ポイント"]));
-  const couponConditionRequired = !couponValue && hasAmbiguousRewardCopy(text, ["coupon", "discount", "off", "クーポン"]);
+    (hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"]) ||
+      hasRewardMultiplierCopy(text, ["point", "points", "ポイント"]) ||
+      hasRewardThresholdCopy(text, ["point", "points", "ポイント"]));
+  const couponConditionRequired =
+    !couponValue &&
+    (hasAmbiguousRewardCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
+      hasRewardThresholdCopy(text, ["coupon", "discount", "off", "クーポン"]));
   return {
     shippingFee,
     pointValue,
@@ -552,6 +557,7 @@ function extractPlainText(html: string) {
 function extractPointValue(text: string, listPrice: number) {
   if (hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"])) return undefined;
   if (hasRewardMultiplierCopy(text, ["point", "points", "ポイント"])) return undefined;
+  if (hasRewardThresholdCopy(text, ["point", "points", "ポイント"])) return undefined;
   const explicit = extractAmountAroundLabel(text, ["ポイント", "point", "points"]);
   if (explicit && explicit / listPrice <= 0.35) return explicit;
   const rate = extractRateAroundLabel(text, ["ポイント", "point", "points"]);
@@ -560,6 +566,7 @@ function extractPointValue(text: string, listPrice: number) {
 
 function extractCouponValue(text: string, listPrice: number) {
   if (hasAmbiguousRewardCopy(text, ["coupon", "discount", "off", "クーポン"])) return undefined;
+  if (hasRewardThresholdCopy(text, ["coupon", "discount", "off", "クーポン"])) return undefined;
   const explicit = extractAmountAroundLabel(text, ["クーポン", "coupon", "値引", "discount"]);
   if (explicit && explicit / listPrice <= 0.6) return explicit;
   const rate = extractRateAroundLabel(text, ["クーポン", "coupon", "off", "discount"]);
@@ -647,6 +654,36 @@ function hasRewardMultiplierCopy(text: string, labels: string[]) {
       new RegExp(`[0-9０-９]{1,2}\\s*(?:x|times|倍|倍率).{0,20}${escapedLabel}`, "i").test(text)
     );
   });
+}
+
+function hasRewardThresholdCopy(text: string, labels: string[]) {
+  const conditionWords = [
+    "以上",
+    "未満",
+    "対象",
+    "条件",
+    "購入",
+    "まとめ買い",
+    "when",
+    "if",
+    "buy",
+    "buying",
+    "purchase",
+    "spend",
+    "orders over",
+    "minimum",
+    "or more",
+  ];
+  return labels.some((label) =>
+    conditionWords.some((word) => {
+      const escapedLabel = escapeRegExp(label);
+      const escapedWord = escapeRegExp(word);
+      return (
+        new RegExp(`${escapedLabel}.{0,40}${escapedWord}`, "i").test(text) ||
+        new RegExp(`${escapedWord}.{0,40}${escapedLabel}`, "i").test(text)
+      );
+    }),
+  );
 }
 
 function extractAmountAroundLabel(text: string, labels: string[]) {

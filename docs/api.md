@@ -49,6 +49,7 @@ Current MVP routes still return a lightweight shape so the client can stay simpl
 | `POST` | `/api/state/status` | Report the configured server state repository kind, normalized account ID, and write readiness. |
 | `POST` | `/api/notifications/prepare` | Convert notification drafts into queued or blocked delivery jobs without sending real notifications. |
 | `POST` | `/api/notifications/dispatch` | Dry-run notification delivery through the adapter boundary and report skipped/failed jobs without sending real messages. |
+| `POST` | `/api/notifications/status` | Report LINE, email, and Web Push provider readiness from environment configuration. |
 
 ### `POST /api/product-search`
 
@@ -156,5 +157,6 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 - JAN/barcode input should preserve the raw input, normalized digits, validation result, and suggested check-digit correction before searching marketplaces.
 - JAN/barcode lookup should expose the active master provider and be able to hand off valid codes to an external HTTP JAN master through `HOME_STACK_BARCODE_MASTER_URL`.
 - Notification preparation must keep delivery as a separate adapter step. Missing LINE/email/Web Push destinations should produce blocked jobs, not silent drops.
-- Notification dispatch should run as dry-run until real LINE/email/Web Push adapters are configured, preserving payloads, destinations, provider names, and attempt counts.
+- Notification status should expose provider readiness without leaking secret values. Required env keys are `HOME_STACK_LINE_CHANNEL_ACCESS_TOKEN`, `HOME_STACK_EMAIL_FROM` plus `HOME_STACK_EMAIL_TRANSPORT`, and `HOME_STACK_WEB_PUSH_PUBLIC_KEY` plus `HOME_STACK_WEB_PUSH_PRIVATE_KEY` plus `HOME_STACK_WEB_PUSH_SUBJECT`.
+- Notification dispatch should run as dry-run by default. With `dryRun: false`, unconfigured providers fail with `provider-not-configured`; adapter-ready providers can be marked `sent` at the boundary until real LINE/email/Web Push senders are wired in.
 - Store click events and queue decisions as append-only events once the backend exists.

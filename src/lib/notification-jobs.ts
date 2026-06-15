@@ -3,6 +3,19 @@ import type { Channel } from "./types";
 
 export type NotificationContactPoints = Partial<Record<Channel, string>>;
 
+export type NotificationProviderStatus = {
+  provider: Channel;
+  configured: boolean;
+  configuredBy: "env" | "missing";
+  requiredEnv: string[];
+  mode: "adapter-ready" | "dry-run-only";
+};
+
+export type NotificationProviderReadiness = {
+  checkedAt: string;
+  providers: Record<Channel, NotificationProviderStatus>;
+};
+
 export type NotificationJob = {
   id: string;
   accountId: string;
@@ -27,8 +40,8 @@ export type NotificationDispatchResult = {
   accountId: string;
   channel: Channel;
   destination?: string;
-  status: "dry-run" | "skipped" | "failed";
-  reason?: "dry-run-only" | "blocked-job" | "missing-destination" | "unsupported-channel";
+  status: "dry-run" | "sent" | "skipped" | "failed";
+  reason?: "dry-run-only" | "blocked-job" | "missing-destination" | "unsupported-channel" | "provider-not-configured";
   provider: "line" | "email" | "webpush" | "none";
   attempts: number;
   dispatchedAt: string;
@@ -45,9 +58,16 @@ export type NotificationJobSummary = {
 export type NotificationDispatchSummary = {
   total: number;
   dryRun: number;
+  sent: number;
   skipped: number;
   failed: number;
   channels: Partial<Record<Channel, number>>;
+};
+
+const providerEnv: Record<Channel, string[]> = {
+  line: ["HOME_STACK_LINE_CHANNEL_ACCESS_TOKEN"],
+  email: ["HOME_STACK_EMAIL_FROM", "HOME_STACK_EMAIL_TRANSPORT"],
+  webpush: ["HOME_STACK_WEB_PUSH_PUBLIC_KEY", "HOME_STACK_WEB_PUSH_PRIVATE_KEY", "HOME_STACK_WEB_PUSH_SUBJECT"],
 };
 
 export function buildNotificationJobs({
@@ -101,13 +121,16 @@ export function buildNotificationDispatchResults({
   jobs,
   dryRun = true,
   dispatchedAt = new Date().toISOString(),
+  providerReadiness = getNotificationProviderReadiness(dispatchedAt),
 }: {
   jobs: NotificationJob[];
   dryRun?: boolean;
   dispatchedAt?: string;
+  providerReadiness?: NotificationProviderReadiness;
 }): NotificationDispatchResult[] {
   return jobs.map((job) => {
     const provider = resolveNotificationProvider(job.channel);
+    const providerStatus = provider === "none" ? undefined : providerReadiness.providers[job.channel];
     const baseResult = {
       id: `${job.id}-${dryRun ? "dry-run" : "dispatch"}`,
       jobId: job.id,
@@ -144,10 +167,18 @@ export function buildNotificationDispatchResults({
       };
     }
 
+    if (!dryRun && !providerStatus?.configured) {
+      return {
+        ...baseResult,
+        status: "failed",
+        reason: "provider-not-configured",
+      };
+    }
+
     return {
       ...baseResult,
-      status: dryRun ? "dry-run" : "failed",
-      reason: dryRun ? "dry-run-only" : "unsupported-channel",
+      status: dryRun ? "dry-run" : "sent",
+      reason: dryRun ? "dry-run-only" : undefined,
     };
   });
 }
@@ -157,13 +188,25 @@ export function summarizeNotificationDispatchResults(results: NotificationDispat
     (summary, result) => {
       summary.total += 1;
       if (result.status === "dry-run") summary.dryRun += 1;
+      if (result.status === "sent") summary.sent += 1;
       if (result.status === "skipped") summary.skipped += 1;
       if (result.status === "failed") summary.failed += 1;
       summary.channels[result.channel] = (summary.channels[result.channel] ?? 0) + 1;
       return summary;
     },
-    { total: 0, dryRun: 0, skipped: 0, failed: 0, channels: {} },
+    { total: 0, dryRun: 0, sent: 0, skipped: 0, failed: 0, channels: {} },
   );
+}
+
+export function getNotificationProviderReadiness(checkedAt = new Date().toISOString()): NotificationProviderReadiness {
+  return {
+    checkedAt,
+    providers: {
+      line: buildProviderStatus("line"),
+      email: buildProviderStatus("email"),
+      webpush: buildProviderStatus("webpush"),
+    },
+  };
 }
 
 function resolveNotificationProvider(channel: Channel): NotificationDispatchResult["provider"] {
@@ -171,4 +214,17 @@ function resolveNotificationProvider(channel: Channel): NotificationDispatchResu
   if (channel === "email") return "email";
   if (channel === "webpush") return "webpush";
   return "none";
+}
+
+function buildProviderStatus(provider: Channel): NotificationProviderStatus {
+  const requiredEnv = providerEnv[provider];
+  const configured = requiredEnv.every((key) => Boolean(process.env[key]?.trim()));
+
+  return {
+    provider,
+    configured,
+    configuredBy: configured ? "env" : "missing",
+    requiredEnv,
+    mode: configured ? "adapter-ready" : "dry-run-only",
+  };
 }

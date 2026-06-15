@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { buildAccountProfile, normalizeEmail } from "../src/lib/account-profile";
 import { createDefaultState } from "../src/lib/demo-state";
 import {
   buildNotificationDispatchResults,
   buildNotificationJobs,
+  getNotificationProviderReadiness,
   summarizeNotificationDispatchResults,
   summarizeNotificationJobs,
 } from "../src/lib/notification-jobs";
@@ -26,6 +27,15 @@ import {
 import { buildReplenishmentQueue } from "../src/lib/replenishment";
 
 describe("post-MVP static helpers", () => {
+  afterEach(() => {
+    delete process.env.HOME_STACK_EMAIL_FROM;
+    delete process.env.HOME_STACK_EMAIL_TRANSPORT;
+    delete process.env.HOME_STACK_LINE_CHANNEL_ACCESS_TOKEN;
+    delete process.env.HOME_STACK_WEB_PUSH_PUBLIC_KEY;
+    delete process.env.HOME_STACK_WEB_PUSH_PRIVATE_KEY;
+    delete process.env.HOME_STACK_WEB_PUSH_SUBJECT;
+  });
+
   it("builds stable account profiles without exposing raw email addresses", () => {
     const profile = buildAccountProfile({
       email: " USER@example.COM ",
@@ -231,6 +241,36 @@ describe("post-MVP static helpers", () => {
 
     expect(results.every((result) => result.status === "dry-run" && result.reason === "dry-run-only")).toBe(true);
     expect(results.every((result) => result.provider === "email" && result.attempts === 1)).toBe(true);
-    expect(summarizeNotificationDispatchResults(results)).toMatchObject({ total: results.length, dryRun: results.length, skipped: 0 });
+    expect(summarizeNotificationDispatchResults(results)).toMatchObject({
+      total: results.length,
+      dryRun: results.length,
+      sent: 0,
+      skipped: 0,
+    });
+  });
+
+  it("reports configured notification providers and non-dry-run dispatch readiness", () => {
+    process.env.HOME_STACK_EMAIL_FROM = "noreply@example.test";
+    process.env.HOME_STACK_EMAIL_TRANSPORT = "smtp://localhost:1025";
+    const state = createDefaultState();
+    const queue = buildReplenishmentQueue(state, baseOffers);
+    const notificationDrafts = buildNotificationDrafts(queue, "email", "2026-06-15T00:00:00.000Z");
+    const jobs = buildNotificationJobs({
+      accountId: "acct-test",
+      drafts: notificationDrafts,
+      contactPoints: { email: "user@example.test" },
+      createdAt: "2026-06-15T00:00:00.000Z",
+    });
+    const readiness = getNotificationProviderReadiness("2026-06-15T00:00:01.000Z");
+    const results = buildNotificationDispatchResults({
+      jobs,
+      dryRun: false,
+      dispatchedAt: "2026-06-15T00:00:02.000Z",
+      providerReadiness: readiness,
+    });
+
+    expect(readiness.providers.email).toMatchObject({ configured: true, configuredBy: "env", mode: "adapter-ready" });
+    expect(results.every((result) => result.status === "sent" && result.provider === "email")).toBe(true);
+    expect(summarizeNotificationDispatchResults(results)).toMatchObject({ total: results.length, sent: results.length, failed: 0 });
   });
 });

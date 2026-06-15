@@ -12,6 +12,7 @@ import { POST as resolveBarcode } from "../src/app/api/barcode/resolve/route";
 import { POST as getBarcodeStatus } from "../src/app/api/barcode/status/route";
 import { POST as dispatchNotifications } from "../src/app/api/notifications/dispatch/route";
 import { POST as prepareNotifications } from "../src/app/api/notifications/prepare/route";
+import { POST as getNotificationStatus } from "../src/app/api/notifications/status/route";
 import { POST as scanPrices } from "../src/app/api/price-scan/route";
 import { POST as searchProducts } from "../src/app/api/product-search/route";
 import { POST as exportState } from "../src/app/api/state/export/route";
@@ -25,6 +26,12 @@ describe("API route contracts", () => {
     vi.restoreAllMocks();
     delete process.env.HOME_STACK_STATE_STORE_DIR;
     delete process.env.HOME_STACK_BARCODE_MASTER_URL;
+    delete process.env.HOME_STACK_EMAIL_FROM;
+    delete process.env.HOME_STACK_EMAIL_TRANSPORT;
+    delete process.env.HOME_STACK_LINE_CHANNEL_ACCESS_TOKEN;
+    delete process.env.HOME_STACK_WEB_PUSH_PUBLIC_KEY;
+    delete process.env.HOME_STACK_WEB_PUSH_PRIVATE_KEY;
+    delete process.env.HOME_STACK_WEB_PUSH_SUBJECT;
   });
 
   it("rejects empty price scan requests", async () => {
@@ -579,7 +586,25 @@ describe("API route contracts", () => {
 
     expect(queuedResponse.status).toBe(200);
     expect(queued.summary.queued).toBe(queued.summary.total);
+    expect(queued.readiness.providers.email).toMatchObject({ configured: false, mode: "dry-run-only" });
     expect(queued.jobs[0].payload.message).toContain("実質価格");
+  });
+
+  it("reports notification provider readiness from environment configuration", async () => {
+    process.env.HOME_STACK_EMAIL_FROM = "noreply@example.test";
+    process.env.HOME_STACK_EMAIL_TRANSPORT = "smtp://localhost:1025";
+
+    const response = await getNotificationStatus();
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.readiness.providers.email).toMatchObject({
+      provider: "email",
+      configured: true,
+      configuredBy: "env",
+      mode: "adapter-ready",
+    });
+    expect(payload.readiness.providers.line).toMatchObject({ configured: false, configuredBy: "missing" });
   });
 
   it("dry-runs notification dispatch results through the adapter boundary", async () => {
@@ -632,5 +657,43 @@ describe("API route contracts", () => {
     expect(blockedResponse.status).toBe(200);
     expect(blocked.summary.skipped).toBe(blocked.summary.total);
     expect(blocked.results[0].reason).toBe("missing-destination");
+
+    const liveAttemptResponse = await dispatchNotifications(
+      new Request("http://localhost/api/notifications/dispatch", {
+        method: "POST",
+        body: JSON.stringify({
+          payload: exported.payload,
+          contactPoints: { email: "user@example.test" },
+          dryRun: false,
+        }),
+      }),
+    );
+    const liveAttempt = await liveAttemptResponse.json();
+
+    expect(liveAttemptResponse.status).toBe(200);
+    expect(liveAttempt.dryRun).toBe(false);
+    expect(liveAttempt.results[0]).toMatchObject({
+      provider: "email",
+      status: "failed",
+      reason: "provider-not-configured",
+    });
+
+    process.env.HOME_STACK_EMAIL_FROM = "noreply@example.test";
+    process.env.HOME_STACK_EMAIL_TRANSPORT = "smtp://localhost:1025";
+    const configuredResponse = await dispatchNotifications(
+      new Request("http://localhost/api/notifications/dispatch", {
+        method: "POST",
+        body: JSON.stringify({
+          payload: exported.payload,
+          contactPoints: { email: "user@example.test" },
+          dryRun: false,
+        }),
+      }),
+    );
+    const configured = await configuredResponse.json();
+
+    expect(configuredResponse.status).toBe(200);
+    expect(configured.summary.sent).toBe(configured.summary.total);
+    expect(configured.results[0]).toMatchObject({ provider: "email", status: "sent" });
   });
 });

@@ -97,6 +97,7 @@ When the app runs as a Next.js server, account sync payloads can be saved throug
 - `POST /api/state/status`
 - `POST /api/notifications/prepare`
 - `POST /api/notifications/dispatch`
+- `POST /api/notifications/status`
 - `POST /api/barcode/resolve`
 - `POST /api/barcode/status`
 
@@ -106,7 +107,8 @@ Account resolution creates stable account IDs and email hashes for email-link/OA
 Account listing reads the server-side account index that is updated whenever account state is saved or reset.
 The Post-MVP panel can call these routes from a Next.js server build to save, load, delete, and refresh account state; the GitHub Pages build keeps the controls visible but reports that API persistence is unavailable.
 Condition audit routes append and list effective-price condition events so ranking decisions can be inspected later, including product-search candidate quotes and direct URL scan quotes.
-Notification preparation builds queued or blocked jobs, and dispatch can dry-run provider handoff without sending real LINE, email, or Web Push messages yet.
+Notification preparation builds queued or blocked jobs, status reports configured providers, and dispatch can dry-run provider handoff or mark adapter-ready providers as sent without calling external services yet.
+Set `HOME_STACK_LINE_CHANNEL_ACCESS_TOKEN`, `HOME_STACK_EMAIL_FROM` plus `HOME_STACK_EMAIL_TRANSPORT`, or the Web Push VAPID env values to move a channel from dry-run-only to adapter-ready.
 Barcode resolution validates JAN check digits, suggests corrected candidates, and returns search candidates without needing a production barcode master yet.
 Set `HOME_STACK_BARCODE_MASTER_URL` to hand valid JAN codes to an external HTTP master endpoint; otherwise the demo catalog remains the fallback.
 

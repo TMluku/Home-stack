@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NotificationContactPoints, NotificationJob } from "@/lib/notification-jobs";
-import { buildNotificationDispatchResults, buildNotificationJobs, summarizeNotificationDispatchResults } from "@/lib/notification-jobs";
+import {
+  buildNotificationDispatchResults,
+  buildNotificationJobs,
+  getNotificationProviderReadiness,
+  summarizeNotificationDispatchResults,
+} from "@/lib/notification-jobs";
 import type { ServerSyncPayload } from "@/lib/post-mvp";
 
 export async function POST(request: Request) {
@@ -31,9 +36,10 @@ export async function POST(request: Request) {
 
   const dryRun = body?.dryRun !== false;
   const dispatchedAt = typeof body?.dispatchedAt === "string" && body.dispatchedAt.trim() ? body.dispatchedAt : undefined;
-  const results = buildNotificationDispatchResults({ jobs, dryRun, dispatchedAt });
+  const readiness = getNotificationProviderReadiness(dispatchedAt);
+  const results = buildNotificationDispatchResults({ jobs, dryRun, dispatchedAt, providerReadiness: readiness });
 
-  return NextResponse.json({ ok: true, dryRun, results, summary: summarizeNotificationDispatchResults(results) });
+  return NextResponse.json({ ok: true, dryRun, readiness, results, summary: summarizeNotificationDispatchResults(results) });
 }
 
 function isServerSyncPayload(value: unknown): value is ServerSyncPayload {

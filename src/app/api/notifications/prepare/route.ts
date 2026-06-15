@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NotificationContactPoints } from "@/lib/notification-jobs";
-import { buildNotificationJobs, summarizeNotificationJobs } from "@/lib/notification-jobs";
+import { buildNotificationJobs, getNotificationProviderReadiness, summarizeNotificationJobs } from "@/lib/notification-jobs";
 import type { ServerSyncPayload } from "@/lib/post-mvp";
 
 export async function POST(request: Request) {
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     contactPoints: body?.contactPoints,
   });
 
-  return NextResponse.json({ ok: true, jobs, summary: summarizeNotificationJobs(jobs) });
+  return NextResponse.json({ ok: true, jobs, readiness: getNotificationProviderReadiness(), summary: summarizeNotificationJobs(jobs) });
 }
 
 function isServerSyncPayload(value: unknown): value is ServerSyncPayload {

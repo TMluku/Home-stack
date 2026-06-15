@@ -42,11 +42,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Run checks
+        run: pnpm run check
+
       - name: Build
         run: pnpm run build
         env:
           NEXT_OUTPUT_EXPORT: "true"
           NEXT_PUBLIC_STATIC_EXPORT: "true"
+
+      - name: Add GitHub Pages marker
+        run: touch out/.nojekyll
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

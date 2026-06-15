@@ -66,8 +66,9 @@ pnpm.cmd run build
 The repository includes a GitHub Pages deployment workflow at `.github/workflows/pages.yml`.
 
 - CI builds the normal Next.js app.
-- Pages builds with `NEXT_OUTPUT_EXPORT=true` and publishes the static `out/` directory.
+- Pages runs `pnpm run check`, builds with `NEXT_OUTPUT_EXPORT=true`, and publishes the static `out/` directory.
 - The Pages build uses `/Home-stack` as the base path.
+- The workflow adds `out/.nojekyll` so GitHub Pages serves the Next.js `_next/` assets.
 - Because GitHub Pages is static hosting, product search and URL price scan fall back to local demo candidates, JAN lookup, and external marketplace search links until a server API is connected.
 
 ## Optional Marketplace API Keys

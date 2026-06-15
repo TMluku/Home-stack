@@ -205,29 +205,35 @@ export function buildStaticProductSearchResult(query: string, offers: Offer[], s
     })
     .slice(0, 6);
 
-  const offerCandidates: ProductSearchCandidate[] = matchingOffers.map((offer, index) => ({
-    id: `demo-${offer.id}`,
-    source: "demo-catalog",
-    sourceLabel: "デモ価格台帳",
-    title: offer.title,
-    url: offer.url,
-    price: offer.effectivePrice,
-    effectivePriceQuote: buildEffectivePriceQuote({
-      listPrice: offer.listPrice,
-      shippingFee: 0,
-      pointValue: Math.max(0, offer.listPrice - offer.effectivePrice),
-      couponValue: 0,
-    }),
-    currency: "JPY",
-    shipping: offer.shipping,
-    unitPrice: offer.unitPrice,
-    matchScore: Math.max(60, 96 - index * 8),
-    confidence: index <= 1 ? "high" : "medium",
-    fetchedAt: searchedAt,
-    evidence: janProduct
-      ? [`JAN ${janProduct.janCode}`, "デモ価格台帳から同カテゴリ候補を抽出"]
-      : ["デモ価格台帳", "GitHub Pagesではサーバー検索の代わりにローカル候補を表示"],
-  }));
+  const offerCandidates: ProductSearchCandidate[] = matchingOffers.map((offer, index) => {
+    const quote = withOfferConditionEvidence(
+      buildEffectivePriceQuote({
+        listPrice: offer.listPrice,
+        shippingFee: 0,
+        pointValue: Math.max(0, offer.listPrice - offer.effectivePrice),
+        couponValue: 0,
+      }),
+      offer,
+    );
+    return {
+      id: `demo-${offer.id}`,
+      source: "demo-catalog",
+      sourceLabel: "デモ価格台帳",
+      title: offer.title,
+      url: offer.url,
+      price: offer.effectivePrice,
+      effectivePriceQuote: quote,
+      currency: "JPY",
+      shipping: offer.shipping,
+      unitPrice: offer.unitPrice,
+      matchScore: Math.max(60, 96 - index * 8),
+      confidence: index <= 1 ? "high" : "medium",
+      fetchedAt: searchedAt,
+      evidence: janProduct
+        ? [`JAN ${janProduct.janCode}`, "デモ価格台帳から同カテゴリ候補を抽出", ...quote.evidence]
+        : ["デモ価格台帳", "GitHub Pagesではサーバー検索の代わりにローカル候補を表示", ...quote.evidence],
+    };
+  });
 
   const linkCandidates: ProductSearchCandidate[] = buildMarketplaceSearchUrls(normalizedQuery).map((source, index) => ({
     id: `market-link-${index}`,
@@ -252,6 +258,55 @@ export function buildStaticProductSearchResult(query: string, offers: Offer[], s
       { source: "marketplace-link", label: "外部検索リンク", ok: linkCandidates.length > 0, count: linkCandidates.length },
     ],
   };
+}
+
+function withOfferConditionEvidence(quote: EffectivePriceQuote, offer: Offer): EffectivePriceQuote {
+  const conditionText = [
+    offer.shipping,
+    offer.points,
+    offer.detail,
+    offer.reason,
+    offer.unitPrice,
+    ...offer.conditions.flatMap((condition) => [condition.label, condition.detail]),
+    ...offer.comparisonBasis,
+  ].join(" ");
+  const conditionLabels = [
+    ...quote.conditionLabels,
+    hasPurchaseConditionText(conditionText) ? "購入条件あり" : "",
+    hasShippingConditionText(conditionText) ? "送料条件あり" : "",
+    hasPointConditionText(conditionText) ? "ポイント条件あり" : "",
+    hasCouponConditionText(conditionText) ? "クーポン条件あり" : "",
+  ].filter(Boolean);
+  const evidence = [
+    ...quote.evidence,
+    hasPurchaseConditionText(conditionText) ? "purchase condition requires retailer confirmation" : "",
+    hasShippingConditionText(conditionText) ? "shipping condition requires retailer confirmation" : "",
+    hasPointConditionText(conditionText) ? "point condition requires retailer confirmation" : "",
+    hasCouponConditionText(conditionText) ? "coupon condition requires retailer confirmation" : "",
+  ].filter(Boolean);
+  const uniqueLabels = [...new Set(conditionLabels)];
+  return {
+    ...quote,
+    conditionLabels: uniqueLabels,
+    conditionRequired: uniqueLabels.length > 0,
+    evidence: [...new Set(evidence)],
+  };
+}
+
+function hasPurchaseConditionText(text: string) {
+  return /初回|初めて|定期|まとめ買い|セット|パック|箱買い|ケース|bundle|pack|set|subscribe|subscription/i.test(text);
+}
+
+function hasShippingConditionText(text: string) {
+  return /送料.*(?:条件|ライン|以上|対象|会員)|(?:条件|ライン|以上|対象|会員).*送料|free shipping.*(?:over|eligible|minimum)/i.test(text);
+}
+
+function hasPointConditionText(text: string) {
+  return /ポイント|還元|PayPay|point/i.test(text);
+}
+
+function hasCouponConditionText(text: string) {
+  return /クーポン|coupon|off/i.test(text);
 }
 
 export function buildStaticPriceScanResults(urls: string, scannedAt = new Date().toISOString()): LivePriceResult[] {

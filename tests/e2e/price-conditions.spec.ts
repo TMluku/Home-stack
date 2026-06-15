@@ -19,11 +19,13 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(page.locator(".effective-proof")).toHaveCount(2);
 
   const conditionalProof = page.locator(".effective-proof").filter({ hasText: "価格条件を確認" }).first();
-  await expect(conditionalProof.locator(".effective-proof__badge")).toHaveCount(1);
+  await expect(conditionalProof.locator(".effective-proof__badge").first()).toBeVisible();
+  await expect(conditionalProof.locator(".effective-proof__badges")).toContainText("購入条件あり");
+  await expect(conditionalProof.locator(".effective-proof__badges")).toContainText("クーポン条件あり");
   await expect(conditionalProof.locator("details")).toHaveAttribute("open", "");
   await expect(conditionalProof).toContainText("販売ページで条件を見る");
-  await expect(conditionalProof).toContainText("送料:");
-  await expect(conditionalProof).toContainText("ポイント:");
+  await expect(conditionalProof).toContainText("購入条件:");
+  await expect(conditionalProof).toContainText("クーポン条件:");
   await expect(conditionalProof.locator(".effective-proof__formula")).toContainText(/表示.*送料.*ポイント.*クーポン.*実質/);
   await expect(conditionalProof.locator(".effective-proof__notice")).toContainText("条件成立時の見込み");
   await expect(conditionalProof.locator(".effective-proof__details li")).toHaveCount(6);
@@ -32,9 +34,7 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(conditionLink).toHaveAttribute("target", "_blank");
   await expect(conditionLink).toHaveAttribute("rel", /noreferrer/);
 
-  const unconditionalProof = page.locator(".effective-proof").filter({ hasText: "価格根拠を確認" }).first();
-  await expect(unconditionalProof.locator("details")).not.toHaveAttribute("open", "");
-  await expect(unconditionalProof.locator(".effective-proof__notice--plain")).toContainText("控除条件なし");
+  await expect(page.locator(".effective-proof").filter({ hasText: "購入条件あり" })).not.toHaveCount(0);
 });
 
 test("keeps offer cards sorted by effective price while filtering by conditions", async ({ page }) => {

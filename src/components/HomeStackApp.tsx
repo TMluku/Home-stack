@@ -1437,7 +1437,7 @@ function EffectivePriceProof({
   if (!quote) return null;
 
   const rawProofEvidence = [...new Set([...(evidence ?? []), ...quote.evidence])].filter(Boolean);
-  const proofEvidence = [...new Set(rawProofEvidence.map(formatPriceEvidence))].slice(0, 6);
+  const proofEvidence = prioritizeConditionEvidence([...new Set(rawProofEvidence.map(formatPriceEvidence))]).slice(0, 6);
   const proofCount = rawProofEvidence.length;
   const priceFormula = `表示 ${yenFormatter.format(quote.listPrice)} + 送料 ${yenFormatter.format(quote.shippingFee ?? 0)} - ポイント ${yenFormatter.format(
     quote.pointValue ?? 0,
@@ -1542,6 +1542,14 @@ function formatPriceEvidence(entry: string) {
   if (entry === "external marketplace search link") return "外部検索リンク: 販売サイトで価格条件を確認";
 
   return entry;
+}
+
+function prioritizeConditionEvidence(entries: string[]) {
+  return [...entries].sort((a, b) => Number(isConditionEvidence(b)) - Number(isConditionEvidence(a)));
+}
+
+function isConditionEvidence(entry: string) {
+  return /条件|期間/.test(entry);
 }
 
 function ProductSearchPanel({

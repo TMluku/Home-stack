@@ -44,7 +44,7 @@ export type NotificationDispatchResult = {
   status: "dry-run" | "sent" | "skipped" | "failed";
   reason?: "dry-run-only" | "blocked-job" | "missing-destination" | "unsupported-channel" | "provider-not-configured" | "provider-error";
   provider: "line" | "email" | "webpush" | "none";
-  deliveryMethod: "dry-run" | "line-push-api" | "email-smtp" | "adapter-boundary" | "none";
+  deliveryMethod: "dry-run" | "line-push-api" | "email-smtp" | "web-push" | "adapter-boundary" | "none";
   attempts: number;
   dispatchedAt: string;
   payload: NotificationJob["payload"];
@@ -141,9 +141,11 @@ export function buildNotificationDispatchResults({
         ? "line-push-api"
         : provider === "email"
           ? "email-smtp"
-          : provider === "none"
-            ? "none"
-            : "adapter-boundary";
+          : provider === "webpush"
+            ? "web-push"
+            : provider === "none"
+              ? "none"
+              : "adapter-boundary";
     const baseResult = {
       id: `${job.id}-${dryRun ? "dry-run" : "dispatch"}`,
       jobId: job.id,
@@ -240,6 +242,6 @@ function buildProviderStatus(provider: Channel): NotificationProviderStatus {
     configuredBy: configured ? "env" : "missing",
     requiredEnv,
     mode: configured ? "adapter-ready" : "dry-run-only",
-    realDelivery: (provider === "line" || provider === "email") && configured,
+    realDelivery: configured,
   };
 }

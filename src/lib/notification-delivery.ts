@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import webPush, { type PushSubscription } from "web-push";
 import {
   buildNotificationDispatchResults,
   getNotificationProviderReadiness,
@@ -35,6 +36,11 @@ export async function dispatchNotificationJobs({
 
     if (result.provider === "email") {
       delivered.push(await sendEmailSmtpMessage(result));
+      continue;
+    }
+
+    if (result.provider === "webpush") {
+      delivered.push(await sendWebPushMessage(result));
       continue;
     }
 
@@ -117,4 +123,57 @@ function buildLineMessageText(payload: NotificationJob["payload"]) {
 
 function buildEmailText(payload: NotificationJob["payload"]) {
   return [payload.message, "", payload.actionUrl].filter(Boolean).join("\n");
+}
+
+async function sendWebPushMessage(result: NotificationDispatchResult): Promise<NotificationDispatchResult> {
+  const publicKey = process.env.HOME_STACK_WEB_PUSH_PUBLIC_KEY?.trim();
+  const privateKey = process.env.HOME_STACK_WEB_PUSH_PRIVATE_KEY?.trim();
+  const subject = process.env.HOME_STACK_WEB_PUSH_SUBJECT?.trim();
+  if (!publicKey || !privateKey || !subject || !result.destination) {
+    return { ...result, status: "failed", reason: result.destination ? "provider-not-configured" : "missing-destination" };
+  }
+
+  const subscription = parseWebPushSubscription(result.destination);
+  if (!subscription) {
+    return { ...result, status: "failed", reason: "provider-error", providerMessage: "Invalid Web Push subscription JSON." };
+  }
+
+  try {
+    webPush.setVapidDetails(subject, publicKey, privateKey);
+    const response = await webPush.sendNotification(subscription, JSON.stringify(buildWebPushPayload(result.payload)));
+    return {
+      ...result,
+      status: "sent",
+      deliveryMethod: "web-push",
+      providerStatus: response.statusCode,
+      providerMessage: response.headers.location,
+    };
+  } catch (error) {
+    const responseLike = error as { statusCode?: number; body?: string; message?: string };
+    return {
+      ...result,
+      status: "failed",
+      reason: "provider-error",
+      providerStatus: responseLike.statusCode,
+      providerMessage: responseLike.body ?? responseLike.message ?? "Web Push send failed.",
+    };
+  }
+}
+
+function parseWebPushSubscription(value: string): PushSubscription | null {
+  try {
+    const parsed = JSON.parse(value) as Partial<PushSubscription>;
+    if (typeof parsed.endpoint !== "string" || !parsed.keys?.auth || !parsed.keys?.p256dh) return null;
+    return parsed as PushSubscription;
+  } catch {
+    return null;
+  }
+}
+
+function buildWebPushPayload(payload: NotificationJob["payload"]) {
+  return {
+    title: payload.subject,
+    body: payload.message,
+    data: { actionUrl: payload.actionUrl },
+  };
 }

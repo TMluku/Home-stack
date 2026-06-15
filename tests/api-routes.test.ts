@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import nodemailer from "nodemailer";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import webPush from "web-push";
 import { POST as listAccounts } from "../src/app/api/account/list/route";
 import { POST as resolveAccount } from "../src/app/api/account/resolve/route";
 import { POST as appendCandidateAudit } from "../src/app/api/audit/candidates/append/route";
@@ -961,6 +962,64 @@ describe("API route contracts", () => {
         to: "U1234567890",
         messages: [expect.objectContaining({ type: "text" })],
       });
+    } finally {
+      await rm(storeDir, { recursive: true, force: true });
+    }
+  });
+
+  it("sends configured Web Push notification jobs with VAPID credentials", async () => {
+    const storeDir = await mkdtemp(join(tmpdir(), "home-stack-webpush-dispatch-"));
+    process.env.HOME_STACK_STATE_STORE_DIR = storeDir;
+    process.env.HOME_STACK_WEB_PUSH_PUBLIC_KEY = "public-key";
+    process.env.HOME_STACK_WEB_PUSH_PRIVATE_KEY = "private-key";
+    process.env.HOME_STACK_WEB_PUSH_SUBJECT = "mailto:ops@example.test";
+    const setVapidDetailsMock = vi.spyOn(webPush, "setVapidDetails").mockImplementation(() => undefined);
+    const sendNotificationMock = vi
+      .spyOn(webPush, "sendNotification")
+      .mockResolvedValue({ statusCode: 201, body: "", headers: { location: "push-message-id" } } as never);
+    const subscription = {
+      endpoint: "https://push.example.test/subscription",
+      keys: { auth: "auth-secret", p256dh: "p256dh-key" },
+    };
+
+    try {
+      const exportResponse = await exportState(
+        new Request("http://localhost/api/state/export", {
+          method: "POST",
+          body: JSON.stringify({
+            accountId: "acct-webpush-dispatch",
+            state: {
+              household: { channel: "webpush" },
+            },
+          }),
+        }),
+      );
+      const exported = await exportResponse.json();
+
+      const response = await dispatchNotifications(
+        new Request("http://localhost/api/notifications/dispatch", {
+          method: "POST",
+          body: JSON.stringify({
+            payload: exported.payload,
+            contactPoints: { webpush: JSON.stringify(subscription) },
+            dryRun: false,
+            dispatchedAt: "2026-06-15T00:00:01.000Z",
+          }),
+        }),
+      );
+      const payload = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(payload.summary.sent).toBe(payload.summary.total);
+      expect(payload.results[0]).toMatchObject({
+        provider: "webpush",
+        deliveryMethod: "web-push",
+        status: "sent",
+        providerStatus: 201,
+        providerMessage: "push-message-id",
+      });
+      expect(setVapidDetailsMock).toHaveBeenCalledWith("mailto:ops@example.test", "public-key", "private-key");
+      expect(sendNotificationMock).toHaveBeenCalledWith(subscription, expect.stringContaining('"title"'));
     } finally {
       await rm(storeDir, { recursive: true, force: true });
     }

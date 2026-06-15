@@ -1829,7 +1829,7 @@ function PostMvpOpsPanel({
             type="text"
             value={notificationDestination}
             onChange={(event) => onNotificationDestinationChange(event.target.value)}
-            placeholder="user@example.test / LINE user id / push endpoint"
+            placeholder="user@example.test / LINE user id / PushSubscription JSON"
           />
           <div className="ops-actions">
             <button className="button button--ghost" type="button" onClick={onRefreshNotificationStatus} disabled={notificationOpsBusy}>

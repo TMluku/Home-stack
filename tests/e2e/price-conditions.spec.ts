@@ -34,6 +34,12 @@ test("shows ranked price candidates with condition evidence and visual asset", a
     /公開URLを共有しました|共有非対応のためURLをコピーしました|共有をキャンセルしました|https:\/\/tmluku\.github\.io\/Home-stack\//,
   );
   await expect(page.locator(".hero__qa-template")).toContainText("実機QAで記録する項目");
+  await expect(page.locator(".hero__qa-template")).toContainText("mobile-qa-evidence");
+  await page.locator(".hero__qa-template summary").click();
+  await expect(page.locator(".hero__qa-template").getByRole("link", { name: "Browser E2E" })).toHaveAttribute(
+    "href",
+    "https://github.com/TMluku/Home-stack/actions/workflows/e2e.yml",
+  );
   await page.getByRole("button", { name: "QA記録をコピー" }).click();
   await expect(page.locator(".hero__hint")).toContainText(/実機QA記録テンプレートをコピーしました|\| .*GitHub Pages実機QA/);
 

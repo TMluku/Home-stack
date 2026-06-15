@@ -64,6 +64,7 @@ const isStaticExport = process.env.NEXT_PUBLIC_STATIC_EXPORT === "true";
 const staticAssetBasePath = isStaticExport ? "/Home-stack" : "";
 const publicPagesUrl = "https://tmluku.github.io/Home-stack/";
 const publicPagesQrPath = `${staticAssetBasePath}/pages-qr.svg`;
+const browserE2eWorkflowUrl = "https://github.com/TMluku/Home-stack/actions/workflows/e2e.yml";
 const serverSyncAccountId = "demo-account";
 
 type ServerAccountSummary = {
@@ -255,8 +256,10 @@ export function HomeStackApp() {
       `| ${today} | 端末名を記入 | ブラウザ名を記入 | Wi-Fi / 5G | Pass / Fail | GitHub Pages実機QA: 横スクロール、価格条件、URLスキャン、共有導線を確認 |`,
       "",
       "- Tested URL: https://tmluku.github.io/Home-stack/",
+      "- Browser E2E workflow: https://github.com/TMluku/Home-stack/actions/workflows/e2e.yml",
       "- Phone screenshot: attach separately",
       "- Browser E2E artifact: mobile-qa-evidence",
+      "- Automated evidence files: mobile-price-condition-proof.png / mobile-price-condition-proof.json",
     ].join("\n");
 
     try {
@@ -900,7 +903,14 @@ export function HomeStackApp() {
             </ul>
             <details className="hero__qa-template">
               <summary>実機QAで記録する項目</summary>
-              <p>日付、端末、ブラウザ、回線、Pass/Fail、スクリーンショット、Browser E2E artifact を `docs/mobile-qa.md` に残します。</p>
+              <p>
+                日付、端末、ブラウザ、回線、Pass/Fail、スクリーンショット、Browser E2E artifact を `docs/mobile-qa.md`
+                に残します。自動証跡は
+                <a href={browserE2eWorkflowUrl} target="_blank" rel="noreferrer">
+                  Browser E2E
+                </a>
+                の `mobile-qa-evidence` から確認します。
+              </p>
             </details>
             <dl className="radar-strip">
               <div>

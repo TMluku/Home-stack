@@ -12,6 +12,9 @@ Home Stack is now a Next.js + TypeScript app using the App Router.
 | `pnpm run build:pages` | Build the static GitHub Pages export and add `out/.nojekyll`. |
 | `pnpm run check:pages` | Check remote branch, Pages URL, and optional GitHub API readiness for the Pages deployment. |
 | `pnpm run deploy:pages-branch` | Publish an existing `out/` export to the `gh-pages` branch. |
+| `pnpm run preview:pages` | Serve the static Pages export locally under `/Home-stack/`. |
+| `pnpm run test:e2e` | Smoke-test the published GitHub Pages URL and visual asset. |
+| `pnpm run test:e2e:browser` | Run Playwright against the static Pages export in mobile and desktop Chromium. |
 | `pnpm start` | Serve the production build with `next start`. |
 | `pnpm run typecheck` | Run TypeScript type checking. |
 | `pnpm test` | Run the Vitest verification suite. |
@@ -30,6 +33,7 @@ Home Stack is now a Next.js + TypeScript app using the App Router.
 | `src/components` | Client-side React components for the MVP workflow. |
 | `src/lib` | TypeScript domain types, demo state, offer data, and replenishment logic. |
 | `public` | Manifest and icon assets served from the app root. |
+| `docs/mobile-qa.md` | Real-device GitHub Pages QA checklist and result log. |
 
 ## Turbo
 

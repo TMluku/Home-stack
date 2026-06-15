@@ -81,6 +81,8 @@ Manual smartphone QA for Pages:
 - Tap an inventory chip and confirm candidates appear in price order.
 - Confirm condition-required cards show `価格条件を確認`, evidence rows, and a link to the seller page without horizontal scrolling.
 
+Record real-device passes in `docs/mobile-qa.md`.
+
 Remove generated build, preview, log, dependency, and local server-state artifacts with:
 
 ```powershell

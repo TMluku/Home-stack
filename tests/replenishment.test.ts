@@ -529,6 +529,28 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips preorder and restock-pending prices before available direct product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Available now product</title></head>
+        <body>
+          <span>予約価格 980円 発売前</span>
+          <span>入荷予定 1,080円</span>
+          <strong>販売価格 1,480円</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1480,
+      effectivePriceQuote: {
+        listPrice: 1480,
+        effectivePrice: 1480,
+      },
+      source: "html-text",
+    });
+  });
+
   it("does not deduct ambiguous max reward claims from broad product page text", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -1645,6 +1667,30 @@ describe("replenishment domain logic", () => {
       effectivePriceQuote: {
         listPrice: 1280,
         effectivePrice: 1280,
+      },
+    });
+  });
+
+  it("skips preorder and restock-pending prices before available marketplace item prices", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/available-preorder" title="Available preorder detergent">Available preorder detergent</a>
+          <span>pre-order 980 JPY coming soon</span>
+          <span>入荷予定 1,080円</span>
+          <strong>販売価格 1,480円</strong>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Available preorder detergent",
+      price: 1480,
+      effectivePriceQuote: {
+        listPrice: 1480,
+        effectivePrice: 1480,
       },
     });
   });

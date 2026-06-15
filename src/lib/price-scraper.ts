@@ -1132,11 +1132,14 @@ function isUsedConditionPriceContext(text: string, index: number, length: number
 }
 
 function isUnavailablePriceContext(text: string, index: number, length: number) {
-  const before = text.slice(Math.max(0, index - 24), index);
+  const before = text.slice(Math.max(0, index - 44), index);
   const after = text.slice(index + length, index + length + 24);
   const labelPrefix = `${before.replace(/^.*[0-9０-９][^0-9０-９]*/, "")}${text.slice(index, index + length).replace(/[0-9０-９].*$/, "")}`;
-  const words = /(?:在庫なし|売り切れ|売切れ|販売終了|入荷待ち|品切れ|sold out|out of stock|unavailable|discontinued)/i;
-  return words.test(labelPrefix) || words.test(after);
+  const words =
+    /(?:在庫なし|売り切れ|売切れ|販売終了|入荷待ち|入荷予定|品切れ|予約価格|予約販売|予約受付|発売前|販売前|sold out|out of stock|unavailable|discontinued|pre-?order|coming soon|not yet available)/i;
+  const wordsBefore =
+    /(?:在庫なし|売り切れ|売切れ|販売終了|入荷待ち|入荷予定|品切れ|予約価格|予約販売|予約受付|発売前|販売前|sold out|out of stock|unavailable|discontinued|pre-?order|coming soon|not yet available)\s*$/i;
+  return words.test(labelPrefix) || wordsBefore.test(before) || words.test(after);
 }
 
 function inferCurrency(value?: string) {

@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { buildAccountProfile, normalizeEmail } from "../src/lib/account-profile";
 import { createDefaultState } from "../src/lib/demo-state";
-import { buildNotificationJobs, summarizeNotificationJobs } from "../src/lib/notification-jobs";
+import {
+  buildNotificationDispatchResults,
+  buildNotificationJobs,
+  summarizeNotificationDispatchResults,
+  summarizeNotificationJobs,
+} from "../src/lib/notification-jobs";
 import { baseOffers } from "../src/lib/offers";
 import {
   buildCandidateConditionAuditLog,
@@ -174,5 +179,26 @@ describe("post-MVP static helpers", () => {
     expect(blockedJobs.every((job) => job.status === "blocked" && job.blockedReason === "missing-destination")).toBe(true);
     expect(queuedJobs.every((job) => job.status === "queued" && job.destination === "user@example.test")).toBe(true);
     expect(summarizeNotificationJobs(queuedJobs)).toMatchObject({ total: queuedJobs.length, queued: queuedJobs.length, blocked: 0 });
+  });
+
+  it("builds dry-run notification dispatch results behind the adapter boundary", () => {
+    const state = createDefaultState();
+    const queue = buildReplenishmentQueue(state, baseOffers);
+    const notificationDrafts = buildNotificationDrafts(queue, "email", "2026-06-15T00:00:00.000Z");
+    const jobs = buildNotificationJobs({
+      accountId: "acct-test",
+      drafts: notificationDrafts,
+      contactPoints: { email: "user@example.test" },
+      createdAt: "2026-06-15T00:00:00.000Z",
+    });
+    const results = buildNotificationDispatchResults({
+      jobs,
+      dryRun: true,
+      dispatchedAt: "2026-06-15T00:00:01.000Z",
+    });
+
+    expect(results.every((result) => result.status === "dry-run" && result.reason === "dry-run-only")).toBe(true);
+    expect(results.every((result) => result.provider === "email" && result.attempts === 1)).toBe(true);
+    expect(summarizeNotificationDispatchResults(results)).toMatchObject({ total: results.length, dryRun: results.length, skipped: 0 });
   });
 });

@@ -44,6 +44,7 @@ Current MVP routes still return a lightweight shape so the client can stay simpl
 | `POST` | `/api/state/load` | Load saved account state from the configured server state store. |
 | `POST` | `/api/state/reset` | Delete saved account state from the configured server state store. |
 | `POST` | `/api/notifications/prepare` | Convert notification drafts into queued or blocked delivery jobs without sending real notifications. |
+| `POST` | `/api/notifications/dispatch` | Dry-run notification delivery through the adapter boundary and report skipped/failed jobs without sending real messages. |
 
 ### `POST /api/product-search`
 
@@ -129,4 +130,5 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 - Product search candidates should carry an `effectivePriceQuote` so sorting can use normalized price rather than raw extracted price.
 - JAN/barcode input should preserve the raw input, normalized digits, validation result, and suggested check-digit correction before searching marketplaces.
 - Notification preparation must keep delivery as a separate adapter step. Missing LINE/email/Web Push destinations should produce blocked jobs, not silent drops.
+- Notification dispatch should run as dry-run until real LINE/email/Web Push adapters are configured, preserving payloads, destinations, provider names, and attempt counts.
 - Store click events and queue decisions as append-only events once the backend exists.

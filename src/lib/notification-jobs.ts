@@ -21,10 +21,32 @@ export type NotificationJob = {
   };
 };
 
+export type NotificationDispatchResult = {
+  id: string;
+  jobId: string;
+  accountId: string;
+  channel: Channel;
+  destination?: string;
+  status: "dry-run" | "skipped" | "failed";
+  reason?: "dry-run-only" | "blocked-job" | "missing-destination" | "unsupported-channel";
+  provider: "line" | "email" | "webpush" | "none";
+  attempts: number;
+  dispatchedAt: string;
+  payload: NotificationJob["payload"];
+};
+
 export type NotificationJobSummary = {
   total: number;
   queued: number;
   blocked: number;
+  channels: Partial<Record<Channel, number>>;
+};
+
+export type NotificationDispatchSummary = {
+  total: number;
+  dryRun: number;
+  skipped: number;
+  failed: number;
   channels: Partial<Record<Channel, number>>;
 };
 
@@ -73,4 +95,80 @@ export function summarizeNotificationJobs(jobs: NotificationJob[]): Notification
     },
     { total: 0, queued: 0, blocked: 0, channels: {} },
   );
+}
+
+export function buildNotificationDispatchResults({
+  jobs,
+  dryRun = true,
+  dispatchedAt = new Date().toISOString(),
+}: {
+  jobs: NotificationJob[];
+  dryRun?: boolean;
+  dispatchedAt?: string;
+}): NotificationDispatchResult[] {
+  return jobs.map((job) => {
+    const provider = resolveNotificationProvider(job.channel);
+    const baseResult = {
+      id: `${job.id}-${dryRun ? "dry-run" : "dispatch"}`,
+      jobId: job.id,
+      accountId: job.accountId,
+      channel: job.channel,
+      destination: job.destination,
+      provider,
+      attempts: job.attempts + (job.status === "queued" ? 1 : 0),
+      dispatchedAt,
+      payload: job.payload,
+    };
+
+    if (job.status === "blocked") {
+      return {
+        ...baseResult,
+        status: "skipped",
+        reason: job.blockedReason === "missing-destination" ? "missing-destination" : "blocked-job",
+      };
+    }
+
+    if (!job.destination) {
+      return {
+        ...baseResult,
+        status: "skipped",
+        reason: "missing-destination",
+      };
+    }
+
+    if (provider === "none") {
+      return {
+        ...baseResult,
+        status: "failed",
+        reason: "unsupported-channel",
+      };
+    }
+
+    return {
+      ...baseResult,
+      status: dryRun ? "dry-run" : "failed",
+      reason: dryRun ? "dry-run-only" : "unsupported-channel",
+    };
+  });
+}
+
+export function summarizeNotificationDispatchResults(results: NotificationDispatchResult[]): NotificationDispatchSummary {
+  return results.reduce<NotificationDispatchSummary>(
+    (summary, result) => {
+      summary.total += 1;
+      if (result.status === "dry-run") summary.dryRun += 1;
+      if (result.status === "skipped") summary.skipped += 1;
+      if (result.status === "failed") summary.failed += 1;
+      summary.channels[result.channel] = (summary.channels[result.channel] ?? 0) + 1;
+      return summary;
+    },
+    { total: 0, dryRun: 0, skipped: 0, failed: 0, channels: {} },
+  );
+}
+
+function resolveNotificationProvider(channel: Channel): NotificationDispatchResult["provider"] {
+  if (channel === "line") return "line";
+  if (channel === "email") return "email";
+  if (channel === "webpush") return "webpush";
+  return "none";
 }

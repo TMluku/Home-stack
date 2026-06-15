@@ -7,6 +7,7 @@ import { POST as appendCandidateAudit } from "../src/app/api/audit/candidates/ap
 import { POST as appendConditionAudit } from "../src/app/api/audit/conditions/append/route";
 import { POST as listConditionAudit } from "../src/app/api/audit/conditions/list/route";
 import { POST as resolveBarcode } from "../src/app/api/barcode/resolve/route";
+import { POST as dispatchNotifications } from "../src/app/api/notifications/dispatch/route";
 import { POST as prepareNotifications } from "../src/app/api/notifications/prepare/route";
 import { POST as scanPrices } from "../src/app/api/price-scan/route";
 import { POST as searchProducts } from "../src/app/api/product-search/route";
@@ -384,5 +385,57 @@ describe("API route contracts", () => {
     expect(queuedResponse.status).toBe(200);
     expect(queued.summary.queued).toBe(queued.summary.total);
     expect(queued.jobs[0].payload.message).toContain("実質価格");
+  });
+
+  it("dry-runs notification dispatch results through the adapter boundary", async () => {
+    const exportResponse = await exportState(
+      new Request("http://localhost/api/state/export", {
+        method: "POST",
+        body: JSON.stringify({
+          accountId: "acct-dispatch",
+          state: {
+            household: { channel: "email" },
+          },
+        }),
+      }),
+    );
+    const exported = await exportResponse.json();
+
+    const dryRunResponse = await dispatchNotifications(
+      new Request("http://localhost/api/notifications/dispatch", {
+        method: "POST",
+        body: JSON.stringify({
+          payload: exported.payload,
+          contactPoints: { email: "user@example.test" },
+          dispatchedAt: "2026-06-15T00:00:01.000Z",
+        }),
+      }),
+    );
+    const dryRun = await dryRunResponse.json();
+
+    expect(dryRunResponse.status).toBe(200);
+    expect(dryRun.dryRun).toBe(true);
+    expect(dryRun.summary.dryRun).toBe(dryRun.summary.total);
+    expect(dryRun.results[0]).toMatchObject({
+      accountId: "acct-dispatch",
+      provider: "email",
+      status: "dry-run",
+      reason: "dry-run-only",
+      dispatchedAt: "2026-06-15T00:00:01.000Z",
+    });
+
+    const blockedResponse = await dispatchNotifications(
+      new Request("http://localhost/api/notifications/dispatch", {
+        method: "POST",
+        body: JSON.stringify({
+          payload: exported.payload,
+        }),
+      }),
+    );
+    const blocked = await blockedResponse.json();
+
+    expect(blockedResponse.status).toBe(200);
+    expect(blocked.summary.skipped).toBe(blocked.summary.total);
+    expect(blocked.results[0].reason).toBe("missing-destination");
   });
 });

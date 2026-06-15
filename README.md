@@ -89,11 +89,11 @@ pnpm.cmd run clean:generated
 
 ## GitHub Pages
 
-The repository includes a GitHub Pages deployment workflow at `.github/workflows/pages.yml`.
+The repository publishes GitHub Pages from the `gh-pages` branch with `.github/workflows/pages-branch.yml`.
 
 - CI builds the normal Next.js app.
-- Pages runs `pnpm run check`, runs `pnpm run build:pages`, and publishes the static `out/` directory.
-- `.github/workflows/pages-branch.yml` also publishes the same export to the `gh-pages` branch so repositories configured for branch-source Pages have a deploy target.
+- Pages branch publishing runs `pnpm run check`, runs `pnpm run build:pages`, and publishes the static `out/` directory to `gh-pages`.
+- Browser E2E runs separately in `.github/workflows/e2e.yml` against the same static Pages export.
 - The Pages build uses `/Home-stack` as the base path.
 - The workflow adds `out/.nojekyll` so GitHub Pages serves the Next.js `_next/` assets.
 - Because GitHub Pages is static hosting, product search and URL price scan fall back to local demo candidates, JAN lookup, and external marketplace search links until a server API is connected.

@@ -32,6 +32,7 @@ Current MVP routes still return a lightweight shape so the client can stay simpl
 
 | Method | Path | Purpose |
 |---|---|---|
+| `POST` | `/api/account/resolve` | Resolve demo, email-link, or OAuth-style account metadata without storing raw email addresses. |
 | `POST` | `/api/barcode/resolve` | Normalize JAN/barcode input, validate check digits, suggest correction candidates, and return static search candidates. |
 | `POST` | `/api/product-search` | Search marketplace sources for a product query and return normalized price candidates. Uses official API credentials when configured, otherwise tries public search-result HTML extraction. |
 | `POST` | `/api/price-scan` | Fetch specific product page URLs and extract price candidates from JSON-LD, meta tags, or HTML text. |
@@ -117,6 +118,7 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 - Keep `src/lib/replenishment.ts` as pure domain logic so it can be reused by API routes and tests.
 - `src/lib/server-state-store.ts` is the repository boundary for account state. It writes JSON files to `.server-state/` by default, or `HOME_STACK_STATE_STORE_DIR` when configured.
 - Replace the file-backed repository with PostgreSQL, Supabase, or another durable store before multi-user production launch.
+- Account profiles should use stable account IDs and email hashes. Do not place raw email addresses inside saved sync payloads.
 - Preserve explicit condition details for coupons, point returns, shipping thresholds, account eligibility, and campaign windows.
 - Never rank a conditional effective price without exposing the conditions that make that price true.
 - JAN/barcode input should preserve the raw input, normalized digits, validation result, and suggested check-digit correction before searching marketplaces.

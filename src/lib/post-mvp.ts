@@ -1,3 +1,4 @@
+import type { AccountAuthMode, AccountProfile } from "./account-profile";
 import type { AppState, Channel, LivePriceResult, Offer, ProductSearchCandidate, ProductSearchResult, QueueEntry } from "./types";
 
 export type ConditionAuditLogEntry = {
@@ -39,7 +40,12 @@ export type ServerSyncPayload = {
   generatedAt: string;
   account: {
     accountId: string;
-    authMode: "demo" | "email-link" | "oauth";
+    authMode: AccountAuthMode;
+    emailHash?: string;
+    provider?: AccountProfile["provider"];
+    displayName?: string;
+    createdAt?: string;
+    verified?: boolean;
   };
   state: AppState;
   auditLog: ConditionAuditLogEntry[];
@@ -345,21 +351,28 @@ export function buildServerSyncPayload({
   notificationDrafts,
   accountId = "demo-account",
   authMode = "demo",
+  accountProfile,
   generatedAt = new Date().toISOString(),
 }: {
   state: AppState;
   auditLog: ConditionAuditLogEntry[];
   notificationDrafts: NotificationDraft[];
   accountId?: string;
-  authMode?: ServerSyncPayload["account"]["authMode"];
+  authMode?: AccountAuthMode;
+  accountProfile?: AccountProfile;
   generatedAt?: string;
 }): ServerSyncPayload {
   return {
     schemaVersion: "post-mvp-sync-v1",
     generatedAt,
     account: {
-      accountId,
-      authMode,
+      accountId: accountProfile?.accountId ?? accountId,
+      authMode: accountProfile?.authMode ?? authMode,
+      emailHash: accountProfile?.emailHash,
+      provider: accountProfile?.provider,
+      displayName: accountProfile?.displayName,
+      createdAt: accountProfile?.createdAt,
+      verified: accountProfile?.verified,
     },
     state,
     auditLog,

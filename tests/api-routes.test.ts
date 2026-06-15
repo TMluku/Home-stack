@@ -2,6 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { POST as resolveAccount } from "../src/app/api/account/resolve/route";
 import { POST as resolveBarcode } from "../src/app/api/barcode/resolve/route";
 import { POST as prepareNotifications } from "../src/app/api/notifications/prepare/route";
 import { POST as scanPrices } from "../src/app/api/price-scan/route";
@@ -134,6 +135,41 @@ describe("API route contracts", () => {
     expect(response.status).toBe(200);
     expect(payload.payload.account).toEqual({ accountId: "acct-123", authMode: "oauth" });
     expect(payload.payload.state.household.channel).toBe("email");
+  });
+
+  it("resolves email-link accounts and includes profile metadata in exported state", async () => {
+    const accountResponse = await resolveAccount(
+      new Request("http://localhost/api/account/resolve", {
+        method: "POST",
+        body: JSON.stringify({ email: " USER@example.TEST ", displayName: "Home User" }),
+      }),
+    );
+    const account = await accountResponse.json();
+
+    expect(accountResponse.status).toBe(200);
+    expect(account.profile).toMatchObject({
+      authMode: "email-link",
+      provider: "email",
+      displayName: "Home User",
+      verified: false,
+    });
+    expect(JSON.stringify(account.profile)).not.toContain("USER@example.TEST");
+
+    const exportResponse = await exportState(
+      new Request("http://localhost/api/state/export", {
+        method: "POST",
+        body: JSON.stringify({ email: " USER@example.TEST ", displayName: "Home User" }),
+      }),
+    );
+    const exported = await exportResponse.json();
+
+    expect(exportResponse.status).toBe(200);
+    expect(exported.payload.account).toMatchObject({
+      accountId: account.profile.accountId,
+      authMode: "email-link",
+      emailHash: account.profile.emailHash,
+      displayName: "Home User",
+    });
   });
 
   it("saves, loads, and resets account state on the server", async () => {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildAccountProfile, normalizeEmail } from "../src/lib/account-profile";
 import { createDefaultState } from "../src/lib/demo-state";
 import { buildNotificationJobs, summarizeNotificationJobs } from "../src/lib/notification-jobs";
 import { baseOffers } from "../src/lib/offers";
@@ -18,6 +19,27 @@ import {
 import { buildReplenishmentQueue } from "../src/lib/replenishment";
 
 describe("post-MVP static helpers", () => {
+  it("builds stable account profiles without exposing raw email addresses", () => {
+    const profile = buildAccountProfile({
+      email: " USER@example.COM ",
+      provider: "email",
+      displayName: " Home User ",
+      createdAt: "2026-06-15T00:00:00.000Z",
+    });
+
+    expect(normalizeEmail(" USER@example.COM ")).toBe("user@example.com");
+    expect(profile).toMatchObject({
+      authMode: "email-link",
+      provider: "email",
+      displayName: "Home User",
+      verified: false,
+      createdAt: "2026-06-15T00:00:00.000Z",
+    });
+    expect(profile.accountId).toMatch(/^acct-/);
+    expect(profile.emailHash).toBeTruthy();
+    expect(JSON.stringify(profile)).not.toContain("user@example.com");
+  });
+
   it("validates JAN codes and resolves known demo products", () => {
     expect(isValidJanCode("4900000000016")).toBe(true);
     expect(isValidJanCode("4900000000017")).toBe(false);
@@ -92,15 +114,18 @@ describe("post-MVP static helpers", () => {
       state,
       auditLog,
       notificationDrafts,
-      accountId: "acct-test",
-      authMode: "email-link",
+      accountProfile: buildAccountProfile({
+        email: "user@example.test",
+        provider: "google",
+        createdAt: "2026-06-15T00:00:00.000Z",
+      }),
       generatedAt: "2026-06-15T00:00:00.000Z",
     });
 
     expect(notificationDrafts.every((draft) => draft.channel === state.household.channel)).toBe(true);
     expect(payload).toMatchObject({
       schemaVersion: "post-mvp-sync-v1",
-      account: { accountId: "acct-test", authMode: "email-link" },
+      account: { authMode: "oauth", provider: "google", verified: false },
       summary: {
         inventoryCount: state.inventory.length,
         conditionalAuditCount: auditLog.filter((entry) => entry.conditionCount > 0).length,

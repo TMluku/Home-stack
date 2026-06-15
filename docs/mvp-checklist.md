@@ -69,6 +69,7 @@ This checklist defines the current acceptance target for the Home Stack MVP.
 - [x] Add notification draft payloads for LINE/email/Web Push handoff.
 - [x] Add notification job preparation that queues configured destinations and blocks missing destinations.
 - [x] Add account/server-save migration contract panel.
+- [x] Add account profile resolution for email-link/OAuth handoff without storing raw email addresses.
 - [x] Add `/api/state/export` sync payload for server-side account persistence handoff.
 - [x] Add POST-only server save/load/reset endpoints backed by a replaceable JSON repository.
 - [ ] Add production server-side persistence and user accounts.

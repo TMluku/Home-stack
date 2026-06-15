@@ -1433,6 +1433,16 @@ h3 {
   text-align: left;
 }
 
+.account-list button.is-active {
+  background: var(--soft);
+  border-color: var(--ink);
+}
+
+.account-list button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 .account-list span {
   font-weight: 900;
   overflow-wrap: anywhere;

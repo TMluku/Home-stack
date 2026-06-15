@@ -106,6 +106,7 @@ By default, saved JSON files are written under `.server-state/`. Set `HOME_STACK
 Account resolution creates stable account IDs and email hashes for email-link/OAuth handoff without storing raw email addresses in sync payloads.
 Account listing reads the server-side account index that is updated whenever account state is saved or reset.
 The Post-MVP panel can call these routes from a Next.js server build to save, load, delete, and refresh account state; the GitHub Pages build keeps the controls visible but reports that API persistence is unavailable.
+Saved account summaries can be selected from the Post-MVP panel to load that account state directly, including the latest saved timestamp and payload counts.
 Condition audit routes append and list effective-price condition events so ranking decisions can be inspected later, including product-search candidate quotes and direct URL scan quotes.
 The Post-MVP panel can save the current condition audit payload and load stored audit events for the active account when the app is running on a Next.js server.
 Notification preparation builds queued or blocked jobs, status reports configured providers, and dispatch can dry-run provider handoff or mark adapter-ready providers as sent without calling external services yet.

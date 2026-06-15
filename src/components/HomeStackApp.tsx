@@ -469,13 +469,13 @@ export function HomeStackApp() {
     }
   }
 
-  async function loadServerState() {
+  async function loadServerStateForAccount(accountIdInput: string) {
     if (isStaticExport) {
       setServerSyncMessage("GitHub Pages版ではAPI読込は未接続です。Next.jsサーバーで有効になります。");
       return;
     }
 
-    const accountId = serverAccountId.trim();
+    const accountId = accountIdInput.trim();
     if (!accountId) {
       setServerSyncMessage("読み込むaccountIdを入力してください。");
       return;
@@ -502,6 +502,15 @@ export function HomeStackApp() {
     } finally {
       setServerSyncBusy(false);
     }
+  }
+
+  async function loadServerState() {
+    await loadServerStateForAccount(serverAccountId);
+  }
+
+  async function selectSavedServerAccount(accountId: string) {
+    setServerAccountId(accountId);
+    await loadServerStateForAccount(accountId);
   }
 
   async function resetServerSavedState() {
@@ -1247,6 +1256,7 @@ export function HomeStackApp() {
           onRefreshNotificationStatus={refreshNotificationStatus}
           onResetServerState={resetServerSavedState}
           onSaveServerState={saveServerState}
+          onSelectServerAccount={selectSavedServerAccount}
           onServerAccountIdChange={setServerAccountId}
         />
       </main>
@@ -1556,6 +1566,7 @@ function PostMvpOpsPanel({
   onRefreshNotificationStatus,
   onResetServerState,
   onSaveServerState,
+  onSelectServerAccount,
   onServerAccountIdChange,
 }: {
   conditionAuditLog: ConditionAuditLogEntry[];
@@ -1587,6 +1598,7 @@ function PostMvpOpsPanel({
   onRefreshNotificationStatus: () => void;
   onResetServerState: () => void;
   onSaveServerState: () => void;
+  onSelectServerAccount: (accountId: string) => void;
   onServerAccountIdChange: (value: string) => void;
 }) {
   const auditPreview = (storedAuditEvents.length > 0 ? storedAuditEvents : conditionAuditLog).slice(0, 8);
@@ -1783,10 +1795,18 @@ function PostMvpOpsPanel({
           {serverAccounts.length > 0 ? (
             <div className="account-list">
               {serverAccounts.slice(0, 3).map((account) => (
-                <button type="button" key={account.accountId} onClick={() => onServerAccountIdChange(account.accountId)}>
+                <button
+                  type="button"
+                  key={account.accountId}
+                  className={account.accountId === serverAccountId ? "is-active" : undefined}
+                  aria-pressed={account.accountId === serverAccountId}
+                  onClick={() => onSelectServerAccount(account.accountId)}
+                  disabled={serverSyncBusy}
+                >
                   <span>{account.displayName ?? account.accountId}</span>
                   <small>
-                    inventory {account.inventoryCount} / audit {account.conditionalAuditCount} / notice {account.notificationDraftCount}
+                    saved {new Date(account.lastSavedAt).toLocaleString("ja-JP")} / inventory {account.inventoryCount} / audit{" "}
+                    {account.conditionalAuditCount} / notice {account.notificationDraftCount}
                   </small>
                 </button>
               ))}

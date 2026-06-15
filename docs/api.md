@@ -145,7 +145,7 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 - Replace the file-backed repository with PostgreSQL, Supabase, or another durable store before multi-user production launch.
 - Account profiles should use stable account IDs and email hashes. Do not place raw email addresses inside saved sync payloads.
 - Update the account index when account state is saved or reset so `/api/account/list` can drive account switching and operations checks.
-- The Post-MVP UI connects account save, load, delete, and list-refresh controls to these routes when running as a Next.js server. Static GitHub Pages exports keep the same panel visible with API-unavailable status messaging.
+- The Post-MVP UI connects account save, load, delete, list-refresh, and saved-account selection controls to these routes when running as a Next.js server. Static GitHub Pages exports keep the same panel visible with API-unavailable status messaging.
 - Preserve explicit condition details for coupons, point returns, shipping thresholds, account eligibility, and campaign windows.
 - Append condition-price audit events before replacing or clearing account state so ranking and click decisions remain inspectable.
 - Append candidate audit events after product search when effective-price quotes should be kept with source query, match score, source label, and price evidence.

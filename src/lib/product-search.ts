@@ -7,6 +7,7 @@ const USER_AGENT = "HomeStackPriceRadar/0.1 (+https://github.com/TMluku/Home-sta
 type SearchSourceReport = ProductSearchResult["sources"][number];
 type RawCandidate = Omit<ProductSearchCandidate, "id" | "matchScore" | "confidence" | "fetchedAt">;
 type MarketplaceSearchSource = "rakuten" | "yahoo-shopping";
+type OfficialApiRecord = Record<string, unknown>;
 
 const SOURCE_LABELS = {
   rakuten: "楽天市場",
@@ -104,14 +105,23 @@ async function searchRakutenApi(query: string): Promise<{ candidates: RawCandida
           mediumImageUrls?: Array<{ imageUrl?: string }>;
           postageFlag?: number;
           pointRate?: number;
+          pointRateStartTime?: string;
+          pointRateEndTime?: string;
+          couponAmount?: number;
+          couponValue?: number;
+          couponRate?: number;
+          couponStartTime?: string;
+          couponEndTime?: string;
         };
       }>;
     };
     const candidates: RawCandidate[] =
       payload.Items?.map((entry) => entry.Item)
         .filter((item): item is NonNullable<typeof item> => Boolean(item))
-        .map(
-          (item): RawCandidate => ({
+        .map((item): RawCandidate => {
+          const signals = buildOfficialPriceSignals(item as OfficialApiRecord, item.itemPrice ?? 0, "rakuten");
+
+          return {
             source: "rakuten",
             sourceLabel: SOURCE_LABELS.rakuten,
             title: item.itemName ?? "",
@@ -119,15 +129,16 @@ async function searchRakutenApi(query: string): Promise<{ candidates: RawCandida
             price: item.itemPrice,
             effectivePriceQuote: buildEffectivePriceQuote({
               listPrice: item.itemPrice ?? 0,
-              shippingFee: item.postageFlag === 0 ? 0 : undefined,
-              pointValue: inferPointValueFromRate(item.itemPrice, item.pointRate),
+              shippingFee: signals.shippingFee,
+              pointValue: signals.pointValue,
+              couponValue: signals.couponValue,
             }),
             currency: "JPY",
-            shipping: item.postageFlag === 0 ? "送料無料" : "送料条件は要確認",
+            shipping: signals.shippingLabel,
             imageUrl: item.mediumImageUrls?.[0]?.imageUrl?.replace(/\?_ex=\d+x\d+$/, ""),
-            evidence: ["楽天市場公式API", "商品名・価格・商品URLをAPIレスポンスから取得"],
-          }),
-        )
+            evidence: ["楽天市場公式API", "商品名・価格・商品URLをAPIレスポンスから取得", ...signals.evidence],
+          };
+        })
         .filter((candidate) => candidate.title && candidate.url && candidate.price) ?? [];
 
     return {
@@ -178,13 +189,19 @@ async function searchYahooShoppingApi(
         price?: number;
         image?: { medium?: string };
         shipping?: { code?: number; name?: string };
-        point?: { amount?: number };
+        point?: { amount?: number; startTime?: string; endTime?: string };
+        coupon?: { amount?: number; value?: number; rate?: number; startTime?: string; endTime?: string };
+        couponAmount?: number;
+        couponValue?: number;
+        discountAmount?: number;
       }>;
     };
     const candidates: RawCandidate[] =
       payload.hits
-        ?.map(
-          (item): RawCandidate => ({
+        ?.map((item): RawCandidate => {
+          const signals = buildOfficialPriceSignals(item as OfficialApiRecord, item.price ?? 0, "yahoo-shopping");
+
+          return {
             source: "yahoo-shopping",
             sourceLabel: SOURCE_LABELS["yahoo-shopping"],
             title: item.name ?? "",
@@ -192,15 +209,16 @@ async function searchYahooShoppingApi(
             price: item.price,
             effectivePriceQuote: buildEffectivePriceQuote({
               listPrice: item.price ?? 0,
-              shippingFee: item.shipping?.code === 1 ? 0 : undefined,
-              pointValue: item.point?.amount,
+              shippingFee: signals.shippingFee,
+              pointValue: signals.pointValue,
+              couponValue: signals.couponValue,
             }),
             currency: "JPY",
-            shipping: item.shipping?.name ?? (item.shipping?.code === 1 ? "送料無料" : "送料条件は要確認"),
+            shipping: item.shipping?.name ?? signals.shippingLabel,
             imageUrl: item.image?.medium,
-            evidence: ["Yahoo!ショッピング公式API", "商品名・価格・商品URLをAPIレスポンスから取得"],
-          }),
-        )
+            evidence: ["Yahoo!ショッピング公式API", "商品名・価格・商品URLをAPIレスポンスから取得", ...signals.evidence],
+          };
+        })
         .filter((candidate) => candidate.title && candidate.url && candidate.price) ?? [];
 
     return {
@@ -362,6 +380,86 @@ function inferPriceAdjustments(snippet: string, listPrice: number) {
           : "送料条件は要確認",
     evidence,
   };
+}
+
+function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number, source: MarketplaceSearchSource) {
+  const shippingFee = extractOfficialShippingFee(record, source);
+  const pointValue =
+    readNumberPath(record, ["point.amount", "pointValue", "pointAmount", "points", "rewardPoint"]) ??
+    inferPointValueFromRate(listPrice, readNumberPath(record, ["pointRate", "point.rate", "pointRateValue"]));
+  const couponValue =
+    readNumberPath(record, [
+      "coupon.amount",
+      "coupon.value",
+      "couponAmount",
+      "couponValue",
+      "coupon.price",
+      "discountAmount",
+      "discount.amount",
+    ]) ?? inferPointValueFromRate(listPrice, readNumberPath(record, ["coupon.rate", "couponRate", "discountRate"]));
+  const pointStart = readStringPath(record, [
+    "point.startTime",
+    "point.start",
+    "pointRateStartTime",
+    "pointStartTime",
+    "campaignStartTime",
+  ]);
+  const pointEnd = readStringPath(record, ["point.endTime", "point.end", "pointRateEndTime", "pointEndTime", "campaignEndTime"]);
+  const couponStart = readStringPath(record, ["coupon.startTime", "coupon.start", "couponStartTime", "discountStartTime"]);
+  const couponEnd = readStringPath(record, ["coupon.endTime", "coupon.end", "couponEndTime", "discountEndTime"]);
+  const evidence = [
+    typeof shippingFee === "number" ? (shippingFee === 0 ? "official shipping: free" : `official shipping fee: ${shippingFee} JPY`) : "",
+    pointValue ? `official point value: ${pointValue} JPY` : "",
+    couponValue ? `official coupon value: ${couponValue} JPY` : "",
+    pointStart || pointEnd ? `point window: ${pointStart ?? "unknown"} - ${pointEnd ?? "unknown"}` : "",
+    couponStart || couponEnd ? `coupon window: ${couponStart ?? "unknown"} - ${couponEnd ?? "unknown"}` : "",
+  ].filter(Boolean);
+
+  return {
+    shippingFee,
+    pointValue,
+    couponValue,
+    shippingLabel:
+      shippingFee === 0
+        ? "送料無料"
+        : typeof shippingFee === "number"
+          ? `送料 ${shippingFee.toLocaleString("ja-JP")}円込みで再計算`
+          : "送料条件は要確認",
+    evidence,
+  };
+}
+
+function extractOfficialShippingFee(record: OfficialApiRecord, source: MarketplaceSearchSource) {
+  const explicit = readNumberPath(record, ["shippingFee", "postage", "postageAmount", "deliveryFee", "shipping.amount", "shipping.fee"]);
+  if (typeof explicit === "number") return explicit;
+  if (source === "rakuten" && readNumberPath(record, ["postageFlag"]) === 0) return 0;
+  if (source === "yahoo-shopping" && readNumberPath(record, ["shipping.code"]) === 1) return 0;
+  const shippingName = readStringPath(record, ["shipping.name", "shippingLabel", "postageLabel"]);
+  return shippingName && /送料無料|free shipping/i.test(shippingName) ? 0 : undefined;
+}
+
+function readNumberPath(record: OfficialApiRecord, paths: string[]) {
+  for (const path of paths) {
+    const value = readPath(record, path);
+    const numeric = typeof value === "number" ? value : typeof value === "string" ? parseSearchAmount(value) : undefined;
+    if (typeof numeric === "number") return numeric;
+  }
+  return undefined;
+}
+
+function readStringPath(record: OfficialApiRecord, paths: string[]) {
+  for (const path of paths) {
+    const value = readPath(record, path);
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return undefined;
+}
+
+function readPath(record: OfficialApiRecord, path: string): unknown {
+  return path.split(".").reduce<unknown>((current, key) => {
+    if (!current || typeof current !== "object") return undefined;
+    return (current as Record<string, unknown>)[key];
+  }, record);
 }
 
 function extractPointValue(text: string, listPrice: number) {

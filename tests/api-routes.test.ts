@@ -42,6 +42,8 @@ describe("API route contracts", () => {
     delete process.env.HOME_STACK_WEB_PUSH_PUBLIC_KEY;
     delete process.env.HOME_STACK_WEB_PUSH_PRIVATE_KEY;
     delete process.env.HOME_STACK_WEB_PUSH_SUBJECT;
+    delete process.env.RAKUTEN_APPLICATION_ID;
+    delete process.env.YAHOO_SHOPPING_APP_ID;
   });
 
   it("rejects empty price scan requests", async () => {
@@ -109,6 +111,107 @@ describe("API route contracts", () => {
 
     expect(response.status).toBe(400);
     expect(payload.ok).toBe(false);
+  });
+
+  it("normalizes official marketplace API shipping, point, coupon, and campaign windows", async () => {
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "Official detergent refill",
+                  itemPrice: 2000,
+                  itemUrl: "https://rakuten.example.test/item",
+                  postageFlag: 0,
+                  pointRate: 5,
+                  pointRateStartTime: "2026-06-15T00:00:00+09:00",
+                  pointRateEndTime: "2026-06-30T23:59:59+09:00",
+                  couponAmount: 250,
+                  couponStartTime: "2026-06-16T00:00:00+09:00",
+                  couponEndTime: "2026-06-20T23:59:59+09:00",
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          hits: [
+            {
+              name: "Official detergent refill Yahoo",
+              url: "https://shopping.example.test/item",
+              price: 2100,
+              shipping: { code: 1, name: "送料無料" },
+              point: { amount: 110, startTime: "2026-06-15T00:00:00+09:00", endTime: "2026-06-22T23:59:59+09:00" },
+              coupon: { amount: 100, startTime: "2026-06-17T00:00:00+09:00", endTime: "2026-06-18T23:59:59+09:00" },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+
+    const response = await searchProducts(
+      new Request("http://localhost/api/product-search", {
+        method: "POST",
+        body: JSON.stringify({ query: "detergent refill" }),
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(payload.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: "rakuten", ok: true, count: 1 }),
+        expect.objectContaining({ source: "yahoo-shopping", ok: true, count: 1 }),
+      ]),
+    );
+    const rakutenCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "rakuten");
+    const yahooCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "yahoo-shopping");
+
+    expect(rakutenCandidate.effectivePriceQuote).toMatchObject({
+      listPrice: 2000,
+      shippingFee: 0,
+      pointValue: 100,
+      couponValue: 250,
+      effectivePrice: 1650,
+      conditionRequired: true,
+    });
+    expect(rakutenCandidate.evidence).toEqual(
+      expect.arrayContaining([
+        "official shipping: free",
+        "official point value: 100 JPY",
+        "official coupon value: 250 JPY",
+        "point window: 2026-06-15T00:00:00+09:00 - 2026-06-30T23:59:59+09:00",
+        "coupon window: 2026-06-16T00:00:00+09:00 - 2026-06-20T23:59:59+09:00",
+      ]),
+    );
+    expect(yahooCandidate.effectivePriceQuote).toMatchObject({
+      listPrice: 2100,
+      shippingFee: 0,
+      pointValue: 110,
+      couponValue: 100,
+      effectivePrice: 1890,
+      conditionRequired: true,
+    });
+    expect(yahooCandidate.evidence).toEqual(
+      expect.arrayContaining([
+        "official shipping: free",
+        "official point value: 110 JPY",
+        "official coupon value: 100 JPY",
+        "point window: 2026-06-15T00:00:00+09:00 - 2026-06-22T23:59:59+09:00",
+        "coupon window: 2026-06-17T00:00:00+09:00 - 2026-06-18T23:59:59+09:00",
+      ]),
+    );
   });
 
   it("resolves barcodes and returns correction-aware search candidates", async () => {

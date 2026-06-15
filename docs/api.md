@@ -62,7 +62,7 @@ Request:
 }
 ```
 
-Response includes the normalized query, searched sources, candidate titles, prices, effective-price quotes, links, match scores, source labels, and evidence notes. HTML fallback and official API candidates normalize known shipping, point, and coupon signals into `effectivePriceQuote` when those values are present. Optional environment variables:
+Response includes the normalized query, searched sources, candidate titles, prices, effective-price quotes, links, match scores, source labels, and evidence notes. HTML fallback and official API candidates normalize known shipping, point, coupon, and campaign window signals into `effectivePriceQuote` evidence when those values are present. Optional environment variables:
 
 - `RAKUTEN_APPLICATION_ID`
 - `YAHOO_SHOPPING_APP_ID`

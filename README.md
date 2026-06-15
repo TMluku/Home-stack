@@ -129,6 +129,6 @@ Set `HOME_STACK_BARCODE_MASTER_URL` to hand valid JAN codes to an external HTTP 
 - Photo upload does not send images to a server in the MVP.
 - Price candidates are for validation and can differ from live checkout totals.
 - Conditional prices must always expose the conditions that make the effective price true.
-- Product search candidates include effective-price quotes when shipping, point, or coupon assumptions are available, including inferred values from marketplace HTML/API results.
+- Product search candidates include effective-price quotes when shipping, point, coupon, or campaign window assumptions are available, including inferred values from marketplace HTML and normalized values from official API results.
 - Product URL scans also return effective-price quotes when JSON-LD, meta tags, embedded JSON, data attributes, or page text expose shipping, point, or coupon signals.
 - Post-MVP panels now show price fetch plans, saved condition audit logs, notification drafts, and account/server-save contracts.

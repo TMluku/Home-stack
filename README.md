@@ -106,4 +106,5 @@ Barcode resolution validates JAN check digits, suggests corrected candidates, an
 - Photo upload does not send images to a server in the MVP.
 - Price candidates are for validation and can differ from live checkout totals.
 - Conditional prices must always expose the conditions that make the effective price true.
+- Product search candidates include effective-price quotes when shipping, points, or coupon assumptions are available.
 - Post-MVP panels now show price fetch plans, condition audit logs, notification drafts, and account/server-save contracts.

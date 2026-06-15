@@ -212,6 +212,12 @@ export function buildStaticProductSearchResult(query: string, offers: Offer[], s
     title: offer.title,
     url: offer.url,
     price: offer.effectivePrice,
+    effectivePriceQuote: buildEffectivePriceQuote({
+      listPrice: offer.listPrice,
+      shippingFee: 0,
+      pointValue: Math.max(0, offer.listPrice - offer.effectivePrice),
+      couponValue: 0,
+    }),
     currency: "JPY",
     shipping: offer.shipping,
     unitPrice: offer.unitPrice,

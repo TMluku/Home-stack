@@ -54,7 +54,7 @@ Request:
 }
 ```
 
-Response includes the normalized query, searched sources, candidate titles, prices, links, match scores, source labels, and evidence notes. Optional environment variables:
+Response includes the normalized query, searched sources, candidate titles, prices, effective-price quotes, links, match scores, source labels, and evidence notes. Optional environment variables:
 
 - `RAKUTEN_APPLICATION_ID`
 - `YAHOO_SHOPPING_APP_ID`
@@ -124,6 +124,7 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 - Preserve explicit condition details for coupons, point returns, shipping thresholds, account eligibility, and campaign windows.
 - Append condition-price audit events before replacing or clearing account state so ranking and click decisions remain inspectable.
 - Never rank a conditional effective price without exposing the conditions that make that price true.
+- Product search candidates should carry an `effectivePriceQuote` so sorting can use normalized price rather than raw extracted price.
 - JAN/barcode input should preserve the raw input, normalized digits, validation result, and suggested check-digit correction before searching marketplaces.
 - Notification preparation must keep delivery as a separate adapter step. Missing LINE/email/Web Push destinations should produce blocked jobs, not silent drops.
 - Store click events and queue decisions as append-only events once the backend exists.

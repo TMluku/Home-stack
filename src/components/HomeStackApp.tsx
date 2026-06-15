@@ -1039,12 +1039,21 @@ function ProductSearchPanel({
               <article className="market-card" key={candidate.id}>
                 <div>
                   <span className="source-tag">{candidate.sourceLabel}</span>
-                  <strong>{candidate.price ? yenFormatter.format(candidate.price) : "価格未検出"}</strong>
+                  <strong>
+                    {candidate.effectivePriceQuote?.effectivePrice
+                      ? yenFormatter.format(candidate.effectivePriceQuote.effectivePrice)
+                      : candidate.price
+                        ? yenFormatter.format(candidate.price)
+                        : "価格未検出"}
+                  </strong>
                 </div>
                 <h4>{candidate.title}</h4>
                 <p>
                   一致度 {candidate.matchScore}% / {candidate.confidence} / {candidate.shipping ?? "送料条件は要確認"}
                 </p>
+                {candidate.effectivePriceQuote?.conditionLabels.length ? (
+                  <p>{candidate.effectivePriceQuote.conditionLabels.join(" / ")}</p>
+                ) : null}
                 <small>{candidate.evidence.join(" / ")}</small>
                 <a href={candidate.url} target="_blank" rel="noreferrer">
                   商品ページを見る

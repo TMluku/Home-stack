@@ -64,6 +64,10 @@ describe("post-MVP static helpers", () => {
 
     expect(result.normalizedQuery).toContain("猫砂");
     expect(result.candidates.some((candidate) => candidate.source === "demo-catalog")).toBe(true);
+    expect(result.candidates.find((candidate) => candidate.source === "demo-catalog")?.effectivePriceQuote).toMatchObject({
+      conditionRequired: true,
+      effectivePrice: 2260,
+    });
     expect(result.candidates.some((candidate) => candidate.source === "marketplace-link")).toBe(true);
   });
 

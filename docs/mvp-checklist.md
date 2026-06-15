@@ -63,6 +63,7 @@ This checklist defines the current acceptance target for the Home Stack MVP.
 - [x] Add JAN/barcode check-digit correction candidates and `/api/barcode/resolve`.
 - [x] Add price fetch planning for official marketplace APIs, product-page JSON-LD/meta extraction, and HTML fallback.
 - [x] Add effective-price normalization for shipping fees, point value, and coupon value.
+- [x] Add effective-price quotes to product search candidates and sort by normalized effective price.
 - [x] Add condition audit rows for effective-price ranking decisions.
 - [x] Add API-ready condition audit log entries with evidence and ranking basis.
 - [x] Add append/list APIs for server-side condition-price audit events.

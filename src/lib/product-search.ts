@@ -1,3 +1,4 @@
+import { buildEffectivePriceQuote } from "./post-mvp";
 import type { ProductSearchCandidate, ProductSearchResult } from "./types";
 
 const MAX_HTML_BYTES = 1_500_000;
@@ -50,6 +51,10 @@ export function extractSearchCandidatesFromHtml(html: string, source: Marketplac
       title,
       url,
       price,
+      effectivePriceQuote: buildEffectivePriceQuote({
+        listPrice: price,
+        shippingFee: inferShippingFee(snippet),
+      }),
       currency: "JPY",
       shipping: /送料無料|送料\s*0|free shipping/i.test(snippet) ? "送料無料候補" : "送料条件は要確認",
       imageUrl: extractImageUrl(snippet, baseUrl),
@@ -108,6 +113,10 @@ async function searchRakutenApi(query: string): Promise<{ candidates: RawCandida
             title: item.itemName ?? "",
             url: item.itemUrl ?? "",
             price: item.itemPrice,
+            effectivePriceQuote: buildEffectivePriceQuote({
+              listPrice: item.itemPrice ?? 0,
+              shippingFee: item.postageFlag === 0 ? 0 : undefined,
+            }),
             currency: "JPY",
             shipping: item.postageFlag === 0 ? "送料無料" : "送料条件は要確認",
             imageUrl: item.mediumImageUrls?.[0]?.imageUrl?.replace(/\?_ex=\d+x\d+$/, ""),
@@ -175,6 +184,10 @@ async function searchYahooShoppingApi(
             title: item.name ?? "",
             url: item.url ?? "",
             price: item.price,
+            effectivePriceQuote: buildEffectivePriceQuote({
+              listPrice: item.price ?? 0,
+              shippingFee: item.shipping?.code === 1 ? 0 : undefined,
+            }),
             currency: "JPY",
             shipping: item.shipping?.name ?? (item.shipping?.code === 1 ? "送料無料" : "送料条件は要確認"),
             imageUrl: item.image?.medium,
@@ -264,7 +277,11 @@ function rankCandidates(candidates: RawCandidate[], query: string, searchedAt: s
         fetchedAt: searchedAt,
       };
     })
-    .sort((a, b) => (a.price ?? Number.MAX_SAFE_INTEGER) - (b.price ?? Number.MAX_SAFE_INTEGER) || b.matchScore - a.matchScore);
+    .sort(
+      (a, b) =>
+        (a.effectivePriceQuote?.effectivePrice ?? a.price ?? Number.MAX_SAFE_INTEGER) -
+          (b.effectivePriceQuote?.effectivePrice ?? b.price ?? Number.MAX_SAFE_INTEGER) || b.matchScore - a.matchScore,
+    );
 }
 
 function splitIntoProductSnippets(html: string) {
@@ -312,6 +329,10 @@ function extractPrice(snippet: string) {
   if (!raw) return undefined;
   const price = Number(toHalfWidth(raw).replace(/[,，]/g, ""));
   return Number.isFinite(price) ? price : undefined;
+}
+
+function inferShippingFee(snippet: string) {
+  return /送料無料|送料\s*0|free shipping/i.test(snippet) ? 0 : undefined;
 }
 
 function calculateMatchScore(query: string, title: string) {

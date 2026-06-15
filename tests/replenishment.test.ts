@@ -181,6 +181,10 @@ describe("replenishment domain logic", () => {
       source: "rakuten",
       title: "ライオン 猫砂 5L",
       price: 748,
+      effectivePriceQuote: {
+        effectivePrice: 748,
+        conditionRequired: false,
+      },
       currency: "JPY",
       shipping: "送料無料候補",
     });

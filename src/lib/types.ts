@@ -113,6 +113,16 @@ export type ProductSearchCandidate = {
   title: string;
   url: string;
   price?: number;
+  effectivePriceQuote?: {
+    listPrice: number;
+    shippingFee?: number;
+    pointValue?: number;
+    couponValue?: number;
+    effectivePrice: number;
+    conditionLabels: string[];
+    conditionRequired: boolean;
+    evidence: string[];
+  };
   currency?: string;
   shipping?: string;
   imageUrl?: string;

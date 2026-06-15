@@ -594,6 +594,49 @@ describe("replenishment domain logic", () => {
     );
   });
 
+  it("keeps conditional JSON-LD rewards as retailer-confirmed conditions", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Conditional structured product</title>
+          <script type="application/ld+json">
+            {
+              "@type": "Product",
+              "name": "Conditional structured product",
+              "offers": {
+                "@type": "Offer",
+                "price": "2,000",
+                "priceCurrency": "JPY",
+                "additionalProperty": [
+                  { "name": "points", "value": "最大150ポイント 要エントリー" },
+                  { "name": "coupon", "value": "初回限定クーポン 300円" }
+                ]
+              }
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2000,
+      source: "json-ld",
+      effectivePriceQuote: {
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 2000,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(
+      expect.arrayContaining(["point value from JSON-LD: 150 JPY", "coupon value from JSON-LD: 300 JPY"]),
+    );
+  });
+
   it("extracts meta tag price condition evidence from product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -623,6 +666,37 @@ describe("replenishment domain logic", () => {
         "point value from meta tag: 120 JPY",
         "coupon value from meta tag: 200 JPY",
       ]),
+    );
+  });
+
+  it("keeps conditional meta rewards as retailer-confirmed conditions", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Conditional meta product</title>
+          <meta property="product:price:amount" content="1,980" />
+          <meta name="product:points" content="PayPayポイント 120円相当 後日付与" />
+          <meta name="product:coupon" content="LINE限定クーポン 200円" />
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1980,
+      source: "meta",
+      effectivePriceQuote: {
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 1980,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(
+      expect.arrayContaining(["point value from meta tag: 120 JPY", "coupon value from meta tag: 200 JPY"]),
     );
   });
 
@@ -667,6 +741,49 @@ describe("replenishment domain logic", () => {
         "point value from embedded JSON: 120 JPY",
         "coupon value from embedded JSON: 200 JPY",
       ]),
+    );
+  });
+
+  it("keeps conditional embedded JSON rewards as retailer-confirmed conditions", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Conditional embedded product</title>
+          <script id="__NEXT_DATA__" type="application/json">
+            {
+              "props": {
+                "pageProps": {
+                  "product": {
+                    "productName": "Conditional embedded detergent",
+                    "currentPrice": "2,400",
+                    "currency": "JPY",
+                    "points": { "amount": "PayPayポイント 150円相当 付与上限あり" },
+                    "coupon": { "amount": "初回限定クーポン 300円OFF" }
+                  }
+                }
+              }
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2400,
+      source: "embedded-json",
+      effectivePriceQuote: {
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 2400,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(
+      expect.arrayContaining(["point value from embedded JSON: 150 JPY", "coupon value from embedded JSON: 300 JPY"]),
     );
   });
 

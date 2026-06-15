@@ -11,6 +11,11 @@ type PriceAdjustments = {
   evidence: string[];
 };
 
+type RewardSignal = {
+  value?: number;
+  conditionRequired?: boolean;
+};
+
 type ExtractedPrice = {
   price?: number;
   currency?: string;
@@ -362,32 +367,52 @@ function evidenceToConditionLabels(evidence: string[]) {
 
 function extractStructuredAdjustments(record: Record<string, unknown>): PriceAdjustments {
   const shippingFee = extractJsonLdAmount(record.shippingDetails ?? record.shippingRate, ["shippingRate", "price", "value", "amount"]);
-  const pointValue = extractAdditionalPropertyAmount(record, ["point", "points", "ポイント"]);
-  const couponValue = extractAdditionalPropertyAmount(record, ["coupon", "discount", "クーポン", "値引"]);
+  const pointSignal = extractAdditionalPropertyReward(record, ["point", "points", "ポイント"]);
+  const couponSignal = extractAdditionalPropertyReward(record, ["coupon", "discount", "クーポン", "値引"]);
   return {
     shippingFee,
-    pointValue,
-    couponValue,
+    pointValue: pointSignal.value,
+    couponValue: couponSignal.value,
+    conditionLabels: [
+      pointSignal.conditionRequired ? "ポイント条件あり" : "",
+      couponSignal.conditionRequired ? "クーポン条件あり" : "",
+    ].filter(Boolean),
     evidence: [
       typeof shippingFee === "number" ? `shipping fee from JSON-LD: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
-      pointValue ? `point value from JSON-LD: ${pointValue.toLocaleString("ja-JP")} JPY` : "",
-      couponValue ? `coupon value from JSON-LD: ${couponValue.toLocaleString("ja-JP")} JPY` : "",
+      pointSignal.value ? `point value from JSON-LD: ${pointSignal.value.toLocaleString("ja-JP")} JPY` : "",
+      pointSignal.conditionRequired ? "point condition requires retailer confirmation" : "",
+      couponSignal.value ? `coupon value from JSON-LD: ${couponSignal.value.toLocaleString("ja-JP")} JPY` : "",
+      couponSignal.conditionRequired ? "coupon condition requires retailer confirmation" : "",
     ].filter(Boolean),
   };
 }
 
 function extractEmbeddedAdjustments(record: Record<string, unknown>): PriceAdjustments {
   const shippingFee = extractFirstAmountForKeys(record, ["shippingFee", "shipping", "postage", "deliveryFee"]);
-  const pointValue = extractFirstAmountForKeys(record, ["pointValue", "pointAmount", "points", "rewardPoint"]);
-  const couponValue = extractFirstAmountForKeys(record, ["couponValue", "couponAmount", "coupon", "discount", "discountAmount"]);
+  const pointSignal = extractFirstRewardForKeys(
+    record,
+    ["pointValue", "pointAmount", "points", "rewardPoint"],
+    ["point", "points", "ポイント"],
+  );
+  const couponSignal = extractFirstRewardForKeys(
+    record,
+    ["couponValue", "couponAmount", "coupon", "discount", "discountAmount"],
+    ["coupon", "discount", "off", "クーポン", "値引"],
+  );
   return {
     shippingFee,
-    pointValue,
-    couponValue,
+    pointValue: pointSignal.value,
+    couponValue: couponSignal.value,
+    conditionLabels: [
+      pointSignal.conditionRequired ? "ポイント条件あり" : "",
+      couponSignal.conditionRequired ? "クーポン条件あり" : "",
+    ].filter(Boolean),
     evidence: [
       typeof shippingFee === "number" ? `shipping fee from embedded JSON: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
-      pointValue ? `point value from embedded JSON: ${pointValue.toLocaleString("ja-JP")} JPY` : "",
-      couponValue ? `coupon value from embedded JSON: ${couponValue.toLocaleString("ja-JP")} JPY` : "",
+      pointSignal.value ? `point value from embedded JSON: ${pointSignal.value.toLocaleString("ja-JP")} JPY` : "",
+      pointSignal.conditionRequired ? "point condition requires retailer confirmation" : "",
+      couponSignal.value ? `coupon value from embedded JSON: ${couponSignal.value.toLocaleString("ja-JP")} JPY` : "",
+      couponSignal.conditionRequired ? "coupon condition requires retailer confirmation" : "",
     ].filter(Boolean),
   };
 }
@@ -414,36 +439,40 @@ function extractJsonLdAmount(value: unknown, keys: string[]): number | undefined
   return undefined;
 }
 
-function extractAdditionalPropertyAmount(record: Record<string, unknown>, labels: string[]): number | undefined {
+function extractAdditionalPropertyReward(record: Record<string, unknown>, labels: string[]): RewardSignal {
   const properties = [record.additionalProperty, record.additionalProperties, record.priceSpecification].filter(Boolean);
   for (const property of properties) {
-    const found = findNamedAmount(property, labels);
-    if (found) return found;
+    const found = findNamedReward(property, labels);
+    if (found.value || found.conditionRequired) return found;
   }
-  return undefined;
+  return {};
 }
 
-function findNamedAmount(value: unknown, labels: string[]): number | undefined {
+function findNamedReward(value: unknown, labels: string[]): RewardSignal {
   if (Array.isArray(value)) {
     for (const item of value) {
-      const found = findNamedAmount(item, labels);
-      if (found) return found;
+      const found = findNamedReward(item, labels);
+      if (found.value || found.conditionRequired) return found;
     }
-    return undefined;
+    return {};
   }
 
-  if (!value || typeof value !== "object") return undefined;
+  if (!value || typeof value !== "object") return {};
   const record = value as Record<string, unknown>;
-  const name = String(record.name ?? record.propertyID ?? record["@type"] ?? "").toLowerCase();
-  if (labels.some((label) => name.includes(label.toLowerCase()))) {
-    return parsePrice(record.value ?? record.price ?? record.amount);
+  const name = String(record.name ?? record.propertyID ?? record["@type"] ?? "");
+  if (labels.some((label) => name.toLowerCase().includes(label.toLowerCase()))) {
+    const rawValue = record.value ?? record.price ?? record.amount;
+    const descriptor = `${name} ${stringifyRewardPayload(rawValue)}`;
+    if (hasRewardConditionCopy(descriptor, labels)) return { conditionRequired: true };
+    const amount = parsePrice(rawValue);
+    if (amount) return { value: amount };
   }
 
   for (const nested of Object.values(record)) {
-    const found = findNamedAmount(nested, labels);
-    if (found) return found;
+    const found = findNamedReward(nested, labels);
+    if (found.value || found.conditionRequired) return found;
   }
-  return undefined;
+  return {};
 }
 
 function extractFirstAmountForKeys(value: unknown, keys: string[]): number | undefined {
@@ -471,12 +500,49 @@ function extractFirstAmountForKeys(value: unknown, keys: string[]): number | und
   return undefined;
 }
 
+function extractFirstRewardForKeys(value: unknown, keys: string[], labels: string[]): RewardSignal {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = extractFirstRewardForKeys(item, keys, labels);
+      if (found.value || found.conditionRequired) return found;
+    }
+    return {};
+  }
+
+  if (!value || typeof value !== "object") return {};
+  const record = value as Record<string, unknown>;
+  for (const [key, rawValue] of Object.entries(record)) {
+    if (keys.some((candidate) => key.toLowerCase() === candidate.toLowerCase())) {
+      const descriptor = `${key} ${stringifyRewardPayload(rawValue)}`;
+      if (hasRewardConditionCopy(descriptor, labels)) return { conditionRequired: true };
+      const amount = parseAmountPayload(rawValue);
+      if (amount) return { value: amount };
+    }
+  }
+
+  for (const nested of Object.values(record)) {
+    const found = extractFirstRewardForKeys(nested, keys, labels);
+    if (found.value || found.conditionRequired) return found;
+  }
+  return {};
+}
+
 function parseAmountPayload(value: unknown) {
   const direct = parsePrice(value);
   if (direct) return direct;
   if (!value || typeof value !== "object") return undefined;
   const record = value as Record<string, unknown>;
   return parsePrice(record.amount ?? record.value ?? record.price);
+}
+
+function stringifyRewardPayload(value: unknown): string {
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (!value || typeof value !== "object") return "";
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "";
+  }
 }
 
 function isEmbeddedProductRecord(record: Record<string, unknown>) {
@@ -488,16 +554,22 @@ function isEmbeddedProductRecord(record: Record<string, unknown>) {
 
 function extractMetaAdjustments(html: string): PriceAdjustments {
   const shippingFee = extractMetaAmount(html, ["shipping", "postage", "送料"]);
-  const pointValue = extractMetaAmount(html, ["point", "points", "ポイント"]);
-  const couponValue = extractMetaAmount(html, ["coupon", "discount", "クーポン", "値引"]);
+  const pointSignal = extractMetaReward(html, ["point", "points", "ポイント"]);
+  const couponSignal = extractMetaReward(html, ["coupon", "discount", "off", "クーポン", "値引"]);
   return {
     shippingFee,
-    pointValue,
-    couponValue,
+    pointValue: pointSignal.value,
+    couponValue: couponSignal.value,
+    conditionLabels: [
+      pointSignal.conditionRequired ? "ポイント条件あり" : "",
+      couponSignal.conditionRequired ? "クーポン条件あり" : "",
+    ].filter(Boolean),
     evidence: [
       typeof shippingFee === "number" ? `shipping fee from meta tag: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
-      pointValue ? `point value from meta tag: ${pointValue.toLocaleString("ja-JP")} JPY` : "",
-      couponValue ? `coupon value from meta tag: ${couponValue.toLocaleString("ja-JP")} JPY` : "",
+      pointSignal.value ? `point value from meta tag: ${pointSignal.value.toLocaleString("ja-JP")} JPY` : "",
+      pointSignal.conditionRequired ? "point condition requires retailer confirmation" : "",
+      couponSignal.value ? `coupon value from meta tag: ${couponSignal.value.toLocaleString("ja-JP")} JPY` : "",
+      couponSignal.conditionRequired ? "coupon condition requires retailer confirmation" : "",
     ].filter(Boolean),
   };
 }
@@ -518,6 +590,19 @@ function extractMetaAmount(html: string, keys: string[]) {
     if (typeof amount === "number") return amount;
   }
   return undefined;
+}
+
+function extractMetaReward(html: string, keys: string[]): RewardSignal {
+  const metaTags = [...html.matchAll(/<meta\b[^>]*>/gi)].map((match) => match[0]);
+  for (const tag of metaTags) {
+    const content = matchContent(tag, /\bcontent=["']([^"']+)["']/i);
+    const descriptor = [matchContent(tag, /\b(?:property|name|itemprop)=["']([^"']+)["']/i), content].filter(Boolean).join(" ");
+    if (!keys.some((key) => descriptor.toLowerCase().includes(key.toLowerCase()))) continue;
+    if (hasRewardConditionCopy(descriptor, keys)) return { conditionRequired: true };
+    const amount = parsePrice(content);
+    if (typeof amount === "number") return { value: amount };
+  }
+  return {};
 }
 
 function inferPriceAdjustments(html: string, listPrice: number): PriceAdjustments {
@@ -736,6 +821,10 @@ function hasAmbiguousRewardCopy(text: string, labels: string[]) {
       );
     }),
   );
+}
+
+function hasRewardConditionCopy(text: string, labels: string[]) {
+  return hasAmbiguousRewardCopy(text, labels) || hasRewardMultiplierCopy(text, labels) || hasRewardThresholdCopy(text, labels);
 }
 
 function hasRewardMultiplierCopy(text: string, labels: string[]) {

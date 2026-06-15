@@ -44,7 +44,7 @@ export type NotificationDispatchResult = {
   status: "dry-run" | "sent" | "skipped" | "failed";
   reason?: "dry-run-only" | "blocked-job" | "missing-destination" | "unsupported-channel" | "provider-not-configured" | "provider-error";
   provider: "line" | "email" | "webpush" | "none";
-  deliveryMethod: "dry-run" | "line-push-api" | "adapter-boundary" | "none";
+  deliveryMethod: "dry-run" | "line-push-api" | "email-smtp" | "adapter-boundary" | "none";
   attempts: number;
   dispatchedAt: string;
   payload: NotificationJob["payload"];
@@ -139,9 +139,11 @@ export function buildNotificationDispatchResults({
       ? "dry-run"
       : provider === "line"
         ? "line-push-api"
-        : provider === "none"
-          ? "none"
-          : "adapter-boundary";
+        : provider === "email"
+          ? "email-smtp"
+          : provider === "none"
+            ? "none"
+            : "adapter-boundary";
     const baseResult = {
       id: `${job.id}-${dryRun ? "dry-run" : "dispatch"}`,
       jobId: job.id,
@@ -195,32 +197,6 @@ export function buildNotificationDispatchResults({
   });
 }
 
-export async function dispatchNotificationJobs({
-  jobs,
-  dryRun = true,
-  dispatchedAt = new Date().toISOString(),
-  providerReadiness = getNotificationProviderReadiness(dispatchedAt),
-}: {
-  jobs: NotificationJob[];
-  dryRun?: boolean;
-  dispatchedAt?: string;
-  providerReadiness?: NotificationProviderReadiness;
-}): Promise<NotificationDispatchResult[]> {
-  const planned = buildNotificationDispatchResults({ jobs, dryRun, dispatchedAt, providerReadiness });
-  if (dryRun) return planned;
-
-  const delivered: NotificationDispatchResult[] = [];
-  for (const result of planned) {
-    if (result.status !== "sent" || result.provider !== "line") {
-      delivered.push(result);
-      continue;
-    }
-
-    delivered.push(await sendLinePushMessage(result));
-  }
-  return delivered;
-}
-
 export function summarizeNotificationDispatchResults(results: NotificationDispatchResult[]): NotificationDispatchSummary {
   return results.reduce<NotificationDispatchSummary>(
     (summary, result) => {
@@ -264,46 +240,6 @@ function buildProviderStatus(provider: Channel): NotificationProviderStatus {
     configuredBy: configured ? "env" : "missing",
     requiredEnv,
     mode: configured ? "adapter-ready" : "dry-run-only",
-    realDelivery: provider === "line" && configured,
+    realDelivery: (provider === "line" || provider === "email") && configured,
   };
-}
-
-async function sendLinePushMessage(result: NotificationDispatchResult): Promise<NotificationDispatchResult> {
-  const token = process.env.HOME_STACK_LINE_CHANNEL_ACCESS_TOKEN?.trim();
-  if (!token || !result.destination) {
-    return { ...result, status: "failed", reason: token ? "missing-destination" : "provider-not-configured" };
-  }
-
-  const response = await fetch("https://api.line.me/v2/bot/message/push", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${token}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      to: result.destination,
-      messages: [
-        {
-          type: "text",
-          text: buildLineMessageText(result.payload),
-        },
-      ],
-    }),
-  });
-
-  if (response.ok) {
-    return { ...result, status: "sent", deliveryMethod: "line-push-api", providerStatus: response.status };
-  }
-
-  return {
-    ...result,
-    status: "failed",
-    reason: "provider-error",
-    providerStatus: response.status,
-    providerMessage: await response.text().catch(() => response.statusText),
-  };
-}
-
-function buildLineMessageText(payload: NotificationJob["payload"]) {
-  return [payload.subject, payload.message, payload.actionUrl].filter(Boolean).join("\n").slice(0, 5000);
 }

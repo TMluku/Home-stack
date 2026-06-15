@@ -1,12 +1,8 @@
 import { NextResponse } from "next/server";
 import { resolveAccountAccess } from "@/lib/account-auth";
+import { dispatchNotificationJobs } from "@/lib/notification-delivery";
 import type { NotificationContactPoints, NotificationJob } from "@/lib/notification-jobs";
-import {
-  buildNotificationJobs,
-  dispatchNotificationJobs,
-  getNotificationProviderReadiness,
-  summarizeNotificationDispatchResults,
-} from "@/lib/notification-jobs";
+import { buildNotificationJobs, getNotificationProviderReadiness, summarizeNotificationDispatchResults } from "@/lib/notification-jobs";
 import type { ServerSyncPayload } from "@/lib/post-mvp";
 import { appendNotificationEvent } from "@/lib/server-state-store";
 

@@ -1,6 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import nodemailer from "nodemailer";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { POST as listAccounts } from "../src/app/api/account/list/route";
 import { POST as resolveAccount } from "../src/app/api/account/resolve/route";
@@ -868,6 +869,8 @@ describe("API route contracts", () => {
 
       process.env.HOME_STACK_EMAIL_FROM = "noreply@example.test";
       process.env.HOME_STACK_EMAIL_TRANSPORT = "smtp://localhost:1025";
+      const sendMailMock = vi.fn().mockResolvedValue({ messageId: "email-message-1" });
+      const createTransportMock = vi.spyOn(nodemailer, "createTransport").mockReturnValue({ sendMail: sendMailMock } as never);
       const configuredResponse = await dispatchNotifications(
         new Request("http://localhost/api/notifications/dispatch", {
           method: "POST",
@@ -882,7 +885,21 @@ describe("API route contracts", () => {
 
       expect(configuredResponse.status).toBe(200);
       expect(configured.summary.sent).toBe(configured.summary.total);
-      expect(configured.results[0]).toMatchObject({ provider: "email", status: "sent" });
+      expect(configured.results[0]).toMatchObject({
+        provider: "email",
+        deliveryMethod: "email-smtp",
+        status: "sent",
+        providerMessage: "email-message-1",
+      });
+      expect(createTransportMock).toHaveBeenCalledWith("smtp://localhost:1025");
+      expect(sendMailMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          from: "noreply@example.test",
+          to: "user@example.test",
+          subject: expect.any(String),
+          text: expect.any(String),
+        }),
+      );
     } finally {
       await rm(storeDir, { recursive: true, force: true });
     }

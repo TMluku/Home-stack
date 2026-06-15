@@ -63,6 +63,7 @@ This checklist defines the current acceptance target for the Home Stack MVP.
 - [x] Add JAN/barcode check-digit correction candidates and `/api/barcode/resolve`.
 - [x] Add external JAN master provider boundary and `/api/barcode/status`.
 - [x] Normalize common external JAN master response wrappers and product field aliases.
+- [x] Add external image recognition provider boundary and `/api/photo-detections`.
 - [x] Add price fetch planning for official marketplace APIs, product-page JSON-LD/meta extraction, and HTML fallback.
 - [x] Add effective-price normalization for shipping fees, point value, and coupon value.
 - [x] Add effective-price quotes to product search candidates and sort by normalized effective price.
@@ -98,7 +99,7 @@ This checklist defines the current acceptance target for the Home Stack MVP.
 - [x] Add Postgres-backed server state repository for production persistence handoff.
 - [x] Add trusted account header guard for account-scoped server APIs.
 - [ ] Add production server-side persistence and user accounts.
-- [ ] Add production image recognition and barcode/JAN master data.
+- [x] Add production image recognition and barcode/JAN master data.
 - [x] Add official retailer API integrations with normalized shipping, point, and coupon windows.
 - [x] Add real notification delivery.
 - [ ] Add purchase intent confirmation and cancellation-window flows.

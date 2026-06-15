@@ -51,6 +51,8 @@ Current MVP routes still return a lightweight shape so the client can stay simpl
 | `POST` | `/api/notifications/dispatch` | Dry-run notification delivery by default; with `dryRun: false`, configured LINE, email, and Web Push jobs are sent through their provider adapters. |
 | `POST` | `/api/notifications/history` | List stored notification prepare and dispatch events for an account. |
 | `POST` | `/api/notifications/status` | Report LINE, email, and Web Push provider readiness from environment configuration. |
+| `POST` | `/api/photo-detections` | Return demo photo inventory candidates or normalize external image recognition results when configured. |
+| `POST` | `/api/photo-detections/status` | Report whether photo detection uses demo candidates or an external image recognition endpoint. |
 
 ### `POST /api/product-search`
 
@@ -84,6 +86,24 @@ Response includes normalized digits, JAN-13/JAN-8 validation, correction candida
 - `HOME_STACK_BARCODE_MASTER_URL`
 
 When configured, the server calls the endpoint with both `?janCode=` and `barcode=` and accepts product-shaped JSON, `{ "product": { ... } }`, `{ "item": { ... } }`, array roots, `{ "items": [{ ... }] }`, `{ "results": [{ ... }] }`, or nested `{ "data": ... }` variants. Without it, the route uses the demo JAN catalog and keeps returning static search candidates. If a master product name is available, the response uses that name as the product-search query before falling back to the JAN code.
+
+### `POST /api/photo-detections`
+
+Request:
+
+```json
+{
+  "imageData": "data:image/png;base64,...",
+  "mimeType": "image/png"
+}
+```
+
+Optional environment variables:
+
+- `HOME_STACK_IMAGE_RECOGNITION_URL`
+- `HOME_STACK_IMAGE_RECOGNITION_TOKEN`
+
+When configured, the server posts the image payload to the external endpoint and accepts array roots, `{ "detections": [] }`, `{ "items": [] }`, `{ "results": [] }`, `{ "products": [] }`, `{ "candidates": [] }`, or nested `{ "data": ... }` variants. Product aliases such as `product_name`, `itemName`, `label`, `remainingPercent`, `usagePerDay`, `confidence`, and `model` are normalized into inventory candidates. Without it, the route returns demo photo candidates.
 
 ### `POST /api/price-scan`
 
@@ -161,6 +181,7 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 - Product URL scans should also return `effectivePriceQuote` so direct product pages and marketplace search candidates can share the same ranking and audit contract. Prefer structured JSON-LD/meta condition evidence, then embedded app-state JSON or data attributes, before falling back to nearby page text.
 - JAN/barcode input should preserve the raw input, normalized digits, validation result, and suggested check-digit correction before searching marketplaces.
 - JAN/barcode lookup should expose the active master provider and be able to hand off valid codes to an external HTTP JAN master through `HOME_STACK_BARCODE_MASTER_URL`. Normalize common response key variants such as `jan_code`, `product_name`, `itemName`, `category_name`, and `capacity`.
+- Photo detection should expose the active recognition provider and be able to hand image payloads to an external HTTP service through `HOME_STACK_IMAGE_RECOGNITION_URL`. Normalize common product, category, stock, daily usage, confidence, and model field aliases into inventory candidates.
 - Notification preparation must keep delivery as a separate adapter step. Missing LINE/email/Web Push destinations should produce blocked jobs, not silent drops.
 - Notification status should expose provider readiness without leaking secret values. Required env keys are `HOME_STACK_LINE_CHANNEL_ACCESS_TOKEN`, `HOME_STACK_EMAIL_FROM` plus `HOME_STACK_EMAIL_TRANSPORT`, and `HOME_STACK_WEB_PUSH_PUBLIC_KEY` plus `HOME_STACK_WEB_PUSH_PRIVATE_KEY` plus `HOME_STACK_WEB_PUSH_SUBJECT`.
 - Notification dispatch should run as dry-run by default. With `dryRun: false`, unconfigured providers fail with `provider-not-configured`; configured LINE jobs call the LINE Messaging API push endpoint, configured email jobs call SMTP via `HOME_STACK_EMAIL_TRANSPORT`, and configured Web Push jobs call the Web Push protocol with VAPID credentials. Web Push destinations must be serialized PushSubscription JSON.

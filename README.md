@@ -29,7 +29,6 @@ Not implemented in the MVP:
 
 - Real payments or purchase confirmation.
 - Server-side user accounts or persistence.
-- Production image recognition.
 - Guaranteed retailer stock, delivery date, or final checkout price.
 
 ## Getting Started
@@ -105,6 +104,8 @@ When the app runs as a Next.js server, account sync payloads can be saved throug
 - `POST /api/notifications/dispatch`
 - `POST /api/notifications/history`
 - `POST /api/notifications/status`
+- `POST /api/photo-detections`
+- `POST /api/photo-detections/status`
 - `POST /api/barcode/resolve`
 - `POST /api/barcode/status`
 
@@ -122,6 +123,7 @@ Set `HOME_STACK_LINE_CHANNEL_ACCESS_TOKEN`, `HOME_STACK_EMAIL_FROM` plus `HOME_S
 The Post-MVP panel can check provider status, prepare jobs, run a dry-run dispatch, and load notification history when the app is running on a Next.js server.
 Barcode resolution validates JAN check digits, suggests corrected candidates, and returns search candidates without needing a production barcode master yet.
 Set `HOME_STACK_BARCODE_MASTER_URL` to hand valid JAN codes to an external HTTP master endpoint; otherwise the demo catalog remains the fallback. External master responses can use common product, item, data, items, or results wrappers, and product names are used as the follow-up search query when available.
+Photo detection returns demo candidates by default. Set `HOME_STACK_IMAGE_RECOGNITION_URL` and optional `HOME_STACK_IMAGE_RECOGNITION_TOKEN` to send image data to an external recognition endpoint and normalize returned products into inventory candidates.
 
 ## Important Data Notes
 

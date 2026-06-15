@@ -16,6 +16,8 @@ import { POST as dispatchNotifications } from "../src/app/api/notifications/disp
 import { POST as listNotificationHistory } from "../src/app/api/notifications/history/route";
 import { POST as prepareNotifications } from "../src/app/api/notifications/prepare/route";
 import { POST as getNotificationStatus } from "../src/app/api/notifications/status/route";
+import { POST as detectPhotoInventory } from "../src/app/api/photo-detections/route";
+import { POST as getPhotoDetectionStatus } from "../src/app/api/photo-detections/status/route";
 import { POST as scanPrices } from "../src/app/api/price-scan/route";
 import { POST as searchProducts } from "../src/app/api/product-search/route";
 import { POST as exportState } from "../src/app/api/state/export/route";
@@ -44,6 +46,8 @@ describe("API route contracts", () => {
     delete process.env.HOME_STACK_WEB_PUSH_SUBJECT;
     delete process.env.RAKUTEN_APPLICATION_ID;
     delete process.env.YAHOO_SHOPPING_APP_ID;
+    delete process.env.HOME_STACK_IMAGE_RECOGNITION_URL;
+    delete process.env.HOME_STACK_IMAGE_RECOGNITION_TOKEN;
   });
 
   it("rejects empty price scan requests", async () => {
@@ -211,6 +215,75 @@ describe("API route contracts", () => {
         "point window: 2026-06-15T00:00:00+09:00 - 2026-06-22T23:59:59+09:00",
         "coupon window: 2026-06-17T00:00:00+09:00 - 2026-06-18T23:59:59+09:00",
       ]),
+    );
+  });
+
+  it("normalizes external photo detection responses into inventory candidates", async () => {
+    process.env.HOME_STACK_IMAGE_RECOGNITION_URL = "https://vision.example.test/detect";
+    process.env.HOME_STACK_IMAGE_RECOGNITION_TOKEN = "vision-token";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          detections: [
+            {
+              product_name: "External baby wipes",
+              category: "ベビー用品",
+              remainingPercent: 72,
+              usagePerDay: 6,
+              confidence: 0.91,
+              model: "vision-v1",
+            },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    const statusResponse = await getPhotoDetectionStatus();
+    const status = await statusResponse.json();
+    expect(status).toMatchObject({
+      ok: true,
+      status: {
+        kind: "external-http",
+        configuredBy: "env",
+        endpoint: "https://vision.example.test/detect",
+        ready: true,
+      },
+    });
+
+    const response = await detectPhotoInventory(
+      new Request("http://localhost/api/photo-detections", {
+        method: "POST",
+        body: JSON.stringify({ imageData: "data:image/png;base64,AAA=", mimeType: "image/png" }),
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://vision.example.test/detect",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          authorization: "Bearer vision-token",
+          "content-type": "application/json",
+        }),
+      }),
+    );
+    expect(payload.detection).toMatchObject({
+      source: "external-http",
+      candidates: [
+        {
+          name: "External baby wipes",
+          stock: 72,
+          dailyUsage: 6,
+          confidence: "high",
+        },
+      ],
+      evidence: ["matched external image recognition response", "normalized external photo detection payload"],
+    });
+    expect(payload.detection.candidates[0].evidence).toEqual(
+      expect.arrayContaining(["external image recognition candidate", "confidence: 0.91", "source: vision-v1"]),
     );
   });
 

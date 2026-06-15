@@ -1597,6 +1597,7 @@ function ProductSearchPanel({
   onSearchInventory: (item: InventoryItem) => void;
 }) {
   const bestCandidate = result?.candidates[0];
+  const bestCandidatePrice = bestCandidate?.effectivePriceQuote?.effectivePrice ?? bestCandidate?.price;
 
   return (
     <section className="product-search-panel" aria-label="商品価格横断検索">
@@ -1656,8 +1657,8 @@ function ProductSearchPanel({
               <strong>{result.normalizedQuery}</strong>
             </div>
             <div>
-              <span>価格順1位</span>
-              <strong>{bestCandidate?.price ? yenFormatter.format(bestCandidate.price) : "未検出"}</strong>
+              <span>実質価格1位</span>
+              <strong>{bestCandidatePrice ? yenFormatter.format(bestCandidatePrice) : "未検出"}</strong>
             </div>
             <div>
               <span>検索元</span>

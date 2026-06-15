@@ -445,6 +445,8 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   const pointEnd = readStringPath(record, ["point.endTime", "point.end", "pointRateEndTime", "pointEndTime", "campaignEndTime"]);
   const couponStart = readStringPath(record, ["coupon.startTime", "coupon.start", "couponStartTime", "discountStartTime"]);
   const couponEnd = readStringPath(record, ["coupon.endTime", "coupon.end", "couponEndTime", "discountEndTime"]);
+  const pointWindowRequired = Boolean(pointValue && (pointStart || pointEnd));
+  const couponWindowRequired = Boolean(couponValue && (couponStart || couponEnd));
   const evidence = [
     typeof shippingFee === "number" ? (shippingFee === 0 ? "official shipping: free" : `official shipping fee: ${shippingFee} JPY`) : "",
     shippingConditionRequired ? "official shipping condition requires retailer confirmation" : "",
@@ -458,7 +460,11 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
     shippingFee,
     pointValue,
     couponValue,
-    conditionLabels: shippingConditionRequired ? ["送料条件あり"] : [],
+    conditionLabels: [
+      shippingConditionRequired ? "送料条件あり" : "",
+      pointWindowRequired ? "ポイント期間あり" : "",
+      couponWindowRequired ? "クーポン期間あり" : "",
+    ].filter(Boolean),
     shippingLabel:
       shippingFee === 0
         ? "送料無料"

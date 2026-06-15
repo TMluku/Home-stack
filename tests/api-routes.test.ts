@@ -199,6 +199,7 @@ describe("API route contracts", () => {
       effectivePrice: 1650,
       conditionRequired: true,
     });
+    expect(rakutenCandidate.effectivePriceQuote.conditionLabels).toEqual(expect.arrayContaining(["ポイント期間あり", "クーポン期間あり"]));
     expect(rakutenCandidate.evidence).toEqual(
       expect.arrayContaining([
         "official shipping: free",
@@ -216,6 +217,7 @@ describe("API route contracts", () => {
       effectivePrice: 1890,
       conditionRequired: true,
     });
+    expect(yahooCandidate.effectivePriceQuote.conditionLabels).toEqual(expect.arrayContaining(["ポイント期間あり", "クーポン期間あり"]));
     expect(yahooCandidate.evidence).toEqual(
       expect.arrayContaining([
         "official shipping: free",

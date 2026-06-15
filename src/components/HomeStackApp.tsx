@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { MouseEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
@@ -60,6 +61,7 @@ const filterLabels: Record<OfferFilter, string> = {
 };
 
 const isStaticExport = process.env.NEXT_PUBLIC_STATIC_EXPORT === "true";
+const staticAssetBasePath = isStaticExport ? "/Home-stack" : "";
 const serverSyncAccountId = "demo-account";
 
 type ServerAccountSummary = {
@@ -1372,6 +1374,46 @@ export function HomeStackApp() {
   );
 }
 
+function EffectivePriceProof({
+  quote,
+  evidence,
+}: {
+  quote?: ProductSearchResult["candidates"][number]["effectivePriceQuote"] | LivePriceResult["effectivePriceQuote"];
+  evidence?: string[];
+}) {
+  if (!quote) return null;
+
+  const proofCount = evidence?.length ?? quote.evidence.length;
+
+  return (
+    <fieldset className="effective-proof">
+      <legend className="visually-hidden">実質価格の内訳</legend>
+      <div>
+        <span>表示</span>
+        <strong>{yenFormatter.format(quote.listPrice)}</strong>
+      </div>
+      <div>
+        <span>送料</span>
+        <strong>{yenFormatter.format(quote.shippingFee ?? 0)}</strong>
+      </div>
+      <div>
+        <span>ポイント</span>
+        <strong>-{yenFormatter.format(quote.pointValue ?? 0)}</strong>
+      </div>
+      <div>
+        <span>クーポン</span>
+        <strong>-{yenFormatter.format(quote.couponValue ?? 0)}</strong>
+      </div>
+      <div className="effective-proof__total">
+        <span>実質</span>
+        <strong>{yenFormatter.format(quote.effectivePrice)}</strong>
+      </div>
+      <p>{quote.conditionLabels.length > 0 ? quote.conditionLabels.join(" / ") : "控除条件なし"}</p>
+      <small>根拠 {proofCount}件 / 条件は購入前に販売サイトで再確認</small>
+    </fieldset>
+  );
+}
+
 function ProductSearchPanel({
   inventory,
   query,
@@ -1403,6 +1445,10 @@ function ProductSearchPanel({
         <p className="eyebrow">Price Search Lab</p>
         <h3>商品名から複数サイトを検索して価格候補を集める</h3>
         <p>APIキーがある場合は公式APIを優先し、未設定なら取得できる範囲で公開ページから候補を抽出します。</p>
+      </div>
+
+      <div className="price-insight-visual" aria-hidden="true">
+        <Image src={`${staticAssetBasePath}/price-insight-visual.png`} alt="" width={1600} height={900} priority />
       </div>
 
       <fieldset className="inventory-search-chips">
@@ -1490,6 +1536,7 @@ function ProductSearchPanel({
                 {candidate.effectivePriceQuote?.conditionLabels.length ? (
                   <p>{candidate.effectivePriceQuote.conditionLabels.join(" / ")}</p>
                 ) : null}
+                <EffectivePriceProof quote={candidate.effectivePriceQuote} evidence={candidate.evidence} />
                 <small>{candidate.evidence.join(" / ")}</small>
                 <a href={candidate.url} target="_blank" rel="noreferrer">
                   商品ページを見る
@@ -1628,6 +1675,7 @@ function LivePriceScanner({
                     : "取得不可"}
               </strong>
               {result.effectivePriceQuote?.conditionLabels.length ? <p>{result.effectivePriceQuote.conditionLabels.join(" / ")}</p> : null}
+              <EffectivePriceProof quote={result.effectivePriceQuote} />
               <p>{result.title ?? result.url}</p>
               <small>
                 {new Date(result.fetchedAt).toLocaleString("ja-JP")} / {result.error ?? result.url}

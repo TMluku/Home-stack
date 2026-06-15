@@ -226,6 +226,30 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("does not deduct ambiguous max reward claims from broad product page text", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Ambiguous reward product</title></head>
+        <body>
+          <span>price 1,000 JPY</span>
+          <span>up to 50% points after entry required</span>
+          <span>coupon 最大 900円 対象者限定</span>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1000,
+      effectivePriceQuote: {
+        listPrice: 1000,
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 1000,
+        conditionRequired: false,
+      },
+    });
+  });
+
   it("extracts structured shipping, point, and coupon evidence from product JSON-LD", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -425,6 +449,37 @@ describe("replenishment domain logic", () => {
     });
     expect(candidates[0]?.evidence).toEqual(
       expect.arrayContaining(["shipping fee inferred: 300 JPY", "point value inferred: 120 JPY", "coupon value inferred: 200 JPY"]),
+    );
+  });
+
+  it("keeps marketplace HTML effective price conservative for ambiguous reward claims", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/ambiguous" title="Ambiguous paper towel">Ambiguous paper towel</a>
+          <span>price 1,000 JPY</span>
+          <span>shipping 300</span>
+          <span>最大 50% points 要エントリー</span>
+          <span>coupon up to 900 eligible only</span>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/paper/",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      price: 1000,
+      effectivePriceQuote: {
+        listPrice: 1000,
+        shippingFee: 300,
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 1300,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.evidence).not.toEqual(
+      expect.arrayContaining(["point value inferred: 500 JPY", "coupon value inferred: 900 JPY"]),
     );
   });
 });

@@ -874,6 +874,76 @@ h3 {
   font-weight: 900;
 }
 
+.price-insight-visual {
+  aspect-ratio: 16 / 9;
+  background: #eef6f3;
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  overflow: hidden;
+}
+
+.price-insight-visual img {
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.effective-proof {
+  background: #fff;
+  border: 1px solid #e8dcc7;
+  border-radius: 0.65rem;
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 0;
+  min-inline-size: 0;
+  padding: 0.65rem;
+}
+
+.effective-proof div {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.effective-proof span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.effective-proof strong {
+  color: var(--ink);
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.effective-proof__total {
+  background: #eef6f3;
+  border-radius: 0.45rem;
+  padding: 0.35rem;
+}
+
+.effective-proof p,
+.effective-proof small {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.effective-proof p {
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.effective-proof small {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
 .url-scan-box {
   color: var(--muted);
   display: grid;
@@ -1534,6 +1604,10 @@ h3 {
 
   .shopping-summary {
     grid-template-columns: 1fr;
+  }
+
+  .effective-proof {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .hero__actions .button {

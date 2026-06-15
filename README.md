@@ -2,6 +2,8 @@
 
 Home Stack is a mobile-first MVP for managing household consumables and finding replenishment candidates before items run out.
 
+Published app: https://tmluku.github.io/Home-stack/
+
 The MVP focuses on local validation of the product flow:
 
 - Register demo inventory from a photo upload simulation.
@@ -54,6 +56,7 @@ pnpm.cmd run check
 pnpm.cmd run build
 pnpm.cmd run build:pages
 pnpm.cmd run check:pages
+pnpm.cmd run test:e2e
 ```
 
 `check` runs:
@@ -61,6 +64,8 @@ pnpm.cmd run check:pages
 - TypeScript typecheck
 - Biome lint
 - Vitest tests
+
+`test:e2e` checks the published GitHub Pages URL by default. Override it with `HOME_STACK_PAGES_URL` when validating another deployment.
 
 Remove generated build, preview, log, dependency, and local server-state artifacts with:
 

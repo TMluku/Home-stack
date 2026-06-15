@@ -482,17 +482,33 @@ function extractPlainText(html: string) {
 }
 
 function extractPointValue(text: string, listPrice: number) {
+  if (hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"])) return undefined;
   const explicit = extractAmountAroundLabel(text, ["ポイント", "point", "points"]);
-  if (explicit) return explicit;
+  if (explicit && explicit / listPrice <= 0.35) return explicit;
   const rate = extractRateAroundLabel(text, ["ポイント", "point", "points"]);
-  return rate ? Math.round(listPrice * (rate / 100)) : undefined;
+  return rate && rate <= 30 ? Math.round(listPrice * (rate / 100)) : undefined;
 }
 
 function extractCouponValue(text: string, listPrice: number) {
+  if (hasAmbiguousRewardCopy(text, ["coupon", "discount", "off", "クーポン"])) return undefined;
   const explicit = extractAmountAroundLabel(text, ["クーポン", "coupon", "値引", "discount"]);
-  if (explicit) return explicit;
+  if (explicit && explicit / listPrice <= 0.6) return explicit;
   const rate = extractRateAroundLabel(text, ["クーポン", "coupon", "off", "discount"]);
-  return rate ? Math.round(listPrice * (rate / 100)) : undefined;
+  return rate && rate <= 60 ? Math.round(listPrice * (rate / 100)) : undefined;
+}
+
+function hasAmbiguousRewardCopy(text: string, labels: string[]) {
+  const ambiguousWords = ["最大", "上限", "抽選", "予定", "対象者限定", "要エントリー", "up to", "entry required", "eligible only"];
+  return labels.some((label) =>
+    ambiguousWords.some((word) => {
+      const escapedLabel = escapeRegExp(label);
+      const escapedWord = escapeRegExp(word);
+      return (
+        new RegExp(`${escapedWord}.{0,28}${escapedLabel}`, "i").test(text) ||
+        new RegExp(`${escapedLabel}.{0,28}${escapedWord}`, "i").test(text)
+      );
+    }),
+  );
 }
 
 function extractAmountAroundLabel(text: string, labels: string[]) {

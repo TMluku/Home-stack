@@ -9,6 +9,7 @@
     "build:pages": "node scripts/build-pages.mjs",
     "check:pages": "node scripts/check-pages-readiness.mjs",
     "deploy:pages-branch": "node scripts/publish-pages-branch.mjs",
+    "test:e2e": "node scripts/e2e-pages-smoke.mjs",
     "start": "next start",
     "check": "pnpm run typecheck && pnpm run lint && pnpm test",
     "test": "vitest run",

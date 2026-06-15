@@ -956,16 +956,9 @@ h3 {
   border-radius: 0.65rem;
   display: grid;
   gap: 0.45rem;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
   margin: 0;
   min-inline-size: 0;
   padding: 0.65rem;
-}
-
-.effective-proof div {
-  display: grid;
-  gap: 0.1rem;
-  min-width: 0;
 }
 
 .effective-proof span {
@@ -981,10 +974,37 @@ h3 {
   white-space: normal;
 }
 
-.effective-proof__total {
-  background: #eef6f3;
+.effective-proof__breakdown {
+  display: grid;
+  gap: 0.35rem;
+  grid-template-columns: repeat(auto-fit, minmax(5.7rem, 1fr));
+  list-style: none;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.effective-proof__breakdown-item {
+  background: #fbfaf8;
+  border: 1px solid #eadfd0;
   border-radius: 0.45rem;
-  padding: 0.35rem;
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+  padding: 0.38rem 0.44rem;
+}
+
+.effective-proof__breakdown-item--add strong {
+  color: #7a4d08;
+}
+
+.effective-proof__breakdown-item--subtract strong {
+  color: #21624f;
+}
+
+.effective-proof__breakdown-item--total {
+  background: #eef6f3;
+  border-color: #d3e6df;
 }
 
 .effective-proof__badges {

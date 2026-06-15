@@ -1440,6 +1440,13 @@ function EffectivePriceProof({
   const proofEvidence = prioritizeConditionEvidence([...new Set(rawProofEvidence.map(formatPriceEvidence))]).slice(0, 6);
   const proofCount = rawProofEvidence.length;
   const checkItems = buildConditionCheckItems(quote.conditionLabels);
+  const breakdownItems = [
+    { label: "表示価格", value: yenFormatter.format(quote.listPrice), type: "base" },
+    { label: "送料", value: `+${yenFormatter.format(quote.shippingFee ?? 0)}`, type: "add" },
+    { label: "ポイント", value: `-${yenFormatter.format(quote.pointValue ?? 0)}`, type: "subtract" },
+    { label: "クーポン", value: `-${yenFormatter.format(quote.couponValue ?? 0)}`, type: "subtract" },
+    { label: "実質価格", value: yenFormatter.format(quote.effectivePrice), type: "total" },
+  ];
   const priceFormula = `表示 ${yenFormatter.format(quote.listPrice)} + 送料 ${yenFormatter.format(quote.shippingFee ?? 0)} - ポイント ${yenFormatter.format(
     quote.pointValue ?? 0,
   )} - クーポン ${yenFormatter.format(quote.couponValue ?? 0)} = 実質 ${yenFormatter.format(quote.effectivePrice)}`;
@@ -1447,26 +1454,14 @@ function EffectivePriceProof({
   return (
     <fieldset className="effective-proof">
       <legend className="visually-hidden">実質価格の内訳</legend>
-      <div>
-        <span>表示</span>
-        <strong>{yenFormatter.format(quote.listPrice)}</strong>
-      </div>
-      <div>
-        <span>送料</span>
-        <strong>{yenFormatter.format(quote.shippingFee ?? 0)}</strong>
-      </div>
-      <div>
-        <span>ポイント</span>
-        <strong>-{yenFormatter.format(quote.pointValue ?? 0)}</strong>
-      </div>
-      <div>
-        <span>クーポン</span>
-        <strong>-{yenFormatter.format(quote.couponValue ?? 0)}</strong>
-      </div>
-      <div className="effective-proof__total">
-        <span>実質</span>
-        <strong>{yenFormatter.format(quote.effectivePrice)}</strong>
-      </div>
+      <ul className="effective-proof__breakdown" aria-label="実質価格の計算内訳">
+        {breakdownItems.map((item) => (
+          <li className={`effective-proof__breakdown-item effective-proof__breakdown-item--${item.type}`} key={item.label}>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+          </li>
+        ))}
+      </ul>
       <ul className="effective-proof__badges" aria-label="価格条件">
         {quote.conditionLabels.length > 0 ? (
           quote.conditionLabels.map((label) => (

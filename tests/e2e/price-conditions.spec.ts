@@ -26,6 +26,9 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(conditionalProof).toContainText("販売ページで条件を見る");
   await expect(conditionalProof).toContainText("購入条件:");
   await expect(conditionalProof).toContainText("クーポン条件:");
+  await expect(conditionalProof.locator(".effective-proof__breakdown")).toHaveAttribute("aria-label", "実質価格の計算内訳");
+  await expect(conditionalProof.locator(".effective-proof__breakdown-item")).toHaveCount(5);
+  await expect(conditionalProof.locator(".effective-proof__breakdown-item--total")).toContainText("実質価格");
   await expect(conditionalProof.locator(".effective-proof__formula")).toContainText(/表示.*送料.*ポイント.*クーポン.*実質/);
   await expect(conditionalProof.locator(".effective-proof__notice")).toContainText("条件成立時の見込み");
   await expect(conditionalProof.locator(".effective-proof__checklist")).toContainText("数量・定期・初回条件");

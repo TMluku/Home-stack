@@ -472,8 +472,8 @@ function findNamedReward(value: unknown, labels: string[]): RewardSignal {
   const name = String(record.name ?? record.propertyID ?? record["@type"] ?? "");
   if (labels.some((label) => name.toLowerCase().includes(label.toLowerCase()))) {
     const rawValue = record.value ?? record.price ?? record.amount;
-    const descriptor = `${name} ${stringifyRewardPayload(rawValue)}`;
-    if (hasRewardConditionCopy(descriptor, labels)) return { conditionRequired: true };
+    const descriptor = `${name} ${stringifyRewardPayload(record)}`;
+    if (hasStructuredRewardConditionCopy(descriptor, labels)) return { conditionRequired: true };
     const amount = parsePrice(rawValue);
     if (amount) return { value: amount };
   }
@@ -523,8 +523,8 @@ function extractFirstRewardForKeys(value: unknown, keys: string[], labels: strin
   const record = value as Record<string, unknown>;
   for (const [key, rawValue] of Object.entries(record)) {
     if (keys.some((candidate) => key.toLowerCase() === candidate.toLowerCase())) {
-      const descriptor = `${key} ${stringifyRewardPayload(rawValue)}`;
-      if (hasRewardConditionCopy(descriptor, labels)) return { conditionRequired: true };
+      const descriptor = `${key} ${stringifyRewardPayload(record)}`;
+      if (hasStructuredRewardConditionCopy(descriptor, labels)) return { conditionRequired: true };
       const amount = parseAmountPayload(rawValue);
       if (amount) return { value: amount };
     }
@@ -877,6 +877,13 @@ function hasAmbiguousRewardCopy(text: string, labels: string[]) {
 
 function hasRewardConditionCopy(text: string, labels: string[]) {
   return hasAmbiguousRewardCopy(text, labels) || hasRewardMultiplierCopy(text, labels) || hasRewardThresholdCopy(text, labels);
+}
+
+function hasStructuredRewardConditionCopy(text: string, labels: string[]) {
+  if (hasRewardConditionCopy(text, labels)) return true;
+  return /(?:対象商品|対象店舗|対象ストア|対象者限定|要エントリー|エントリー|ログイン|会員限定|アプリ限定|LINE限定|カード会員|指定カード|支払い方法|決済|レビュー投稿|レビュー|先着|一部|数量限定|eligible only|selected items|selected sellers|participating stores|participating sellers|payment method|card required|review required|write a review|lottery|limited quantity|while supplies last)/i.test(
+    text,
+  );
 }
 
 function hasRewardMultiplierCopy(text: string, labels: string[]) {

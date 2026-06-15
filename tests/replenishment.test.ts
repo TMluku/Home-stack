@@ -1055,6 +1055,49 @@ describe("replenishment domain logic", () => {
     );
   });
 
+  it("keeps numeric JSON-LD rewards conditional when eligibility text is in the same record", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Numeric conditional structured product</title>
+          <script type="application/ld+json">
+            {
+              "@type": "Product",
+              "name": "Numeric conditional structured product",
+              "offers": {
+                "@type": "Offer",
+                "price": "2,000",
+                "priceCurrency": "JPY",
+                "additionalProperty": [
+                  { "name": "points", "value": 150, "description": "review required after purchase" },
+                  { "name": "coupon", "value": 300, "description": "selected sellers only" }
+                ]
+              }
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2000,
+      source: "json-ld",
+      effectivePriceQuote: {
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 2000,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(
+      expect.arrayContaining(["point value from JSON-LD: 150 JPY", "coupon value from JSON-LD: 300 JPY"]),
+    );
+  });
+
   it("extracts meta tag price condition evidence from product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -1202,6 +1245,49 @@ describe("replenishment domain logic", () => {
     );
     expect(extracted.effectivePriceQuote?.evidence).not.toEqual(
       expect.arrayContaining(["point value from embedded JSON: 150 JPY", "coupon value from embedded JSON: 300 JPY"]),
+    );
+  });
+
+  it("keeps numeric embedded JSON rewards conditional when eligibility text is in the same record", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Numeric conditional embedded product</title>
+          <script id="__NEXT_DATA__" type="application/json">
+            {
+              "props": {
+                "pageProps": {
+                  "product": {
+                    "productName": "Numeric conditional embedded detergent",
+                    "currentPrice": "2,400",
+                    "currency": "JPY",
+                    "points": { "amount": 120, "description": "レビュー投稿後に付与" },
+                    "coupon": { "amount": 200, "eligibility": "payment method selected sellers only" }
+                  }
+                }
+              }
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2400,
+      source: "embedded-json",
+      effectivePriceQuote: {
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 2400,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(
+      expect.arrayContaining(["point value from embedded JSON: 120 JPY", "coupon value from embedded JSON: 200 JPY"]),
     );
   });
 

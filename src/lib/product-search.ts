@@ -483,7 +483,8 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   ]);
   const pointEnd = readStringPath(record, ["point.endTime", "point.end", "pointRateEndTime", "pointEndTime", "campaignEndTime"]);
   const pointWindowExpired = Boolean(rawPointValue && isPastDateTime(pointEnd));
-  const pointValue = pointHasConditionalText || pointWindowExpired ? undefined : rawPointValue;
+  const pointWindowFuture = Boolean(rawPointValue && isFutureDateTime(pointStart));
+  const pointValue = pointHasConditionalText || pointWindowExpired || pointWindowFuture ? undefined : rawPointValue;
   const rawCouponValue =
     readRewardNumberPath(
       record,
@@ -497,20 +498,23 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   const couponStart = readStringPath(record, ["coupon.startTime", "coupon.start", "couponStartTime", "discountStartTime"]);
   const couponEnd = readStringPath(record, ["coupon.endTime", "coupon.end", "couponEndTime", "discountEndTime"]);
   const couponWindowExpired = Boolean(rawCouponValue && isPastDateTime(couponEnd));
-  const couponValue = couponHasConditionalText || couponWindowExpired ? undefined : rawCouponValue;
-  const pointWindowRequired = Boolean(pointValue && (pointStart || pointEnd)) || pointWindowExpired;
-  const couponWindowRequired = Boolean(couponValue && (couponStart || couponEnd)) || couponWindowExpired;
+  const couponWindowFuture = Boolean(rawCouponValue && isFutureDateTime(couponStart));
+  const couponValue = couponHasConditionalText || couponWindowExpired || couponWindowFuture ? undefined : rawCouponValue;
+  const pointWindowRequired = Boolean(pointValue && (pointStart || pointEnd)) || pointWindowExpired || pointWindowFuture;
+  const couponWindowRequired = Boolean(couponValue && (couponStart || couponEnd)) || couponWindowExpired || couponWindowFuture;
   const pointConditionRequired =
     !pointValue &&
     (hasAmbiguousRewardCopy(officialText, ["point", "points", "ポイント"]) ||
       hasRewardMultiplierCopy(officialText, ["point", "points", "ポイント"]) ||
       hasRewardThresholdCopy(officialText, ["point", "points", "ポイント"]) ||
-      pointWindowExpired);
+      pointWindowExpired ||
+      pointWindowFuture);
   const couponConditionRequired =
     !couponValue &&
     (hasAmbiguousRewardCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
       hasRewardThresholdCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
-      couponWindowExpired);
+      couponWindowExpired ||
+      couponWindowFuture);
   const evidence = [
     typeof shippingFee === "number" ? (shippingFee === 0 ? "official shipping: free" : `official shipping fee: ${shippingFee} JPY`) : "",
     shippingConditionRequired ? "official shipping condition requires retailer confirmation" : "",
@@ -521,8 +525,10 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
     couponConditionRequired ? "official coupon condition requires retailer confirmation" : "",
     pointStart || pointEnd ? `point window: ${pointStart ?? "unknown"} - ${pointEnd ?? "unknown"}` : "",
     pointWindowExpired ? "official point window expired before fetch" : "",
+    pointWindowFuture ? "official point window starts after fetch" : "",
     couponStart || couponEnd ? `coupon window: ${couponStart ?? "unknown"} - ${couponEnd ?? "unknown"}` : "",
     couponWindowExpired ? "official coupon window expired before fetch" : "",
+    couponWindowFuture ? "official coupon window starts after fetch" : "",
   ].filter(Boolean);
 
   return {
@@ -594,6 +600,12 @@ function isPastDateTime(value?: string) {
   if (!value) return false;
   const time = Date.parse(value);
   return Number.isFinite(time) && time < Date.now();
+}
+
+function isFutureDateTime(value?: string) {
+  if (!value) return false;
+  const time = Date.parse(value);
+  return Number.isFinite(time) && time > Date.now();
 }
 
 function readPath(record: OfficialApiRecord, path: string): unknown {

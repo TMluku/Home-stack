@@ -2045,4 +2045,75 @@ describe("replenishment domain logic", () => {
       vi.restoreAllMocks();
     }
   });
+
+  it("does not deduct future official API campaign rewards before they start", async () => {
+    const previousRakutenId = process.env.RAKUTEN_APPLICATION_ID;
+    const previousYahooId = process.env.YAHOO_SHOPPING_APP_ID;
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "Future campaign detergent",
+                  itemPrice: 2000,
+                  itemUrl: "https://example.com/rakuten-future",
+                  postageFlag: 0,
+                  pointRate: 10,
+                  pointRateStartTime: "2999-01-01T00:00:00+09:00",
+                  couponAmount: 300,
+                  couponStartTime: "2999-01-01T00:00:00+09:00",
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (requestUrl.includes("shopping.yahooapis.jp")) {
+        return new Response(JSON.stringify({ hits: [] }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response("not found", { status: 404 });
+    });
+
+    try {
+      const result = await searchProductPrices("detergent");
+      const candidate = result.candidates.find((entry) => entry.url === "https://example.com/rakuten-future");
+
+      expect(candidate).toMatchObject({
+        price: 2000,
+        effectivePriceQuote: {
+          listPrice: 2000,
+          shippingFee: 0,
+          pointValue: 0,
+          couponValue: 0,
+          effectivePrice: 2000,
+          conditionRequired: true,
+        },
+      });
+      expect(candidate?.effectivePriceQuote?.conditionLabels).toEqual(
+        expect.arrayContaining(["ポイント期間あり", "ポイント条件あり", "クーポン期間あり", "クーポン条件あり"]),
+      );
+      expect(candidate?.evidence).toEqual(
+        expect.arrayContaining([
+          "official point condition requires retailer confirmation",
+          "official point window starts after fetch",
+          "official coupon condition requires retailer confirmation",
+          "official coupon window starts after fetch",
+        ]),
+      );
+      expect(candidate?.evidence).not.toEqual(expect.arrayContaining(["official point value: 200 JPY", "official coupon value: 300 JPY"]));
+    } finally {
+      if (previousRakutenId === undefined) delete process.env.RAKUTEN_APPLICATION_ID;
+      else process.env.RAKUTEN_APPLICATION_ID = previousRakutenId;
+      if (previousYahooId === undefined) delete process.env.YAHOO_SHOPPING_APP_ID;
+      else process.env.YAHOO_SHOPPING_APP_ID = previousYahooId;
+      vi.restoreAllMocks();
+    }
+  });
 });

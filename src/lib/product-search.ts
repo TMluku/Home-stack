@@ -387,6 +387,7 @@ function extractPrice(snippet: string) {
   for (const match of text.matchAll(pricePattern)) {
     if (isUnitPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isPackComponentPriceContext(text, match.index ?? 0, match[0].length)) continue;
+    if (isEffectivePriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isRewardAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isConditionThresholdAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isDiscountAmountContext(text, match.index ?? 0, match[0].length)) continue;
@@ -865,6 +866,16 @@ function isPackComponentPriceContext(text: string, index: number, length: number
     /^\s*(?:x|×|✕|\*)\s*[0-9０-９]+\s*(?:個|枚|本|袋|箱|ケース|セット|pack|packs|pcs|pieces|count)/i.test(after) ||
     /^\s*(?:for|each in)\s*[0-9０-９]+\s*(?:pack|packs|pcs|pieces|count)/i.test(after)
   );
+}
+
+function isEffectivePriceContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 24), index);
+  const after = text.slice(index + length, index + length + 28);
+  const labelBefore =
+    /(?:実質|実質価格|還元後|割引後|クーポン適用後|ポイント還元後|effective|net price|after rewards?|after points?|after coupon)\s*$/i;
+  const labelAfter =
+    /^\s*(?:実質|実質価格|還元後|割引後|クーポン適用後|ポイント還元後|effective|net price|after rewards?|after points?|after coupon)/i;
+  return labelBefore.test(before) || labelAfter.test(after);
 }
 
 function isDiscountAmountContext(text: string, index: number, length: number) {

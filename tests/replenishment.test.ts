@@ -497,6 +497,31 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["point condition requires retailer confirmation"]));
   });
 
+  it("does not use effective reward-copy amounts as direct product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Effective reward copy before price product</title></head>
+        <body>
+          <span>実質 980円 ポイント還元後</span>
+          <span>ポイント 520円相当</span>
+          <strong>販売価格 1,500円</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1500,
+      effectivePriceQuote: {
+        listPrice: 1500,
+        pointValue: 520,
+        effectivePrice: 980,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント還元込み"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["point value from page text: 520 JPY"]));
+  });
+
   it("does not deduct delayed points or first-order coupons from direct product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -1310,6 +1335,33 @@ describe("replenishment domain logic", () => {
     });
     expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり"]));
     expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["point condition requires retailer confirmation"]));
+  });
+
+  it("does not use marketplace effective reward-copy amounts as item prices", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/effective-reward-copy" title="Effective reward copy detergent">Effective reward copy detergent</a>
+          <span>実質 980円 ポイント還元後</span>
+          <span>ポイント 520円相当</span>
+          <strong>販売価格 1,500円</strong>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      price: 1500,
+      effectivePriceQuote: {
+        listPrice: 1500,
+        pointValue: 520,
+        effectivePrice: 980,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント還元込み"]));
+    expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["point value inferred: 520 JPY"]));
   });
 
   it("does not deduct marketplace delayed points or limited coupons as guaranteed discounts", () => {

@@ -142,8 +142,10 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 ## Implementation Notes
 
 - Keep `src/lib/replenishment.ts` as pure domain logic so it can be reused by API routes and tests.
-- `src/lib/server-state-store.ts` is the repository boundary for account state. It writes JSON files and an account index to `.server-state/` by default, or `HOME_STACK_STATE_STORE_DIR` when configured. `/api/state/status` exposes the active repository kind and write readiness for deployment checks.
-- Replace the file-backed repository with PostgreSQL, Supabase, or another durable store before multi-user production launch.
+- `src/lib/server-state-store.ts` is the repository boundary for account state. It writes JSON files and an account index to `.server-state/` by default, or `HOME_STACK_STATE_STORE_DIR` when configured. Set `HOME_STACK_STATE_STORE_KIND=postgres` with `HOME_STACK_POSTGRES_URL`, `POSTGRES_URL`, or `DATABASE_URL` to use Postgres JSONB tables instead.
+- `/api/state/status` exposes the active repository kind and write readiness for deployment checks. It reports whether a database URL is configured, but it must not return the URL value.
+- The Postgres repository creates account-state, audit-event, and notification-event tables with the `HOME_STACK_STATE_TABLE_PREFIX` prefix, defaulting to `home_stack`.
+- Replace the demo account-resolution handoff with a real authenticated identity provider before multi-user production launch.
 - Account profiles should use stable account IDs and email hashes. Do not place raw email addresses inside saved sync payloads.
 - Update the account index when account state is saved or reset so `/api/account/list` can drive account switching and operations checks.
 - The Post-MVP UI connects account profile resolution, save, load, delete, list-refresh, and saved-account selection controls to these routes when running as a Next.js server. Static GitHub Pages exports keep the same panel visible with API-unavailable status messaging.

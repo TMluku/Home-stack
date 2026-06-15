@@ -109,8 +109,8 @@ When the app runs as a Next.js server, account sync payloads can be saved throug
 - `POST /api/barcode/resolve`
 - `POST /api/barcode/status`
 
-By default, saved JSON files are written under `.server-state/`. Set `HOME_STACK_STATE_STORE_DIR` to use another local directory. GitHub Pages remains static and does not run these API routes.
-`POST /api/state/status` reports the active state repository kind, configured store directory, write readiness, and normalized account ID.
+By default, saved JSON files are written under `.server-state/`. Set `HOME_STACK_STATE_STORE_DIR` to use another local directory. Set `HOME_STACK_STATE_STORE_KIND=postgres` plus `HOME_STACK_POSTGRES_URL`, `POSTGRES_URL`, or `DATABASE_URL` to store account state, audit events, and notification history in Postgres JSONB tables. GitHub Pages remains static and does not run these API routes.
+`POST /api/state/status` reports the active state repository kind, file store directory or Postgres table prefix, write readiness, and normalized account ID without returning database URLs.
 Account resolution creates stable account IDs and email hashes for email-link/OAuth handoff without storing raw email addresses in sync payloads.
 Account listing reads the server-side account index that is updated whenever account state is saved or reset.
 The Post-MVP panel can call these routes from a Next.js server build to resolve an account profile, save, load, delete, and refresh account state; the GitHub Pages build keeps the controls visible but reports that API persistence is unavailable.

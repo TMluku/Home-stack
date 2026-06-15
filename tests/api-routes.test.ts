@@ -26,6 +26,11 @@ describe("API route contracts", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     delete process.env.HOME_STACK_STATE_STORE_DIR;
+    delete process.env.HOME_STACK_STATE_STORE_KIND;
+    delete process.env.HOME_STACK_STATE_TABLE_PREFIX;
+    delete process.env.HOME_STACK_POSTGRES_URL;
+    delete process.env.POSTGRES_URL;
+    delete process.env.DATABASE_URL;
     delete process.env.HOME_STACK_BARCODE_MASTER_URL;
     delete process.env.HOME_STACK_EMAIL_FROM;
     delete process.env.HOME_STACK_EMAIL_TRANSPORT;
@@ -413,6 +418,34 @@ describe("API route contracts", () => {
     } finally {
       await rm(storeDir, { recursive: true, force: true });
     }
+  });
+
+  it("reports postgres repository status without leaking database URLs", async () => {
+    process.env.HOME_STACK_STATE_STORE_KIND = "postgres";
+    process.env.HOME_STACK_STATE_TABLE_PREFIX = "home-stack test";
+
+    const response = await getStateStatus(
+      new Request("http://localhost/api/state/status", {
+        method: "POST",
+        body: JSON.stringify({ accountId: "acct/postgres status" }),
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload).toMatchObject({
+      ok: true,
+      account: { accountId: "acct-postgres-status" },
+      status: {
+        kind: "postgres",
+        configuredBy: "env",
+        databaseUrlConfigured: false,
+        tablePrefix: "home_stack_test",
+        writable: false,
+      },
+    });
+    expect(JSON.stringify(payload.status)).not.toContain("postgres://");
+    expect(payload.status.error).toContain("POSTGRES_URL");
   });
 
   it("appends and lists condition audit events for an account", async () => {

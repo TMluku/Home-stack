@@ -1180,12 +1180,18 @@ function isShippingConditionAmountContext(text: string, index: number, length: n
 }
 
 function isTaxExcludedContext(text: string, index: number, length: number) {
-  const before = text.slice(Math.max(0, index - 18), index);
+  const before = text.slice(Math.max(0, index - 32), index);
   const after = text.slice(index + length, index + length + 18);
+  const labelBefore = before.replace(/^.*[0-9０-９][^0-9０-９]*/, "");
+  const prePriceLabel = /^(?:円|yen|JPY)\b/i.test(labelBefore.trim()) ? "" : labelBefore;
   return (
-    /(?:税抜(?:価格)?|税別(?:価格)?|本体価格|excluding tax|tax excluded|excl\.?\s*tax)\s*[:：-]?\s*$/i.test(before) ||
-    /^\s*(?:税抜(?:価格)?|税別(?:価格)?|excluding tax|tax excluded|excl\.?\s*tax)/i.test(after) ||
-    /^\s*(?:\(|（|\[|【)?\s*(?:税抜(?:価格)?|税別(?:価格)?|本体価格|excluding tax|tax excluded|excl\.?\s*tax)/i.test(after)
+    /(?:税抜(?:価格)?|税別(?:価格)?|本体価格|excluding tax|tax excluded|tax not included|excl\.?\s*tax)\s*[:：-]?\s*$/i.test(
+      prePriceLabel,
+    ) ||
+    /^\s*(?:税抜(?:価格)?|税別(?:価格)?|\+税|＋税|税別途|excluding tax|tax excluded|tax not included|excl\.?\s*tax)/i.test(after) ||
+    /^\s*(?:\(|（|\[|【)?\s*(?:税抜(?:価格)?|税別(?:価格)?|本体価格|\+税|＋税|税別途|excluding tax|tax excluded|tax not included|excl\.?\s*tax)/i.test(
+      after,
+    )
   );
 }
 

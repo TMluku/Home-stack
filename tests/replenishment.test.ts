@@ -452,6 +452,40 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips plus-tax prices before tax-included totals on direct product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Plus tax product</title></head>
+        <body>
+          <span>1,000円+税</span>
+          <strong>税込 1,100円</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1100,
+      source: "html-text",
+    });
+  });
+
+  it("skips English tax-not-included prices before tax-included totals on direct product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Tax not included product</title></head>
+        <body>
+          <span>1,000 JPY tax not included</span>
+          <strong>1,100 JPY tax included</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1100,
+      source: "html-text",
+    });
+  });
+
   it("skips reference prices before sale totals on direct product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -1820,6 +1854,52 @@ describe("replenishment domain logic", () => {
 
     expect(candidates[0]).toMatchObject({
       title: "Colon tax detergent",
+      price: 1100,
+      effectivePriceQuote: {
+        listPrice: 1100,
+        effectivePrice: 1100,
+      },
+    });
+  });
+
+  it("skips plus-tax prices before tax-included totals in marketplace HTML", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/tax-plus" title="Plus tax detergent">Plus tax detergent</a>
+          <span>1,000円+税</span>
+          <strong>税込 1,100円</strong>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/detergent/",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Plus tax detergent",
+      price: 1100,
+      effectivePriceQuote: {
+        listPrice: 1100,
+        effectivePrice: 1100,
+      },
+    });
+  });
+
+  it("skips English tax-not-included prices before tax-included totals in marketplace HTML", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/tax-not-included" title="Tax not included detergent">Tax not included detergent</a>
+          <span>1,000 JPY tax not included</span>
+          <strong>1,100 JPY tax included</strong>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Tax not included detergent",
       price: 1100,
       effectivePriceQuote: {
         listPrice: 1100,

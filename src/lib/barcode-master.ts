@@ -75,7 +75,7 @@ export async function resolveBarcodeWithMaster(value: string, checkedAt = new Da
       provider,
       source: "external-http",
       matched: true,
-      evidence: ["matched external JAN master"],
+      evidence: ["matched external JAN master", "normalized external JAN master payload"],
     };
   } catch (error) {
     return {
@@ -93,7 +93,9 @@ export async function resolveBarcodeWithMaster(value: string, checkedAt = new Da
 
 async function fetchExternalBarcodeProduct(endpoint: string, janCode: string): Promise<BarcodeMasterProduct | null> {
   const url = new URL(endpoint);
-  url.searchParams.set("janCode", normalizeJanCode(janCode));
+  const normalizedJanCode = normalizeJanCode(janCode);
+  url.searchParams.set("janCode", normalizedJanCode);
+  url.searchParams.set("barcode", normalizedJanCode);
 
   const response = await fetch(url.toString(), {
     headers: {
@@ -106,21 +108,21 @@ async function fetchExternalBarcodeProduct(endpoint: string, janCode: string): P
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
   const payload = (await response.json()) as unknown;
-  return parseBarcodeMasterProduct(payload);
+  return parseBarcodeMasterProduct(payload, normalizedJanCode);
 }
 
-function parseBarcodeMasterProduct(payload: unknown): BarcodeMasterProduct | null {
+function parseBarcodeMasterProduct(payload: unknown, fallbackJanCode: string): BarcodeMasterProduct | null {
   const record = unwrapProductRecord(payload);
   if (!record) return null;
 
-  const janCode = readString(record, ["janCode", "jan", "barcode", "code"]);
-  const name = readString(record, ["name", "productName", "title"]);
-  const category = readString(record, ["category", "categoryName"]) ?? "未分類";
-  const unitHint = readString(record, ["unitHint", "unit", "size"]) ?? "";
+  const janCode = readString(record, ["janCode", "jan", "jan_code", "gtin", "barcode", "code", "itemCode"]);
+  const name = readString(record, ["name", "productName", "product_name", "itemName", "goodsName", "title"]);
+  const category = readString(record, ["category", "categoryName", "category_name", "genre", "genreName"]) ?? "未分類";
+  const unitHint = readString(record, ["unitHint", "unit", "size", "content", "capacity", "volume"]) ?? "";
 
-  if (!janCode || !name) return null;
+  if (!name) return null;
   return {
-    janCode: normalizeJanCode(janCode),
+    janCode: normalizeJanCode(janCode ?? fallbackJanCode),
     name,
     category,
     unitHint,
@@ -129,12 +131,23 @@ function parseBarcodeMasterProduct(payload: unknown): BarcodeMasterProduct | nul
 
 function unwrapProductRecord(payload: unknown): Record<string, unknown> | null {
   if (!payload || typeof payload !== "object") return null;
+  if (Array.isArray(payload)) return firstRecord(payload);
   const record = payload as Record<string, unknown>;
   const product = record.product;
   if (product && typeof product === "object") return product as Record<string, unknown>;
-  const firstItem = Array.isArray(record.items) ? record.items[0] : undefined;
-  if (firstItem && typeof firstItem === "object") return firstItem as Record<string, unknown>;
+  const item = record.item;
+  if (item && typeof item === "object") return item as Record<string, unknown>;
+  const data = record.data;
+  if (data && typeof data === "object") return unwrapProductRecord(data);
+  const firstItem = firstRecord(record.items) ?? firstRecord(record.results) ?? firstRecord(record.products) ?? firstRecord(record.records);
+  if (firstItem) return unwrapProductRecord(firstItem);
   return record;
+}
+
+function firstRecord(value: unknown): Record<string, unknown> | null {
+  if (!Array.isArray(value)) return null;
+  const item = value.find((candidate) => candidate && typeof candidate === "object");
+  return item ? (item as Record<string, unknown>) : null;
 }
 
 function readString(record: Record<string, unknown>, keys: string[]) {

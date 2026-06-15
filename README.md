@@ -111,7 +111,7 @@ Notification preparation builds queued or blocked jobs, status reports configure
 Set `HOME_STACK_LINE_CHANNEL_ACCESS_TOKEN`, `HOME_STACK_EMAIL_FROM` plus `HOME_STACK_EMAIL_TRANSPORT`, or the Web Push VAPID env values to move a channel from dry-run-only to adapter-ready.
 The Post-MVP panel can check provider status, prepare jobs, and run a dry-run dispatch when the app is running on a Next.js server.
 Barcode resolution validates JAN check digits, suggests corrected candidates, and returns search candidates without needing a production barcode master yet.
-Set `HOME_STACK_BARCODE_MASTER_URL` to hand valid JAN codes to an external HTTP master endpoint; otherwise the demo catalog remains the fallback.
+Set `HOME_STACK_BARCODE_MASTER_URL` to hand valid JAN codes to an external HTTP master endpoint; otherwise the demo catalog remains the fallback. External master responses can use common product, item, data, items, or results wrappers, and product names are used as the follow-up search query when available.
 
 ## Important Data Notes
 

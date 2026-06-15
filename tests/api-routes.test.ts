@@ -167,8 +167,11 @@ describe("API route contracts", () => {
     const payload = await response.json();
 
     expect(response.status).toBe(200);
+    const requestedUrl = new URL(String(fetchMock.mock.calls[0]?.[0]));
+    expect(requestedUrl.searchParams.get("janCode")).toBe("4900000000047");
+    expect(requestedUrl.searchParams.get("barcode")).toBe("4900000000047");
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://master.example.test/lookup?janCode=4900000000047",
+      expect.any(String),
       expect.objectContaining({ headers: expect.objectContaining({ accept: "application/json" }) }),
     );
     expect(payload.resolution).toMatchObject({
@@ -179,8 +182,50 @@ describe("API route contracts", () => {
       provider: { kind: "external-http", configuredBy: "env" },
       source: "external-http",
       matched: true,
-      evidence: ["matched external JAN master"],
+      evidence: ["matched external JAN master", "normalized external JAN master payload"],
     });
+    expect(payload.searchResult.normalizedQuery).toBe("External sponge pack");
+  });
+
+  it("normalizes nested external JAN master response variants", async () => {
+    process.env.HOME_STACK_BARCODE_MASTER_URL = "https://master.example.test/lookup";
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            results: [
+              {
+                item: {
+                  jan_code: "4900000000054",
+                  product_name: "Nested detergent refill",
+                  category_name: "Laundry",
+                  capacity: "1.8L",
+                },
+              },
+            ],
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    const response = await resolveBarcode(
+      new Request("http://localhost/api/barcode/resolve", {
+        method: "POST",
+        body: JSON.stringify({ janCode: "4900000000054" }),
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.resolution.product).toMatchObject({
+      janCode: "4900000000054",
+      name: "Nested detergent refill",
+      category: "Laundry",
+      unitHint: "1.8L",
+    });
+    expect(payload.master).toMatchObject({ source: "external-http", matched: true });
+    expect(payload.searchResult.normalizedQuery).toBe("Nested detergent refill");
   });
 
   it("exports the default sync payload for server persistence", async () => {

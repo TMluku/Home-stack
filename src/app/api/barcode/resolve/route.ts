@@ -13,7 +13,7 @@ export async function POST(request: Request) {
 
   const lookup = await resolveBarcodeWithMaster(barcode);
   const resolution = lookup.resolution;
-  const searchQuery = resolution.product?.janCode ?? resolution.corrections[0] ?? resolution.normalized;
+  const searchQuery = resolution.product?.name ?? resolution.product?.janCode ?? resolution.corrections[0] ?? resolution.normalized;
   const searchResult = searchQuery ? buildStaticProductSearchResult(searchQuery, baseOffers) : null;
 
   return NextResponse.json({ ok: true, resolution, master: lookup, searchResult });

@@ -80,6 +80,11 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(conditionalProof.locator(".effective-proof__checklist")).toContainText("送料無料ライン・配送条件");
   await expect(conditionalProof.locator(".effective-proof__checklist")).toContainText("付与時期・利用先");
   await expect(conditionalProof.locator(".effective-proof__checklist")).toContainText("対象者・併用可否");
+  await expect(conditionalProof.locator(".effective-proof__decision")).toHaveAttribute("aria-label", "販売ページで確認する条件判定");
+  await expect(conditionalProof.locator(".effective-proof__decision")).toContainText("購入条件");
+  await expect(conditionalProof.locator(".effective-proof__decision")).toContainText("未達なら表示価格で再比較");
+  await expect(conditionalProof.locator(".effective-proof__decision")).toContainText("クーポン");
+  await expect(conditionalProof.locator(".effective-proof__decision")).toContainText("未取得・対象外なら控除しない");
   await expect(conditionalProof.locator(".effective-proof__details li")).toHaveCount(6);
   const conditionLink = conditionalProof.getByRole("link", { name: "販売ページで条件を見る" });
   await expect(conditionLink).toHaveAttribute("href", /^https?:\/\//);
@@ -197,6 +202,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
           .map((item) => item.textContent?.trim())
           .filter(Boolean),
         summaryItems: [...proof.querySelectorAll(".effective-proof__summary div")].map((item) => item.textContent?.trim()).filter(Boolean),
+        decisionRows: [...proof.querySelectorAll(".effective-proof__decision div")].map((item) => item.textContent?.trim()).filter(Boolean),
         detailRows: [...proof.querySelectorAll(".effective-proof__details li")].map((item) => item.textContent?.trim()).filter(Boolean),
         detailsOpen: proof.querySelector(".effective-proof__details")?.hasAttribute("open") ?? false,
         sellerLink: proof.querySelector(".effective-proof__details a")?.getAttribute("href") ?? null,
@@ -239,6 +245,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
             "real-device QA checklist is present on the hero",
             "effective price proof details are visible",
             "condition evidence remains readable on mobile width",
+            "condition decision rows show confirm and reject guidance",
             "static URL scan condition banner jumps to proof details",
           ],
         },

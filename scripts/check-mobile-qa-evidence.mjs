@@ -10,6 +10,7 @@ const expectedAssertions = [
   "real-device QA checklist is present on the hero",
   "effective price proof details are visible",
   "condition evidence remains readable on mobile width",
+  "condition decision rows show confirm and reject guidance",
   "static URL scan condition banner jumps to proof details",
 ];
 
@@ -65,6 +66,12 @@ for (const file of jsonFiles) {
   }
   if (!summary.summaryItems?.some((item) => String(item).includes("見る")))
     failures.push(`${file}: missing actionable condition summary text`);
+  if (!Array.isArray(summary.decisionRows) || summary.decisionRows.length === 0) {
+    failures.push(`${file}: missing condition decision rows`);
+  }
+  if (!summary.decisionRows?.some((item) => String(item).includes("控除しない") || String(item).includes("再比較"))) {
+    failures.push(`${file}: missing condition reject guidance`);
+  }
   if (!Array.isArray(summary.detailRows) || summary.detailRows.length === 0) failures.push(`${file}: missing condition detail rows`);
   if (summary.detailsOpen !== true) failures.push(`${file}: condition details were not open`);
   if (!isHttpUrl(summary.sellerLink)) failures.push(`${file}: missing seller/search link`);

@@ -34,7 +34,7 @@ The `Browser E2E` GitHub Actions workflow uploads a `mobile-qa-evidence` artifac
 
 Use that artifact as automated display evidence before running the real-device checklist below.
 
-Run `pnpm.cmd run check:mobile-qa-evidence` after `pnpm.cmd run test:e2e:browser` to confirm the screenshot and metrics JSON exist, the mobile viewport has no horizontal overflow, the hero visual and public QR loaded, the real-device QA checklist is present, the condition summary and detail rows are open, and the seller/search link is present.
+Run `pnpm.cmd run check:mobile-qa-evidence` after `pnpm.cmd run test:e2e:browser` to confirm the screenshot and metrics JSON exist, the mobile viewport has no horizontal overflow, the hero visual and public QR loaded, the real-device QA checklist is present, the condition summary, decision rows, and detail rows are open, and the seller/search link is present.
 
 Automated evidence is not a substitute for the real-device rows below. Treat the objective as incomplete until at least one physical phone/browser pass is recorded with the published URL.
 
@@ -63,7 +63,7 @@ Current status: automated mobile Chromium coverage is available from GitHub Acti
 9. Tap the first inventory chip.
 10. Confirm candidate cards appear in ascending effective-price order.
 11. Confirm the first conditional candidate shows the price-condition details summary.
-12. Open the condition details and confirm the short condition summary plus evidence rows are readable, with condition labels such as `購入条件あり`, `送料条件あり`, `ポイント条件あり`, or `クーポン条件あり` visible when they apply.
+12. Open the condition details and confirm the short condition summary, decision rows, and evidence rows are readable, with condition labels such as `購入条件あり`, `送料条件あり`, `ポイント条件あり`, or `クーポン条件あり` visible when they apply.
 13. Tap the seller-page condition link and confirm it opens a seller/search page in a new tab.
 14. Paste `https://example.com/demo-condition-item` into `商品ページURL`.
 15. Tap `ライブ価格を取得`.

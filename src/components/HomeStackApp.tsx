@@ -1479,6 +1479,7 @@ function EffectivePriceProof({
   const proofCount = rawProofEvidence.length;
   const checkItems = buildConditionCheckItems(quote.conditionLabels);
   const conditionSummaryItems = buildConditionSummaryItems(quote.conditionLabels);
+  const conditionDecisionRows = buildConditionDecisionRows(quote.conditionLabels);
   const breakdownItems = [
     { label: "表示価格", value: yenFormatter.format(quote.listPrice), type: "base" },
     { label: "送料", value: `+${yenFormatter.format(quote.shippingFee ?? 0)}`, type: "add" },
@@ -1535,6 +1536,19 @@ function EffectivePriceProof({
           ))}
         </ul>
       ) : null}
+      {conditionDecisionRows.length > 0 ? (
+        <dl className="effective-proof__decision" aria-label="販売ページで確認する条件判定">
+          {conditionDecisionRows.map((row) => (
+            <div key={row.label}>
+              <dt>{row.label}</dt>
+              <dd>
+                <span>{row.confirm}</span>
+                <strong>{row.reject}</strong>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
       <small>根拠 {proofCount}件 / 条件は購入前に販売サイトで再確認</small>
       <details className="effective-proof__details" open={quote.conditionRequired}>
         <summary>{quote.conditionRequired ? "価格条件を確認" : "価格根拠を確認"}</summary>
@@ -1583,6 +1597,26 @@ function buildConditionSummaryItems(labels: string[]) {
     /期間/.test(joinedLabels) ? { label: "期間", detail: "キャンペーン開始/終了日時を見る" } : null,
   ];
   return items.filter((item): item is { label: string; detail: string } => Boolean(item));
+}
+
+function buildConditionDecisionRows(labels: string[]) {
+  const joinedLabels = labels.join(" ");
+  const rows = [
+    /購入条件|購入|定期|初回|セット/.test(joinedLabels)
+      ? { label: "購入条件", confirm: "数量・定期・初回条件が自分に適用される", reject: "未達なら表示価格で再比較" }
+      : null,
+    /送料/.test(joinedLabels)
+      ? { label: "送料", confirm: "配送先と注文金額で送料が確定している", reject: "地域別・別途送料なら販売ページ優先" }
+      : null,
+    /ポイント/.test(joinedLabels)
+      ? { label: "ポイント", confirm: "付与上限・付与日・利用先を確認済み", reject: "後日付与や上限不明なら控除しない" }
+      : null,
+    /クーポン/.test(joinedLabels)
+      ? { label: "クーポン", confirm: "取得済みで対象者・併用可否を満たす", reject: "未取得・対象外なら控除しない" }
+      : null,
+    /期間/.test(joinedLabels) ? { label: "期間", confirm: "取得時点でキャンペーン期間内", reject: "開始前・終了後なら通常価格扱い" } : null,
+  ];
+  return rows.filter((row): row is { label: string; confirm: string; reject: string } => Boolean(row));
 }
 
 function buildOfferConditionSummaryItems(conditions: Offer["conditions"]) {

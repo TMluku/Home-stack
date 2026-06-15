@@ -1161,6 +1161,55 @@ h3 {
   overflow-wrap: anywhere;
 }
 
+.effective-proof__decision {
+  display: grid;
+  gap: 0.35rem;
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.effective-proof__decision div {
+  align-items: start;
+  background: #fbfaf8;
+  border: 1px solid #eadfd0;
+  border-radius: 0.45rem;
+  display: grid;
+  gap: 0.4rem;
+  grid-template-columns: minmax(4.5rem, 0.42fr) minmax(0, 1fr);
+  min-width: 0;
+  padding: 0.45rem 0.5rem;
+}
+
+.effective-proof__decision dt {
+  color: #5f4b22;
+  font-size: 0.7rem;
+  font-weight: 950;
+}
+
+.effective-proof__decision dd {
+  display: grid;
+  gap: 0.18rem;
+  margin: 0;
+  min-width: 0;
+}
+
+.effective-proof__decision dd span,
+.effective-proof__decision dd strong {
+  font-size: 0.72rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.effective-proof__decision dd span {
+  color: var(--ink);
+  font-weight: 850;
+}
+
+.effective-proof__decision dd strong {
+  color: #7a4d08;
+  font-weight: 900;
+}
+
 .effective-proof small {
   color: var(--muted);
   font-size: 0.7rem;

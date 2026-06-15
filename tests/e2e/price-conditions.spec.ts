@@ -22,10 +22,13 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(conditionalProof).toContainText("販売ページで条件を見る");
   await expect(conditionalProof).toContainText("送料:");
   await expect(conditionalProof).toContainText("ポイント:");
+  await expect(conditionalProof.locator(".effective-proof__formula")).toContainText(/表示.*送料.*ポイント.*クーポン.*実質/);
+  await expect(conditionalProof.locator(".effective-proof__notice")).toContainText("条件成立時の見込み");
   await expect(conditionalProof.locator(".effective-proof__details li")).toHaveCount(6);
 
   const unconditionalProof = page.locator(".effective-proof").filter({ hasText: "価格根拠を確認" }).first();
   await expect(unconditionalProof.locator("details")).not.toHaveAttribute("open", "");
+  await expect(unconditionalProof.locator(".effective-proof__notice--plain")).toContainText("控除条件なし");
 });
 
 test("keeps the price condition proof usable on mobile width", async ({ page }, testInfo) => {

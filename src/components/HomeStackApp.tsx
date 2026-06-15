@@ -1429,6 +1429,9 @@ function EffectivePriceProof({
   const rawProofEvidence = [...new Set([...(evidence ?? []), ...quote.evidence])].filter(Boolean);
   const proofEvidence = [...new Set(rawProofEvidence.map(formatPriceEvidence))].slice(0, 6);
   const proofCount = rawProofEvidence.length;
+  const priceFormula = `表示 ${yenFormatter.format(quote.listPrice)} + 送料 ${yenFormatter.format(quote.shippingFee ?? 0)} - ポイント ${yenFormatter.format(
+    quote.pointValue ?? 0,
+  )} - クーポン ${yenFormatter.format(quote.couponValue ?? 0)} = 実質 ${yenFormatter.format(quote.effectivePrice)}`;
 
   return (
     <fieldset className="effective-proof">
@@ -1464,6 +1467,12 @@ function EffectivePriceProof({
           <li className="effective-proof__badge effective-proof__badge--plain">控除条件なし</li>
         )}
       </ul>
+      <p className="effective-proof__formula">{priceFormula}</p>
+      <p className={quote.conditionRequired ? "effective-proof__notice" : "effective-proof__notice effective-proof__notice--plain"}>
+        {quote.conditionRequired
+          ? "この実質価格は条件成立時の見込みです。購入前に販売ページで対象者・期間・併用可否を確認してください。"
+          : "この候補は検出できた範囲ではクーポン・ポイント控除条件なしで比較しています。"}
+      </p>
       <small>根拠 {proofCount}件 / 条件は購入前に販売サイトで再確認</small>
       <details className="effective-proof__details" open={quote.conditionRequired}>
         <summary>{quote.conditionRequired ? "価格条件を確認" : "価格根拠を確認"}</summary>

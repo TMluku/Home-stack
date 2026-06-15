@@ -976,6 +976,30 @@ h3 {
   font-weight: 900;
 }
 
+.effective-proof__formula {
+  background: #eef6f3;
+  border: 1px solid #d3e6df;
+  border-radius: 0.45rem;
+  line-height: 1.45;
+  padding: 0.45rem 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.effective-proof__notice {
+  background: #fff7e8;
+  border: 1px solid #ead39f;
+  border-radius: 0.45rem;
+  color: #74520b;
+  line-height: 1.45;
+  padding: 0.45rem 0.5rem;
+}
+
+.effective-proof__notice--plain {
+  background: #f1f0ed;
+  border-color: var(--line);
+  color: var(--muted);
+}
+
 .effective-proof small {
   color: var(--muted);
   font-size: 0.7rem;

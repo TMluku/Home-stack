@@ -341,6 +341,27 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips range lower-bound prices before exact direct product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Range lower bound product</title></head>
+        <body>
+          <span>バリエーション 980円〜</span>
+          <strong>販売価格 1,500円</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1500,
+      effectivePriceQuote: {
+        listPrice: 1500,
+        effectivePrice: 1500,
+      },
+      source: "html-text",
+    });
+  });
+
   it("skips unavailable prices before available totals on direct product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -1141,6 +1162,29 @@ describe("replenishment domain logic", () => {
 
     expect(candidates[0]).toMatchObject({
       title: "Sale detergent",
+      price: 1500,
+      effectivePriceQuote: {
+        listPrice: 1500,
+        effectivePrice: 1500,
+      },
+    });
+  });
+
+  it("skips range lower-bound prices before exact marketplace item prices", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/range" title="Range lower bound detergent">Range lower bound detergent</a>
+          <span>from 980円 variant</span>
+          <strong>販売価格 1,500円</strong>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Range lower bound detergent",
       price: 1500,
       effectivePriceQuote: {
         listPrice: 1500,

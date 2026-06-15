@@ -387,6 +387,7 @@ function extractPrice(snippet: string) {
   for (const match of text.matchAll(pricePattern)) {
     if (isUnitPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isPackComponentPriceContext(text, match.index ?? 0, match[0].length)) continue;
+    if (isRangeLowerBoundPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isEffectivePriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isRewardAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isConditionThresholdAmountContext(text, match.index ?? 0, match[0].length)) continue;
@@ -865,6 +866,15 @@ function isPackComponentPriceContext(text: string, index: number, length: number
     /(?:単品|1\s*(?:個|枚|本|袋|箱)|一\s*(?:個|枚|本|袋|箱))\s*$/i.test(before) ||
     /^\s*(?:x|×|✕|\*)\s*[0-9０-９]+\s*(?:個|枚|本|袋|箱|ケース|セット|pack|packs|pcs|pieces|count)/i.test(after) ||
     /^\s*(?:for|each in)\s*[0-9０-９]+\s*(?:pack|packs|pcs|pieces|count)/i.test(after)
+  );
+}
+
+function isRangeLowerBoundPriceContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 28), index);
+  const after = text.slice(index + length, index + length + 28);
+  return (
+    /(?:から|より|from|as low as|starting at|starts? from|バリエーション|variant)\s*$/i.test(before) ||
+    /^\s*(?:〜|～|から|より|and up|\+|or more|以上|バリエーション|variant)/i.test(after)
   );
 }
 

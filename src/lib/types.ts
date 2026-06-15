@@ -91,6 +91,13 @@ export type QueueEntry = {
   decision: QueueDecision;
   autoReservable: boolean;
   estimatedRevenue: number;
+  purchaseIntent: {
+    status: "confirmation-required" | "confirmed" | "snoozed" | "cancelled";
+    confirmationRequired: boolean;
+    cancelWindowHours: number;
+    cancelUntil?: string;
+    message: string;
+  };
 };
 
 export type LivePriceResult = {

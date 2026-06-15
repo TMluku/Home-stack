@@ -187,4 +187,5 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 - Notification dispatch should run as dry-run by default. With `dryRun: false`, unconfigured providers fail with `provider-not-configured`; configured LINE jobs call the LINE Messaging API push endpoint, configured email jobs call SMTP via `HOME_STACK_EMAIL_TRANSPORT`, and configured Web Push jobs call the Web Push protocol with VAPID credentials. Web Push destinations must be serialized PushSubscription JSON.
 - Notification prepare and dispatch routes should append account-scoped history events so real delivery rollout has an audit trail before external providers are enabled.
 - The Post-MVP UI should let operators enter a destination, check provider status, prepare notification jobs, dry-run dispatch, and load notification history before enabling real delivery.
+- Replenishment queue entries should expose purchase-intent confirmation status and a cancellation-window timestamp before any simulated auto-reservation is treated as actionable.
 - Store click events and queue decisions as append-only events once the backend exists.

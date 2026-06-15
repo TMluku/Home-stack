@@ -1143,7 +1143,7 @@ export function HomeStackApp() {
               {queue.length === 0 ? (
                 <p className="empty-state">補充候補はありません。在庫を追加するか残量を下げると表示されます。</p>
               ) : null}
-              {queue.map(({ item, offer, decision, autoReservable, estimatedRevenue }) => (
+              {queue.map(({ item, offer, decision, autoReservable, estimatedRevenue, purchaseIntent }) => (
                 <article className={`queue-item queue-item--${decision}`} key={item.id}>
                   <div>
                     <span className="notice-card__tag">あと{item.daysLeft}日</span>
@@ -1154,6 +1154,10 @@ export function HomeStackApp() {
                     <small>
                       {offer.conditions.length > 0 ? "条件あり" : "条件なし"} / 推定送客収益 {yenFormatter.format(estimatedRevenue)}
                     </small>
+                    <p className="purchase-intent">
+                      {purchaseIntent.message}
+                      {purchaseIntent.cancelUntil ? ` 取消期限: ${new Date(purchaseIntent.cancelUntil).toLocaleString("ja-JP")}` : ""}
+                    </p>
                   </div>
                   <div className="queue-actions">
                     <button type="button" onClick={() => updateQueue(item.id, "approve", estimatedRevenue)}>

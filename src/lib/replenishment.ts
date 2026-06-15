@@ -1,4 +1,4 @@
-import type { AppState, Autopilot, InventoryItem, Offer, QueueEntry } from "./types";
+import type { AppState, Autopilot, InventoryItem, Offer, QueueDecision, QueueEntry } from "./types";
 
 const URGENT_DAYS_THRESHOLD = 14;
 
@@ -69,6 +69,7 @@ export function canAutoReserve(item: InventoryItem, offer: Offer, autopilot: Aut
 }
 
 export function buildReplenishmentQueue(state: AppState, offers: Offer[]): QueueEntry[] {
+  const generatedAt = new Date();
   return getUrgentInventory(state)
     .map((item) => {
       const offer = getBestOfferForCategory(item.category, state, offers);
@@ -80,9 +81,60 @@ export function buildReplenishmentQueue(state: AppState, offers: Offer[]): Queue
         decision,
         autoReservable: decision === "pending" && canAutoReserve(item, offer, state.autopilot),
         estimatedRevenue: Math.round(offer.effectivePrice * offer.affiliateRate),
+        purchaseIntent: buildPurchaseIntent({ decision, offer, autopilot: state.autopilot, generatedAt }),
       };
     })
     .filter((entry): entry is QueueEntry => Boolean(entry));
+}
+
+export function buildPurchaseIntent({
+  decision,
+  offer,
+  autopilot,
+  generatedAt = new Date(),
+}: {
+  decision: QueueDecision;
+  offer: Offer;
+  autopilot: Autopilot;
+  generatedAt?: Date;
+}): QueueEntry["purchaseIntent"] {
+  const cancelUntil = new Date(generatedAt.getTime() + autopilot.cancelWindowHours * 60 * 60 * 1000).toISOString();
+  const conditionText = offer.conditions.length > 0 ? "条件付き価格の詳細確認を含む" : "価格条件確認済み";
+
+  if (decision === "approve" || decision === "auto-reserve") {
+    return {
+      status: "confirmed",
+      confirmationRequired: false,
+      cancelWindowHours: autopilot.cancelWindowHours,
+      cancelUntil,
+      message: `購入意思確認済み。${autopilot.cancelWindowHours}時間以内はキャンセル可能です。${conditionText}。`,
+    };
+  }
+
+  if (decision === "cancel") {
+    return {
+      status: "cancelled",
+      confirmationRequired: false,
+      cancelWindowHours: autopilot.cancelWindowHours,
+      message: "今回は購入しない判断として記録済みです。",
+    };
+  }
+
+  if (decision === "snooze") {
+    return {
+      status: "snoozed",
+      confirmationRequired: true,
+      cancelWindowHours: autopilot.cancelWindowHours,
+      message: "購入意思は未確認です。再通知後に価格条件とキャンセル猶予を確認してください。",
+    };
+  }
+
+  return {
+    status: "confirmation-required",
+    confirmationRequired: true,
+    cancelWindowHours: autopilot.cancelWindowHours,
+    message: `購入前に明示確認が必要です。承認後 ${autopilot.cancelWindowHours}時間はキャンセル可能として扱います。${conditionText}。`,
+  };
 }
 
 export function buildShoppingListSummary(entries: QueueEntry[]) {

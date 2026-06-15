@@ -102,5 +102,5 @@ This checklist defines the current acceptance target for the Home Stack MVP.
 - [x] Add production image recognition and barcode/JAN master data.
 - [x] Add official retailer API integrations with normalized shipping, point, and coupon windows.
 - [x] Add real notification delivery.
-- [ ] Add purchase intent confirmation and cancellation-window flows.
+- [x] Add purchase intent confirmation and cancellation-window flows.
 - [x] Add server-side audit logs for effective-price conditions and ranking decisions.

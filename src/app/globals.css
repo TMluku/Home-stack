@@ -1243,6 +1243,13 @@ h3 {
   opacity: 0.5;
 }
 
+.purchase-intent {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-top: 0.45rem;
+}
+
 .queue-actions {
   align-content: center;
   display: grid;

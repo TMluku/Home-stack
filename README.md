@@ -10,6 +10,7 @@ The MVP focuses on local validation of the product flow:
 - Compare replenishment offers by effective price, including coupon, point, and shipping conditions.
 - Show `条件あり` banners when an effective price depends on specific conditions.
 - Build an approval-based replenishment queue.
+- Show purchase-intent confirmation and cancellation-window status before any simulated reservation.
 - Copy a shopping memo from the queue.
 - Simulate auto-purchase eligibility without processing payments.
 - Export and reset local demo state.

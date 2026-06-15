@@ -5,6 +5,7 @@ import { baseOffers } from "../src/lib/offers";
 import { extractPriceFromHtml } from "../src/lib/price-scraper";
 import { extractSearchCandidatesFromHtml } from "../src/lib/product-search";
 import {
+  buildPurchaseIntent,
   buildReplenishmentQueue,
   buildShoppingListSummary,
   calculateDaysLeft,
@@ -91,6 +92,40 @@ describe("replenishment domain logic", () => {
     const catEntry = buildReplenishmentQueue(state, baseOffers).find((entry) => entry.item.id === "cat-litter");
 
     expect(catEntry?.autoReservable).toBe(true);
+  });
+
+  it("adds purchase intent confirmation and cancellation windows to queue entries", () => {
+    const state = createDefaultState();
+    state.autopilot.cancelWindowHours = 12;
+    const queue = buildReplenishmentQueue(state, baseOffers);
+
+    expect(queue[0]?.purchaseIntent).toMatchObject({
+      status: "confirmation-required",
+      confirmationRequired: true,
+      cancelWindowHours: 12,
+    });
+
+    const confirmed = buildPurchaseIntent({
+      decision: "auto-reserve",
+      offer: baseOffers[0],
+      autopilot: state.autopilot,
+      generatedAt: new Date("2026-06-15T00:00:00.000Z"),
+    });
+
+    expect(confirmed).toMatchObject({
+      status: "confirmed",
+      confirmationRequired: false,
+      cancelUntil: "2026-06-15T12:00:00.000Z",
+    });
+
+    const cancelled = buildPurchaseIntent({
+      decision: "cancel",
+      offer: baseOffers[0],
+      autopilot: state.autopilot,
+      generatedAt: new Date("2026-06-15T00:00:00.000Z"),
+    });
+
+    expect(cancelled).toMatchObject({ status: "cancelled", confirmationRequired: false });
   });
 
   it("marks offer prices as demo data with comparison evidence and condition details", () => {

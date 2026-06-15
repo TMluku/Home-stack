@@ -38,15 +38,17 @@ Record each real-device pass here.
 
 1. Open https://tmluku.github.io/Home-stack/ on the phone.
 2. Confirm the first screen loads without horizontal scrolling.
-3. Scroll to `Price Search Lab`.
-4. Confirm the price-search visual image loads.
-5. Tap the first inventory chip.
-6. Confirm candidate cards appear in ascending effective-price order.
-7. Confirm the first conditional candidate shows the price-condition details summary.
-8. Open the condition details and confirm evidence rows are readable.
-9. Tap the seller-page condition link and confirm it opens a seller/search page in a new tab.
-10. Return to Home Stack and confirm the page still scrolls normally.
-11. Rotate the phone once, if practical, and confirm no major overlap or horizontal scrolling.
+3. Tap `公開URLをコピー` and confirm the success message appears.
+4. Tap `URLを共有` and confirm the native share sheet opens, or that the app falls back to copying the URL.
+5. Scroll to `Price Search Lab`.
+6. Confirm the price-search visual image loads.
+7. Tap the first inventory chip.
+8. Confirm candidate cards appear in ascending effective-price order.
+9. Confirm the first conditional candidate shows the price-condition details summary.
+10. Open the condition details and confirm evidence rows are readable.
+11. Tap the seller-page condition link and confirm it opens a seller/search page in a new tab.
+12. Return to Home Stack and confirm the page still scrolls normally.
+13. Rotate the phone once, if practical, and confirm no major overlap or horizontal scrolling.
 
 ## Failure Notes
 

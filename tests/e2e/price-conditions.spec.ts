@@ -6,6 +6,10 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(page.locator(".price-insight-visual img")).toHaveAttribute("src", /price-insight-visual\.png/);
   await page.getByRole("button", { name: "公開URLをコピー" }).click();
   await expect(page.locator(".hero__hint")).toContainText(/公開URLをコピーしました|https:\/\/tmluku\.github\.io\/Home-stack\//);
+  await page.getByRole("button", { name: "URLを共有" }).click();
+  await expect(page.locator(".hero__hint")).toContainText(
+    /公開URLを共有しました|共有非対応のためURLをコピーしました|共有をキャンセルしました|https:\/\/tmluku\.github\.io\/Home-stack\//,
+  );
 
   await page.locator(".inventory-search-chips .chip").first().click();
 

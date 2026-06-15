@@ -225,6 +225,29 @@ export function HomeStackApp() {
     }
   }
 
+  async function sharePublicPagesUrl() {
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share({
+          title: "Home Stack",
+          text: "Home Stack GitHub Pages 実機スマホQA URL",
+          url: publicPagesUrl,
+        });
+        setPublicUrlMessage("公開URLを共有しました");
+        return;
+      }
+
+      await navigator.clipboard.writeText(publicPagesUrl);
+      setPublicUrlMessage("共有非対応のためURLをコピーしました");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setPublicUrlMessage("共有をキャンセルしました");
+        return;
+      }
+      setPublicUrlMessage(publicPagesUrl);
+    }
+  }
+
   function handlePhotoUpload(file?: File) {
     if (!file) return;
     setPhotoPreview(URL.createObjectURL(file));
@@ -838,6 +861,9 @@ export function HomeStackApp() {
               </a>
               <button className="button button--ghost" type="button" onClick={copyPublicPagesUrl}>
                 公開URLをコピー
+              </button>
+              <button className="button button--ghost" type="button" onClick={sharePublicPagesUrl}>
+                URLを共有
               </button>
             </div>
             <p className="hero__hint">{publicUrlMessage}</p>

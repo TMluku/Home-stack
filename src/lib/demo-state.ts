@@ -1,6 +1,6 @@
 import type { AppState, InventoryItem } from "./types";
 
-export const STORAGE_KEY = "home-stack-state-v6";
+export const STORAGE_KEY = "home-stack-state-v7";
 
 export const categories = ["ペット用品", "ベビー用品", "洗濯・掃除", "紙用品", "食品・飲料"] as const;
 
@@ -10,7 +10,7 @@ const defaultState: AppState = {
     children: 1,
     pets: 1,
     channel: "line",
-    allowSponsored: true,
+    includeConditionalOffers: true,
     deletePhoto: true,
   },
   autopilot: {
@@ -19,7 +19,7 @@ const defaultState: AppState = {
     cancelWindowHours: 24,
     brandPolicy: "never",
     deliveryPolicy: "standard",
-    requireApprovalForSponsored: true,
+    requireApprovalForConditional: true,
   },
   inventory: [
     {
@@ -38,7 +38,7 @@ const defaultState: AppState = {
       stock: 35,
       dailyUsage: 4,
       autoReplenish: false,
-      note: "家族3人、週5回洗濯ペースで推定しています。",
+      note: "家族3人、週5回の洗濯ペースで推定しています。",
     },
     {
       id: "toilet-paper",
@@ -47,12 +47,12 @@ const defaultState: AppState = {
       stock: 48,
       dailyUsage: 3,
       autoReplenish: false,
-      note: "残り6ロール想定。早めのまとめ買い候補です。",
+      note: "残り6ロール想定。まとめ買い候補です。",
     },
   ],
   metrics: {
     clicks: 0,
-    sponsoredClicks: 0,
+    conditionalClicks: 0,
     approvals: 0,
     autoReservations: 0,
     estimatedRevenue: 0,
@@ -93,15 +93,38 @@ export function normalizeState(savedState: unknown): AppState {
   const fallback = createDefaultState();
   if (!savedState || typeof savedState !== "object") return fallback;
   const saved = savedState as Partial<AppState>;
+  const savedHousehold = saved.household as Partial<AppState["household"]> | undefined;
+  const savedAutopilot = saved.autopilot as Partial<AppState["autopilot"]> | undefined;
+  const savedMetrics = saved.metrics as Partial<AppState["metrics"]> | undefined;
+
+  const savedActiveFilter = saved.activeFilter as AppState["activeFilter"] | "lowest" | "sponsored" | undefined;
 
   return {
     ...fallback,
     ...saved,
-    household: { ...fallback.household, ...saved.household },
-    autopilot: { ...fallback.autopilot, ...saved.autopilot },
+    household: {
+      ...fallback.household,
+      ...savedHousehold,
+      includeConditionalOffers:
+        savedHousehold?.includeConditionalOffers ?? (savedHousehold as { allowSponsored?: boolean } | undefined)?.allowSponsored ?? true,
+    },
+    autopilot: {
+      ...fallback.autopilot,
+      ...savedAutopilot,
+      requireApprovalForConditional:
+        savedAutopilot?.requireApprovalForConditional ??
+        (savedAutopilot as { requireApprovalForSponsored?: boolean } | undefined)?.requireApprovalForSponsored ??
+        true,
+    },
     inventory: Array.isArray(saved.inventory) ? saved.inventory : fallback.inventory,
-    metrics: { ...fallback.metrics, ...saved.metrics },
-    activeFilter: saved.activeFilter ?? fallback.activeFilter,
+    metrics: {
+      ...fallback.metrics,
+      ...savedMetrics,
+      conditionalClicks:
+        savedMetrics?.conditionalClicks ?? (savedMetrics as { sponsoredClicks?: number } | undefined)?.sponsoredClicks ?? 0,
+    },
+    activeFilter:
+      savedActiveFilter === "lowest" || savedActiveFilter === "sponsored" ? "all" : (savedActiveFilter ?? fallback.activeFilter),
     queueDecisions: { ...fallback.queueDecisions, ...saved.queueDecisions },
   };
 }

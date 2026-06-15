@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { createDefaultState } from "../src/lib/demo-state";
+import { recordOutboundClick, recordQueueDecision } from "../src/lib/metrics";
 import { baseOffers } from "../src/lib/offers";
 import { extractPriceFromHtml } from "../src/lib/price-scraper";
 import { extractSearchCandidatesFromHtml } from "../src/lib/product-search";
-import { buildReplenishmentQueue, calculateDaysLeft, getRecommendedOffers, getUrgency } from "../src/lib/replenishment";
+import {
+  buildReplenishmentQueue,
+  buildShoppingListSummary,
+  calculateDaysLeft,
+  formatShoppingMemo,
+  getRecommendedOffers,
+  getUrgency,
+} from "../src/lib/replenishment";
 import type { AppState } from "../src/lib/types";
 
 describe("replenishment domain logic", () => {
@@ -22,12 +30,21 @@ describe("replenishment domain logic", () => {
     expect(getUrgency(14)).toBe("safe");
   });
 
-  it("filters sponsored offers when household rules disallow them", () => {
+  it("filters conditional offers when household rules disallow them", () => {
     const state = createDefaultState();
-    state.household.allowSponsored = false;
+    state.household.includeConditionalOffers = false;
     state.activeFilter = "all";
 
-    expect(getRecommendedOffers(state, baseOffers).every((offer) => offer.labelType === "lowest")).toBe(true);
+    expect(getRecommendedOffers(state, baseOffers).every((offer) => offer.conditions.length === 0)).toBe(true);
+  });
+
+  it("sorts recommended offers by effective price including conditions", () => {
+    const state = createDefaultState();
+    state.activeFilter = "all";
+    const offers = getRecommendedOffers(state, baseOffers);
+
+    expect(offers[0]?.effectivePrice).toBeLessThanOrEqual(offers[1]?.effectivePrice ?? Number.MAX_SAFE_INTEGER);
+    expect(offers.some((offer) => offer.conditions.length > 0)).toBe(true);
   });
 
   it("builds queue entries with estimated revenue and pending decision defaults", () => {
@@ -41,12 +58,34 @@ describe("replenishment domain logic", () => {
     });
   });
 
-  it("allows auto-reserve only when autopilot, item, amount, and ad policy permit it", () => {
+  it("summarizes actionable shopping list entries", () => {
+    const state = createDefaultState();
+    const queue = buildReplenishmentQueue(state, baseOffers);
+    const summary = buildShoppingListSummary(queue);
+
+    expect(summary.itemCount).toBeGreaterThan(0);
+    expect(summary.totalEffectivePrice).toBeGreaterThan(0);
+    expect(summary.conditionalCount).toBeGreaterThan(0);
+    expect(summary.lines[0]).toContain("実質");
+  });
+
+  it("formats a shopping memo with totals and condition count", () => {
+    const state = createDefaultState();
+    const summary = buildShoppingListSummary(buildReplenishmentQueue(state, baseOffers));
+    const memo = formatShoppingMemo(summary);
+
+    expect(memo).toContain("Home Stack 買い物メモ");
+    expect(memo).toContain("合計目安:");
+    expect(memo).toContain("条件あり:");
+    expect(memo).toContain("実質");
+  });
+
+  it("allows auto-reserve only when autopilot, item, amount, and condition policy permit it", () => {
     const state: AppState = createDefaultState();
     state.autopilot.enabled = true;
     state.autopilot.maxAmount = 3000;
     state.autopilot.brandPolicy = "allow-same-spec";
-    state.autopilot.requireApprovalForSponsored = false;
+    state.autopilot.requireApprovalForConditional = false;
     state.inventory = state.inventory.map((item) => (item.id === "cat-litter" ? { ...item, autoReplenish: true } : item));
 
     const catEntry = buildReplenishmentQueue(state, baseOffers).find((entry) => entry.item.id === "cat-litter");
@@ -54,10 +93,60 @@ describe("replenishment domain logic", () => {
     expect(catEntry?.autoReservable).toBe(true);
   });
 
-  it("marks offer prices as demo data with comparison evidence", () => {
+  it("marks offer prices as demo data with comparison evidence and condition details", () => {
     expect(baseOffers.every((offer) => offer.priceMode === "demo")).toBe(true);
     expect(baseOffers.every((offer) => offer.competitors.length >= 2)).toBe(true);
     expect(baseOffers.every((offer) => offer.comparisonBasis.length > 0)).toBe(true);
+    expect(baseOffers.some((offer) => offer.conditions.length > 0)).toBe(true);
+  });
+
+  it("records outbound clicks and conditional offer revenue", () => {
+    const state = createDefaultState();
+    state.metrics = {
+      clicks: 0,
+      conditionalClicks: 0,
+      approvals: 0,
+      autoReservations: 0,
+      estimatedRevenue: 0,
+    };
+
+    recordOutboundClick(state.metrics, 2260, 0.08, true);
+    recordOutboundClick(state.metrics, 698, 0.025, false);
+
+    expect(state.metrics).toMatchObject({
+      clicks: 2,
+      conditionalClicks: 1,
+      estimatedRevenue: 198,
+    });
+  });
+
+  it("records only monetized queue decisions in metrics", () => {
+    const state = createDefaultState();
+    state.metrics = {
+      clicks: 0,
+      conditionalClicks: 0,
+      approvals: 0,
+      autoReservations: 0,
+      estimatedRevenue: 0,
+    };
+
+    recordQueueDecision(state.metrics, "snooze", 181);
+    expect(state.metrics).toMatchObject({
+      clicks: 0,
+      approvals: 0,
+      autoReservations: 0,
+      estimatedRevenue: 0,
+    });
+
+    recordQueueDecision(state.metrics, "approve", 181);
+    recordQueueDecision(state.metrics, "auto-reserve", 17);
+
+    expect(state.metrics).toMatchObject({
+      clicks: 2,
+      approvals: 2,
+      autoReservations: 1,
+      estimatedRevenue: 198,
+    });
   });
 
   it("extracts live price candidates from product JSON-LD", () => {
@@ -79,7 +168,7 @@ describe("replenishment domain logic", () => {
     const candidates = extractSearchCandidatesFromHtml(
       `
         <article>
-          <a href="/item/123" title="ライオン ニオイをとる砂 5L">ライオン ニオイをとる砂 5L</a>
+          <a href="/item/123" title="ライオン 猫砂 5L">ライオン 猫砂 5L</a>
           <span>送料無料</span>
           <strong>¥748</strong>
         </article>
@@ -90,7 +179,7 @@ describe("replenishment domain logic", () => {
 
     expect(candidates[0]).toMatchObject({
       source: "rakuten",
-      title: "ライオン ニオイをとる砂 5L",
+      title: "ライオン 猫砂 5L",
       price: 748,
       currency: "JPY",
       shipping: "送料無料候補",

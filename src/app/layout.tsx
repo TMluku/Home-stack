@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Home Stack | 家庭内在庫の補充アシスタント",
-  description: "家のストックをスマホで見える化し、切れる前に最安候補とキャンペーンを知らせる無料の消耗品補充MVP。",
+  description: "家の日用品在庫をスマホで見える化し、切れる前に実質価格の安い順で補充候補を確認できるMVPです。",
   manifest: "/manifest.webmanifest",
 };
 

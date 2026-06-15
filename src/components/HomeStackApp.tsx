@@ -1,9 +1,19 @@
 "use client";
 
+import type { MouseEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import { categories, createDefaultState, detectedInventoryCandidates, normalizeState, STORAGE_KEY } from "@/lib/demo-state";
+import { recordOutboundClick, recordQueueDecision } from "@/lib/metrics";
 import { baseOffers } from "@/lib/offers";
-import { buildReplenishmentQueue, calculateDaysLeft, getRecommendedOffers, getUrgency } from "@/lib/replenishment";
+import {
+  buildReplenishmentQueue,
+  buildShoppingListSummary,
+  calculateDaysLeft,
+  formatShoppingMemo,
+  getRecommendedOffers,
+  getUrgency,
+} from "@/lib/replenishment";
 import type {
   AppState,
   BrandPolicy,
@@ -31,26 +41,27 @@ const channelLabels: Record<Channel, string> = {
 
 const filterLabels: Record<OfferFilter, string> = {
   all: "すべて",
-  lowest: "実質最安",
-  sponsored: "広告/キャンペーン",
+  "no-conditions": "条件なし",
+  conditions: "条件あり",
 };
 
 export function HomeStackApp() {
   const [state, setState] = useState<AppState>(() => createDefaultState());
   const [loaded, setLoaded] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [scanState, setScanState] = useState("順番固定");
+  const [scanState, setScanState] = useState("待機中");
   const [settingsMessage, setSettingsMessage] = useState("未保存");
   const [autopilotMessage, setAutopilotMessage] = useState("未保存");
   const [privacyMessage, setPrivacyMessage] = useState("操作待ち");
-  const [planMessage, setPlanMessage] = useState("補充提案を更新");
+  const [planMessage, setPlanMessage] = useState("補充プランを再計算");
+  const [queueMessage, setQueueMessage] = useState("買い物メモを作成できます");
   const [activeOfferId, setActiveOfferId] = useState(baseOffers[0]?.id ?? "");
   const [livePriceUrls, setLivePriceUrls] = useState("");
   const [livePriceResults, setLivePriceResults] = useState<LivePriceResult[]>([]);
-  const [livePriceStatus, setLivePriceStatus] = useState("商品ページURLを貼ると、サーバー側でHTMLを取得して価格候補を探します。");
+  const [livePriceStatus, setLivePriceStatus] = useState("商品ページURLを貼ると、サーバー側で価格候補を抽出します。");
   const [productSearchQuery, setProductSearchQuery] = useState("");
   const [productSearchResult, setProductSearchResult] = useState<ProductSearchResult | null>(null);
-  const [productSearchStatus, setProductSearchStatus] = useState("在庫名から複数ECサイトの価格候補を検索できます。");
+  const [productSearchStatus, setProductSearchStatus] = useState("商品名から複数ECサイトの価格候補を検索できます。");
 
   useEffect(() => {
     try {
@@ -71,19 +82,20 @@ export function HomeStackApp() {
 
   const offers = useMemo(() => getRecommendedOffers(state, baseOffers), [state]);
   const queue = useMemo(() => buildReplenishmentQueue(state, baseOffers), [state]);
+  const queueSummary = useMemo(() => buildShoppingListSummary(queue), [queue]);
   const pendingQueue = queue.filter((entry) => entry.decision === "pending");
   const activeOffer = offers.find((offer) => offer.id === activeOfferId) ?? offers[0] ?? baseOffers[0];
   const atRiskCount = state.inventory.filter((item) => calculateDaysLeft(item, state.household) <= 10).length;
   const allowedCount = state.inventory.filter((item) => item.autoReplenish).length;
   const reservableCount = queue.filter((entry) => entry.autoReservable).length;
-  const savingsPotential = useMemo(
+  const bestConditionSavings = useMemo(
     () =>
-      baseOffers
-        .filter((offer) => offer.labelType === "sponsored")
-        .reduce((total, offer) => {
-          const normalOffer = baseOffers.find((candidate) => candidate.category === offer.category && candidate.labelType === "lowest");
-          return total + Math.max(0, (normalOffer?.price ?? offer.price) - offer.price);
-        }, 0),
+      baseOffers.reduce((total, offer) => {
+        const noCondition = baseOffers
+          .filter((candidate) => candidate.category === offer.category && candidate.conditions.length === 0)
+          .sort((a, b) => a.effectivePrice - b.effectivePrice)[0];
+        return total + Math.max(0, (noCondition?.effectivePrice ?? offer.effectivePrice) - offer.effectivePrice);
+      }, 0),
     [],
   );
 
@@ -98,7 +110,7 @@ export function HomeStackApp() {
   function handlePhotoUpload(file?: File) {
     if (!file) return;
     setPhotoPreview(URL.createObjectURL(file));
-    setScanState(state.household.deletePhoto ? "解析後に削除" : "デモ解析");
+    setScanState(state.household.deletePhoto ? "解析後に削除する設定" : "端末内プレビューのみ");
     updateState((draft) => {
       const candidate = detectedInventoryCandidates[draft.inventory.length % detectedInventoryCandidates.length];
       const item: InventoryItem = {
@@ -142,7 +154,7 @@ export function HomeStackApp() {
         stock: clampNumber(formData.get("stock"), 5, 100, 50),
         dailyUsage: clampNumber(formData.get("dailyUsage"), 1, 30, 5),
         autoReplenish: false,
-        note: "手動登録。残量を変えてもカードの並び順は固定です。",
+        note: "手動登録。残量を更新すると補充キューに反映されます。",
       });
     });
   }
@@ -155,7 +167,7 @@ export function HomeStackApp() {
         children: clampNumber(formData.get("children"), 0, 8, 0),
         pets: clampNumber(formData.get("pets"), 0, 8, 0),
         channel,
-        allowSponsored: formData.has("allowSponsored"),
+        includeConditionalOffers: formData.has("includeConditionalOffers"),
         deletePhoto: formData.has("deletePhoto"),
       };
     });
@@ -170,10 +182,10 @@ export function HomeStackApp() {
         cancelWindowHours: clampNumber(formData.get("cancelWindowHours"), 6, 48, 24),
         brandPolicy: String(formData.get("brandPolicy") || "never") as BrandPolicy,
         deliveryPolicy: String(formData.get("deliveryPolicy") || "standard") as DeliveryPolicy,
-        requireApprovalForSponsored: formData.has("requireApprovalForSponsored"),
+        requireApprovalForConditional: formData.has("requireApprovalForConditional"),
       };
     });
-    setAutopilotMessage(formData.has("enabled") ? "自動購入予約ルールを保存しました" : "自動購入予約は無効です");
+    setAutopilotMessage(formData.has("enabled") ? "自動予約シミュレーションを有効にしました" : "自動予約シミュレーションは無効です");
   }
 
   function refreshPlan() {
@@ -182,16 +194,33 @@ export function HomeStackApp() {
       draft.queueDecisions = {};
     });
     setPlanMessage("消費ペースを反映しました");
-    window.setTimeout(() => setPlanMessage("補充提案を更新"), 1800);
+    window.setTimeout(() => setPlanMessage("補充プランを再計算"), 1800);
   }
 
   function clickOffer(offer: Offer) {
     setActiveOfferId(offer.id);
     updateState((draft) => {
-      draft.metrics.clicks += 1;
-      if (offer.labelType === "sponsored") draft.metrics.sponsoredClicks += 1;
-      draft.metrics.estimatedRevenue += Math.round(offer.price * offer.affiliateRate);
+      recordOutboundClick(draft.metrics, offer.effectivePrice, offer.affiliateRate, offer.conditions.length > 0);
     });
+  }
+
+  function clickComparisonCandidate(offer: Offer, competitor: Offer["competitors"][number]) {
+    setActiveOfferId(offer.id);
+    updateState((draft) => {
+      recordOutboundClick(draft.metrics, competitor.effectivePrice, offer.affiliateRate, competitor.conditions.length > 0);
+    });
+  }
+
+  function openOfferLink(event: MouseEvent<HTMLElement>, offer: Offer) {
+    event.preventDefault();
+    flushSync(() => clickOffer(offer));
+    queueExternalOpen(offer.url);
+  }
+
+  function openComparisonLink(event: MouseEvent<HTMLElement>, offer: Offer, competitor: Offer["competitors"][number]) {
+    event.preventDefault();
+    flushSync(() => clickComparisonCandidate(offer, competitor));
+    queueExternalOpen(competitor.url);
   }
 
   async function scanLivePrices() {
@@ -215,7 +244,7 @@ export function HomeStackApp() {
       });
       const payload = (await response.json()) as { ok: boolean; results?: LivePriceResult[]; error?: string };
       setLivePriceResults(payload.results ?? []);
-      setLivePriceStatus(payload.ok ? "取得しました。抽出元と取得時刻を確認できます。" : (payload.error ?? "取得に失敗しました。"));
+      setLivePriceStatus(payload.ok ? "取得しました。抽出元と取得時刻を確認してください。" : (payload.error ?? "取得に失敗しました。"));
     } catch (error) {
       setLivePriceStatus(error instanceof Error ? error.message : "取得に失敗しました。");
     }
@@ -253,12 +282,7 @@ export function HomeStackApp() {
   function updateQueue(itemId: string, action: QueueDecision, estimatedRevenue = 0) {
     updateState((draft) => {
       draft.queueDecisions[itemId] = action;
-      if (action === "approve" || action === "auto-reserve") {
-        draft.metrics.approvals += 1;
-        draft.metrics.clicks += 1;
-        draft.metrics.estimatedRevenue += estimatedRevenue;
-      }
-      if (action === "auto-reserve") draft.metrics.autoReservations += 1;
+      recordQueueDecision(draft.metrics, action, estimatedRevenue);
       if (action === "snooze") {
         draft.inventory = draft.inventory.map((item) =>
           item.id === itemId ? { ...item, stock: Math.min(100, item.stock + item.dailyUsage * 3) } : item,
@@ -267,10 +291,20 @@ export function HomeStackApp() {
     });
   }
 
+  async function copyShoppingList() {
+    if (queueSummary.lines.length === 0) {
+      setQueueMessage("コピーできる補充候補がありません");
+      return;
+    }
+
+    const copied = await copyText(formatShoppingMemo(queueSummary));
+    setQueueMessage(copied ? "買い物メモをクリップボードへコピーしました" : "クリップボードへコピーできませんでした");
+  }
+
   async function exportState() {
     const data = JSON.stringify({ exportedAt: new Date().toISOString(), ...state }, null, 2);
-    await navigator.clipboard?.writeText(data);
-    setPrivacyMessage("デモデータをクリップボードへ書き出しました");
+    const copied = await copyText(data);
+    setPrivacyMessage(copied ? "デモデータをクリップボードへ書き出しました" : "クリップボードへ書き出せませんでした");
   }
 
   function resetState() {
@@ -289,13 +323,13 @@ export function HomeStackApp() {
             在庫
           </a>
           <a className="nav__link" href="#offers">
-            価格レーダー
+            価格比較
           </a>
           <a className="nav__link" href="#replenishment">
             補充キュー
           </a>
           <a className="nav__link" href="#autopilot">
-            自動購入
+            自動予約
           </a>
           <a className="nav__cta" href="#scan">
             試す
@@ -305,17 +339,16 @@ export function HomeStackApp() {
         <section id="top" className="hero__grid">
           <div className="hero__copy">
             <p className="eyebrow">Home Stock Radar</p>
-            <h1>家のストックが、次に買うものをそっと光らせる。</h1>
+            <h1>家の日用品を、なくなる前に価格順で見つける。</h1>
             <p className="hero__lead">
-              残量、消費ペース、価格候補、広告提案の理由をひとつの画面で確認。今はデモ価格ですが、実運用ではEC
-              APIや商品フィードで実価格を取得する設計です。
+              在庫、消費ペース、実質価格、条件付き割引をひとつの画面で確認できます。MVPではデモ価格と一部の実検索で、補充判断の流れを検証します。
             </p>
             <div className="hero__actions">
               <a className="button button--primary" href="#scan">
                 在庫を調整する
               </a>
               <a className="button button--ghost" href="#offers">
-                価格の根拠を見る
+                価格順リストを見る
               </a>
             </div>
             <dl className="radar-strip">
@@ -324,8 +357,8 @@ export function HomeStackApp() {
                 <dd>{atRiskCount}</dd>
               </div>
               <div>
-                <dt>節約余地</dt>
-                <dd>{yenFormatter.format(savingsPotential)}</dd>
+                <dt>条件込み差額</dt>
+                <dd>{yenFormatter.format(bestConditionSavings)}</dd>
               </div>
               <div>
                 <dt>自動予約可</dt>
@@ -339,15 +372,15 @@ export function HomeStackApp() {
             <article className="notice-card notice-card--pulse">
               <span className="notice-card__tag">あと数日</span>
               <h2>猫砂が補充ラインに近づいています</h2>
-              <p>通常最安と広告候補を分けて表示。広告候補へ勝手に切り替えることはありません。</p>
-              <button className="mini-button" type="button">
+              <p>条件あり価格も含めて、実質価格の安い順に候補を表示します。条件の中身は商品カードから確認できます。</p>
+              <a className="mini-button" href="#offers">
                 比較を見る
-              </button>
+              </a>
             </article>
             <article className="notice-card notice-card--quiet">
               <span className="notice-card__tag">透明性</span>
-              <h2>価格はデモ。実価格ではありません</h2>
-              <p>本番では取得日時、送料、ポイント、クーポン、比較元をすべて保存します。</p>
+              <h2>条件付き価格は条件を明示</h2>
+              <p>クーポン、ポイント還元、送料無料ラインなどを実質価格に含める場合は、条件ありバナーと詳細を出します。</p>
             </article>
           </aside>
         </section>
@@ -357,8 +390,8 @@ export function HomeStackApp() {
         <section id="scan" className="section section--split">
           <div>
             <p className="eyebrow">Inventory Dock</p>
-            <h2>検出された在庫候補</h2>
-            <p>残量を変えてもカードの順番は入れ替わりません。視線が迷わないように、登録順を固定し、緊急度だけ色と日数で伝えます。</p>
+            <h2>在庫を登録して、補充タイミングを見える化する。</h2>
+            <p>写真アップロードはMVPではデモ候補を追加します。残量や1日あたり消費量を更新すると、補充キューと価格候補が再計算されます。</p>
             <label className="upload-box" htmlFor="stock-photo">
               <input
                 id="stock-photo"
@@ -444,64 +477,31 @@ export function HomeStackApp() {
                   <input name="stock" type="number" min="5" max="100" defaultValue="50" />
                 </label>
                 <label>
-                  1日消費 %
+                  1日あたり消費量
                   <input name="dailyUsage" type="number" min="1" max="30" defaultValue="5" />
                 </label>
               </div>
-              <button className="button button--ghost button--full" type="submit">
-                在庫に追加
+              <button className="button button--primary button--full" type="submit">
+                在庫を追加
               </button>
             </form>
-            <button className="button button--primary button--full" type="button" onClick={refreshPlan}>
-              {planMessage}
-            </button>
           </div>
         </section>
 
         <section id="offers" className="section">
           <div className="section__heading">
             <p className="eyebrow">Price Radar</p>
-            <h2>「最安値」は今はデモ価格。本番では比較根拠ごと保存します。</h2>
+            <h2>条件込みの実質価格で、安い順に並べる。</h2>
             <p>
-              現在の表示価格は実ECから取得したリアルタイム価格ではありません。ここでは、送料・ポイント・クーポン・広告ラベルをどう比較するかを検証しています。
+              クーポン、ポイント還元、送料無料ラインを含めた実質価格で並べます。条件がある候補にはバナーを表示し、詳細条件を同じ画面で確認できます。
             </p>
           </div>
-          <div className="price-trust-panel">
-            <div>
-              <span className="trust-badge">Demo price</span>
-              <h3>本物の最安にするために必要なもの</h3>
-              <p>EC API、商品JAN、同容量換算、送料条件、ポイント還元、取得日時、広告フラグ。これらが揃うまでは「最安」と断言しません。</p>
-            </div>
-            <ul>
-              <li>通常最安を広告より先に表示</li>
-              <li>広告商品は必ずラベル表示</li>
-              <li>自動購入では広告商品へ勝手に変更しない</li>
-            </ul>
-          </div>
-
-          <ProductSearchPanel
-            inventory={state.inventory}
-            query={productSearchQuery}
-            result={productSearchResult}
-            status={productSearchStatus}
-            onQueryChange={setProductSearchQuery}
-            onSearch={() => searchMarketPrices()}
-            onSearchInventory={(item) => searchMarketPrices(`${item.name} ${item.category} ${item.note}`)}
-          />
-
-          <LivePriceScanner
-            urls={livePriceUrls}
-            results={livePriceResults}
-            status={livePriceStatus}
-            onUrlsChange={setLivePriceUrls}
-            onScan={scanLivePrices}
-          />
 
           <fieldset className="offer-toolbar">
-            <legend className="visually-hidden">提案フィルター</legend>
-            {(["all", "lowest", "sponsored"] as OfferFilter[]).map((filter) => (
+            <legend className="visually-hidden">価格候補フィルタ</legend>
+            {(Object.keys(filterLabels) as OfferFilter[]).map((filter) => (
               <button
-                className={`chip ${state.activeFilter === filter ? "is-active" : ""}`}
+                className={state.activeFilter === filter ? "chip is-active" : "chip"}
                 type="button"
                 key={filter}
                 onClick={() =>
@@ -515,16 +515,44 @@ export function HomeStackApp() {
             ))}
           </fieldset>
 
+          <ProductSearchPanel
+            inventory={state.inventory}
+            query={productSearchQuery}
+            result={productSearchResult}
+            status={productSearchStatus}
+            onQueryChange={setProductSearchQuery}
+            onSearch={() => searchMarketPrices()}
+            onSearchInventory={(item) => searchMarketPrices(item.name)}
+          />
+
+          <LivePriceScanner
+            urls={livePriceUrls}
+            results={livePriceResults}
+            status={livePriceStatus}
+            onUrlsChange={setLivePriceUrls}
+            onScan={scanLivePrices}
+          />
+
           <div className="offers">
-            {offers.map((offer) => (
+            {offers.map((offer, index) => (
               <article className="offer-card" key={offer.id}>
-                <span className={`offer-card__label offer-card__label--${offer.labelType}`}>{offer.label}</span>
+                <span
+                  className={
+                    offer.conditions.length > 0
+                      ? "offer-card__label offer-card__label--conditions"
+                      : "offer-card__label offer-card__label--plain"
+                  }
+                >
+                  {index + 1}位 {offer.conditions.length > 0 ? "条件あり" : "条件なし"}
+                </span>
                 <h3>{offer.title}</h3>
-                <div className="offer-card__price">{yenFormatter.format(offer.price)}</div>
-                <small>{offer.comparedAt} / 実価格ではありません</small>
+                <strong className="offer-card__price">{yenFormatter.format(offer.effectivePrice)}</strong>
+                {offer.listPrice !== offer.effectivePrice ? (
+                  <small>表示価格 {yenFormatter.format(offer.listPrice)} から条件適用</small>
+                ) : null}
                 <dl className="offer-details">
                   <div>
-                    <dt>購入先</dt>
+                    <dt>販売元</dt>
                     <dd>{offer.retailer}</dd>
                   </div>
                   <div>
@@ -532,63 +560,78 @@ export function HomeStackApp() {
                     <dd>{offer.unitPrice}</dd>
                   </div>
                   <div>
-                    <dt>送料/還元</dt>
-                    <dd>
-                      {offer.shipping}・{offer.points}
-                    </dd>
+                    <dt>送料</dt>
+                    <dd>{offer.shipping}</dd>
+                  </div>
+                  <div>
+                    <dt>還元</dt>
+                    <dd>{offer.points}</dd>
                   </div>
                 </dl>
-                <p>{offer.detail}</p>
-                <button className="link-button" type="button" onClick={() => clickOffer(offer)}>
-                  {offer.linkText} →
+                <p>{offer.reason}</p>
+                <button className="link-button" type="button" onClick={(event) => openOfferLink(event, offer)}>
+                  {offer.linkText}
                 </button>
+                {offer.conditions.length > 0 ? (
+                  <a className="condition-link" href={`#conditions-${offer.id}`} onClick={() => setActiveOfferId(offer.id)}>
+                    条件を見る
+                  </a>
+                ) : null}
               </article>
             ))}
           </div>
 
-          {activeOffer ? <PriceComparisonPanel offer={activeOffer} /> : null}
-        </section>
+          <PriceComparisonPanel offer={activeOffer} onOutboundClick={openComparisonLink} />
 
-        <section className="section analytics-card" aria-label="MVP検証KPI">
-          <div>
-            <p className="eyebrow">Mission Control</p>
-            <h2>家計レーダーの反応を見る。</h2>
-            <p>在庫数、購入クリック、広告クリック、推定送客収益に加えて、節約余地も見えるようにしました。</p>
-          </div>
-          <div className="metric-grid">
+          <section className="analytics-card">
             <div>
-              <strong>{state.inventory.length}</strong>
-              <span>登録在庫</span>
+              <p className="eyebrow">MVP Metrics</p>
+              <h2>クリック、承認、推定紹介収益を端末内で記録。</h2>
+              <p>実決済は行いません。ユーザーが価格候補や補充キューを操作した結果だけをローカルに保存します。</p>
             </div>
-            <div>
-              <strong>{state.metrics.clicks}</strong>
-              <span>購入クリック</span>
-            </div>
-            <div>
-              <strong>{state.metrics.sponsoredClicks}</strong>
-              <span>広告クリック</span>
-            </div>
-            <div>
-              <strong>{yenFormatter.format(savingsPotential)}</strong>
-              <span>節約余地</span>
-            </div>
-          </div>
+            <dl className="metric-grid">
+              <div>
+                <dt>クリック</dt>
+                <dd>{state.metrics.clicks}</dd>
+              </div>
+              <div>
+                <dt>条件あり</dt>
+                <dd>{state.metrics.conditionalClicks}</dd>
+              </div>
+              <div>
+                <dt>承認</dt>
+                <dd>{state.metrics.approvals}</dd>
+              </div>
+              <div>
+                <dt>推定収益</dt>
+                <dd>{yenFormatter.format(state.metrics.estimatedRevenue)}</dd>
+              </div>
+            </dl>
+          </section>
         </section>
 
         <section id="replenishment" className="section section--split">
           <div>
             <p className="eyebrow">Replenishment Queue</p>
-            <h2>切れる前の商品を、承認前提の補充キューにまとめる。</h2>
-            <p>通知、確認、EC送客までをMVP範囲にします。価格がデモであることは通知文にも残します。</p>
+            <h2>切れる前の商品を、承認制の補充キューにまとめる。</h2>
+            <p>通知、承認、EC送客までをMVP範囲にしています。価格がデモであることや条件の有無は通知文にも残します。</p>
+            <button className="button button--primary" type="button" onClick={refreshPlan}>
+              {planMessage}
+            </button>
             <div className="notification-preview" aria-live="polite">
               <strong>{state.household.channel.toUpperCase()}通知プレビュー</strong>
               {pendingQueue[0] ? (
                 <>
                   <p>
                     {pendingQueue[0].item.name}があと{pendingQueue[0].item.daysLeft}日で切れそうです。
-                    {pendingQueue[0].offer.retailer}で{yenFormatter.format(pendingQueue[0].offer.price)}のデモ候補があります。
+                    {pendingQueue[0].offer.retailer}で実質{yenFormatter.format(pendingQueue[0].offer.effectivePrice)}
+                    の候補があります。
                   </p>
-                  <small>本番では取得日時と比較元を添えて通知します。</small>
+                  <small>
+                    {pendingQueue[0].offer.conditions.length > 0
+                      ? "この価格には条件があります。購入前に条件を確認してください。"
+                      : "条件なしの価格候補です。"}
+                  </small>
                 </>
               ) : (
                 <p>14日以内に切れそうな商品はありません。次回の残量更新を待ちます。</p>
@@ -600,6 +643,26 @@ export function HomeStackApp() {
               <h3>次回の補充候補</h3>
               <span>承認制</span>
             </div>
+            <div className="shopping-summary">
+              <div>
+                <span>候補</span>
+                <strong>{queueSummary.itemCount}件</strong>
+              </div>
+              <div>
+                <span>合計目安</span>
+                <strong>{yenFormatter.format(queueSummary.totalEffectivePrice)}</strong>
+              </div>
+              <div>
+                <span>条件あり</span>
+                <strong>{queueSummary.conditionalCount}件</strong>
+              </div>
+              <button className="button button--ghost" type="button" onClick={copyShoppingList}>
+                メモをコピー
+              </button>
+            </div>
+            <p className="state-message" role="status">
+              {queueMessage}
+            </p>
             <div className="queue-list">
               {queue.length === 0 ? (
                 <p className="empty-state">補充候補はありません。在庫を追加するか残量を下げると表示されます。</p>
@@ -610,10 +673,10 @@ export function HomeStackApp() {
                     <span className="notice-card__tag">あと{item.daysLeft}日</span>
                     <h3>{item.name}</h3>
                     <p>
-                      {offer.title} / {offer.retailer} / {yenFormatter.format(offer.price)}
+                      {offer.title} / {offer.retailer} / 実質{yenFormatter.format(offer.effectivePrice)}
                     </p>
                     <small>
-                      {offer.points}・推定送客収益 {yenFormatter.format(estimatedRevenue)}
+                      {offer.conditions.length > 0 ? "条件あり" : "条件なし"} / 推定送客収益 {yenFormatter.format(estimatedRevenue)}
                     </small>
                   </div>
                   <div className="queue-actions">
@@ -639,8 +702,8 @@ export function HomeStackApp() {
         <section id="household" className="section section--split section--tight">
           <div>
             <p className="eyebrow">Household Rules</p>
-            <h2>世帯ごとの消費ペースと通知ルールを保存。</h2>
-            <p>人数・ペット有無・通知先・広告許容度を端末内に保存し、補充タイミングと提案表示を調整します。</p>
+            <h2>世帯ごとの消費ペースと価格表示ルールを保存。</h2>
+            <p>人数、ペット有無、通知先、条件付き価格の表示可否を端末内に保存し、補充タイミングと候補表示を調整します。</p>
           </div>
           <form
             className="settings-card"
@@ -673,8 +736,8 @@ export function HomeStackApp() {
               </label>
             </div>
             <label className="checkbox-row">
-              <input name="allowSponsored" type="checkbox" defaultChecked={state.household.allowSponsored} />
-              最安より安く、差額が明確なスポンサー提案だけ表示する
+              <input name="includeConditionalOffers" type="checkbox" defaultChecked={state.household.includeConditionalOffers} />
+              クーポン・ポイント還元・送料無料ライン込みの条件付き価格も表示する
             </label>
             <label className="checkbox-row">
               <input name="deletePhoto" type="checkbox" defaultChecked={state.household.deletePhoto} />
@@ -692,15 +755,15 @@ export function HomeStackApp() {
         <section id="autopilot" className="section section--split">
           <div>
             <p className="eyebrow">Auto Purchase Roadmap</p>
-            <h2>自動購入は、理由が説明できる時だけ。</h2>
+            <h2>自動購入は、理由と条件が説明できる時だけ。</h2>
             <p>MVPでは実決済を行わず、自動購入予約のシミュレーションまでに留めます。</p>
             <div className="notification-preview" aria-live="polite">
-              <strong>自動購入予約: {state.autopilot.enabled ? "有効" : "無効"}</strong>
+              <strong>自動予約 {state.autopilot.enabled ? "有効" : "無効"}</strong>
               <p>
-                許可済み商品 {allowedCount}件 / 今すぐ自動予約できる候補 {reservableCount}件。1回の上限は
+                許可済み商品 {allowedCount}件 / 今すぐ自動予約できる候補 {reservableCount}件。上限は
                 {yenFormatter.format(state.autopilot.maxAmount)}、キャンセル猶予は{state.autopilot.cancelWindowHours}時間です。
               </p>
-              <small>実決済は未実装です。将来は小売API、決済トークン、購入前通知、キャンセル導線を接続します。</small>
+              <small>実購入は未実装です。将来は小売API、決済トークン、購入前通知、キャンセル導線を接続します。</small>
             </div>
           </div>
           <form
@@ -736,21 +799,21 @@ export function HomeStackApp() {
               <label>
                 配送速度
                 <select name="deliveryPolicy" defaultValue={state.autopilot.deliveryPolicy}>
-                  <option value="standard">標準配送で最安優先</option>
+                  <option value="standard">標準配送で安さ優先</option>
                   <option value="fast">切れそうなら速さ優先</option>
                 </select>
               </label>
             </div>
             <label className="checkbox-row">
               <input name="enabled" type="checkbox" defaultChecked={state.autopilot.enabled} />
-              自動購入予約のシミュレーションを有効にする
+              自動購入予約シミュレーションを有効にする
             </label>
             <label className="checkbox-row">
-              <input name="requireApprovalForSponsored" type="checkbox" defaultChecked={state.autopilot.requireApprovalForSponsored} />
-              広告/スポンサー商品は必ず購入前確認にする
+              <input name="requireApprovalForConditional" type="checkbox" defaultChecked={state.autopilot.requireApprovalForConditional} />
+              条件付き価格の商品は必ず購入前確認にする
             </label>
             <button className="button button--primary button--full" type="submit">
-              自動購入ルールを保存
+              自動予約ルールを保存
             </button>
             <p className="state-message" role="status">
               {autopilotMessage}
@@ -762,7 +825,7 @@ export function HomeStackApp() {
           <div>
             <p className="eyebrow">Privacy & Ops</p>
             <h2>写真と価格を扱うから、透明性を先に置く。</h2>
-            <p>このデモでは端末内保存のみです。実サービスでは解析後削除、同意管理、広告セグメント、価格取得ログを見える化します。</p>
+            <p>このMVPでは端末内保存のみです。実サービスでは解析後削除、同意管理、条件付き価格の取得ログを見える化します。</p>
           </div>
           <div className="privacy-actions">
             <button className="button button--ghost" type="button" onClick={exportState}>
@@ -779,7 +842,7 @@ export function HomeStackApp() {
       </main>
 
       <footer className="footer">
-        <p>Home Stack MVP - 家庭内在庫と価格透明性のリテールメディア</p>
+        <p>Home Stack MVP - 家庭内在庫と実質価格比較のプロトタイプ</p>
       </footer>
     </>
   );
@@ -809,10 +872,7 @@ function ProductSearchPanel({
       <div className="product-search-copy">
         <p className="eyebrow">Price Search Lab</p>
         <h3>商品名から複数サイトを検索して価格候補を集める</h3>
-        <p>
-          バックエンドで検索結果ページまたは公式APIを取得し、商品名、価格、リンクを正規化します。
-          APIキーが設定されているサイトは公式APIを優先し、未設定なら公開検索ページから候補抽出を試します。
-        </p>
+        <p>APIキーがある場合は公式APIを優先し、未設定なら取得できる範囲で公開ページから候補を抽出します。</p>
       </div>
 
       <fieldset className="inventory-search-chips">
@@ -827,7 +887,7 @@ function ProductSearchPanel({
       <label className="market-search-box">
         検索キーワード
         <div>
-          <input type="search" value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="例: 猫砂 ライオン 5L" />
+          <input type="search" value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="例: 猫砂 5L" />
           <button className="button button--primary" type="button" onClick={onSearch}>
             横断検索
           </button>
@@ -876,7 +936,7 @@ function ProductSearchPanel({
                 <p>
                   一致度 {candidate.matchScore}% / {candidate.confidence} / {candidate.shipping ?? "送料条件は要確認"}
                 </p>
-                <small>{candidate.evidence.join("・")}</small>
+                <small>{candidate.evidence.join(" / ")}</small>
                 <a href={candidate.url} target="_blank" rel="noreferrer">
                   商品ページを見る
                 </a>
@@ -889,34 +949,77 @@ function ProductSearchPanel({
   );
 }
 
-function PriceComparisonPanel({ offer }: { offer: Offer }) {
-  const bestCompetitor = [...offer.competitors].sort((a, b) => a.price - b.price)[0];
+function PriceComparisonPanel({
+  offer,
+  onOutboundClick,
+}: {
+  offer: Offer;
+  onOutboundClick: (event: MouseEvent<HTMLElement>, offer: Offer, competitor: Offer["competitors"][number]) => void;
+}) {
+  const competitors = [...offer.competitors].sort((a, b) => a.effectivePrice - b.effectivePrice || a.listPrice - b.listPrice);
+  const bestCompetitor = competitors[0];
   return (
     <section className="comparison-panel" aria-label={`${offer.title}の比較根拠`}>
       <div className="comparison-panel__header">
         <div>
           <p className="eyebrow">Comparison Proof</p>
-          <h3>{offer.title} の比較根拠</h3>
+          <h3>{offer.title} の価格比較</h3>
           <p>{offer.comparisonBasis.join(" / ")}</p>
         </div>
         <div className="price-orbit">
-          <strong>{yenFormatter.format(bestCompetitor?.price ?? offer.price)}</strong>
-          <span>最安候補</span>
+          <strong>{yenFormatter.format(bestCompetitor?.effectivePrice ?? offer.effectivePrice)}</strong>
+          <span>最安実質価格</span>
         </div>
       </div>
       <div className="comparison-grid">
-        {offer.competitors.map((competitor) => (
+        {competitors.map((competitor, index) => (
           <article
             className={competitor.retailer === offer.retailer ? "comparison-card is-selected" : "comparison-card"}
             key={competitor.retailer}
           >
-            <span>{competitor.retailer}</span>
-            <strong>{yenFormatter.format(competitor.price)}</strong>
+            <span>
+              {index + 1}位 {competitor.retailer}
+            </span>
+            <strong>{yenFormatter.format(competitor.effectivePrice)}</strong>
+            {competitor.listPrice !== competitor.effectivePrice ? (
+              <small>表示価格 {yenFormatter.format(competitor.listPrice)}</small>
+            ) : null}
             <small>
-              {competitor.shipping}・{competitor.points}
+              {competitor.shipping} / {competitor.points}
             </small>
+            {competitor.conditions.length > 0 ? (
+              <a className="condition-banner" href={`#conditions-${offer.id}`}>
+                条件あり
+              </a>
+            ) : (
+              <span className="condition-banner condition-banner--plain">条件なし</span>
+            )}
             <p>{competitor.note}</p>
+            <button className="link-button" type="button" onClick={(event) => onOutboundClick(event, offer, competitor)}>
+              このサイトで探す
+            </button>
           </article>
+        ))}
+      </div>
+      <div className="condition-details" id={`conditions-${offer.id}`}>
+        <h4>価格条件の詳細</h4>
+        {competitors.map((competitor) => (
+          <details key={`${competitor.retailer}-conditions`} open={competitor.conditions.length > 0}>
+            <summary>
+              {competitor.retailer}: {competitor.conditions.length > 0 ? "条件あり" : "条件なし"}
+            </summary>
+            {competitor.conditions.length > 0 ? (
+              <ul>
+                {competitor.conditions.map((condition) => (
+                  <li key={`${competitor.retailer}-${condition.detail}`}>
+                    <strong>{condition.label}</strong>: {condition.detail}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>表示価格をそのまま実質価格として扱います。</p>
+            )}
+          </details>
         ))}
       </div>
     </section>
@@ -940,11 +1043,8 @@ function LivePriceScanner({
     <section className="live-price-panel" aria-label="ライブ価格スキャン">
       <div>
         <p className="eyebrow">Live Scrape</p>
-        <h3>商品URLから本当に価格を取りに行く</h3>
-        <p>
-          1行に1URLを貼ってください。Next APIがHTMLを取得し、JSON-LD、metaタグ、本文中の価格らしい表記を順に探します。
-          サイトによっては規約、bot対策、ログイン、JavaScript描画で取得できない場合があります。
-        </p>
+        <h3>商品URLから価格を抽出する</h3>
+        <p>1行に1URLを貼ってください。サイトによっては規約、bot対策、ログイン、JavaScript描画により取得できない場合があります。</p>
       </div>
       <label className="url-scan-box">
         商品ページURL
@@ -983,4 +1083,25 @@ function clampNumber(value: FormDataEntryValue | null, min: number, max: number,
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(max, Math.max(min, parsed));
+}
+
+async function copyText(text: string) {
+  try {
+    if (!navigator.clipboard?.writeText) return false;
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function openExternalUrl(url: string) {
+  const opened = window.open(url, "_blank", "noopener,noreferrer");
+  if (!opened) {
+    window.location.href = url;
+  }
+}
+
+function queueExternalOpen(url: string) {
+  window.setTimeout(() => openExternalUrl(url), 100);
 }

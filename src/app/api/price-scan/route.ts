@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     : [];
 
   if (urls.length === 0) {
-    return NextResponse.json({ ok: false, error: "価格取得するURLを入力してください", results: [] }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "価格を取得するURLを入力してください。", results: [] }, { status: 400 });
   }
 
   const results = await Promise.all(urls.map((url) => scrapePriceUrl(url)));

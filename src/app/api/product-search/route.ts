@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     .join(" ");
 
   if (!query) {
-    return NextResponse.json({ ok: false, error: "検索する商品名を入力してください" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "検索する商品名を入力してください。" }, { status: 400 });
   }
 
   const result = await searchProductPrices(query);

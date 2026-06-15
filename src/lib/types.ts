@@ -1,6 +1,5 @@
 export type Channel = "line" | "email" | "webpush";
-export type OfferLabelType = "lowest" | "sponsored";
-export type OfferFilter = "all" | OfferLabelType;
+export type OfferFilter = "all" | "no-conditions" | "conditions";
 export type QueueDecision = "pending" | "approve" | "auto-reserve" | "snooze" | "cancel";
 export type BrandPolicy = "never" | "cheaper-confirm" | "allow-same-spec";
 export type DeliveryPolicy = "standard" | "fast";
@@ -10,7 +9,7 @@ export type Household = {
   children: number;
   pets: number;
   channel: Channel;
-  allowSponsored: boolean;
+  includeConditionalOffers: boolean;
   deletePhoto: boolean;
 };
 
@@ -20,7 +19,7 @@ export type Autopilot = {
   cancelWindowHours: number;
   brandPolicy: BrandPolicy;
   deliveryPolicy: DeliveryPolicy;
-  requireApprovalForSponsored: boolean;
+  requireApprovalForConditional: boolean;
 };
 
 export type InventoryItem = {
@@ -35,7 +34,7 @@ export type InventoryItem = {
 
 export type Metrics = {
   clicks: number;
-  sponsoredClicks: number;
+  conditionalClicks: number;
   approvals: number;
   autoReservations: number;
   estimatedRevenue: number;
@@ -50,16 +49,21 @@ export type AppState = {
   queueDecisions: Record<string, QueueDecision>;
 };
 
+export type OfferCondition = {
+  label: string;
+  detail: string;
+};
+
 export type Offer = {
   id: string;
-  label: string;
-  labelType: OfferLabelType;
   priceMode: "demo" | "live";
   title: string;
-  price: number;
+  listPrice: number;
+  effectivePrice: number;
   unitPrice: string;
   category: string;
   retailer: string;
+  url: string;
   shipping: string;
   points: string;
   affiliateRate: number;
@@ -67,12 +71,16 @@ export type Offer = {
   reason: string;
   linkText: string;
   comparedAt: string;
+  conditions: OfferCondition[];
   comparisonBasis: string[];
   competitors: Array<{
     retailer: string;
-    price: number;
+    url: string;
+    listPrice: number;
+    effectivePrice: number;
     shipping: string;
     points: string;
+    conditions: OfferCondition[];
     note: string;
   }>;
 };

@@ -146,7 +146,7 @@ function extractTextPrice(html: string) {
       .replace(/<[^>]+>/g, " ")
       .replace(/\s+/g, " "),
   );
-  const priceText = text.match(/(?:￥|¥|税込|価格|price)?\s*([0-9０-９][0-9０-９,，.]*)(?:\s*円|yen|JPY)/i)?.[0];
+  const priceText = text.match(/(?:税込|価格|price)?\s*(?:¥|￥)?\s*([0-9０-９][0-9０-９,，]*)(?:\s*(?:円|yen|JPY))/i)?.[0];
   const price = parsePrice(priceText);
   return price ? { price, currency: inferCurrency(priceText) } : {};
 }
@@ -158,9 +158,8 @@ function matchContent(html: string, pattern: RegExp) {
 function parsePrice(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) return Math.round(value);
   if (typeof value !== "string") return undefined;
-  const normalized = value
-    .replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0))
-    .replace(/[，,]/g, "")
+  const normalized = toHalfWidth(value)
+    .replace(/[,，]/g, "")
     .match(/[0-9]+(?:\.[0-9]+)?/)?.[0];
   const price = normalized ? Number(normalized) : NaN;
   return Number.isFinite(price) ? Math.round(price) : undefined;
@@ -168,7 +167,7 @@ function parsePrice(value: unknown) {
 
 function inferCurrency(value?: string) {
   if (!value) return undefined;
-  if (/JPY|円|￥|¥/i.test(value)) return "JPY";
+  if (/JPY|円|¥|￥/i.test(value)) return "JPY";
   return undefined;
 }
 
@@ -179,4 +178,8 @@ function decodeEntities(value: string) {
     .replace(/&#39;/g, "'")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">");
+}
+
+function toHalfWidth(value: string) {
+  return value.replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0));
 }

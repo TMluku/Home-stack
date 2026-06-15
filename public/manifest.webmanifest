@@ -1,7 +1,7 @@
 {
   "name": "Home Stack",
   "short_name": "HomeStack",
-  "description": "家のストックをスマホで見える化し、切れる前に最安補充を知らせる無料の消耗品アシスタント。",
+  "description": "家の日用品在庫を見える化し、切れる前に実質価格の安い順で補充候補を確認できるMVPです。",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f7f6f3",

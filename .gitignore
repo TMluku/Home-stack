@@ -3,5 +3,6 @@ node_modules/
 .turbo/
 .tools/
 .next-dev*.log
+.next-start*.log
 pnpm-lock.yaml.tmp
 tsconfig.tsbuildinfo

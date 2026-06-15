@@ -1,97 +1,158 @@
 # Home Stack Requirements
 
-## 1. Concept
+## 1. Product Concept
 
-Home Stack is a mobile web assistant for household consumables. Users register household stock from a phone, track estimated days left, and receive replenishment suggestions before items run out.
+Home Stack は、家庭内の日用品・消耗品の在庫をスマートフォンで管理し、なくなる前に補充候補と価格比較を提示するモバイル Web アシスタントである。
 
-Long term, the product can support permission-based auto-purchase reservations with cancellation windows. The MVP stops at approval-based queueing and purchase-link clicks.
+MVP では、写真登録のデモ、手入力、消費予測、補充キュー、価格候補、条件付き価格を含む実質価格比較、購入前承認フローまでを検証する。実決済、実通知、自動購入はまだ行わない。
+
+長期的には、利用者が明示的に許可した商品だけを対象に、購入前通知とキャンセル猶予を備えた自動購入予約へ拡張する。
 
 ## 2. Business Direction
 
-- Do not rely on user subscription revenue in the first MVP.
-- Monetize through affiliate links, retailer referrals, coupons, and clearly labeled sponsored alternatives.
-- Preserve trust by always showing the true lowest eligible offer before sponsored placements.
-- Sponsored offers must show why they are displayed, such as lower price, same category, same capacity, or a campaign benefit.
+- 初期 MVP ではユーザー課金を前提にしない。
+- 収益化はアフィリエイトリンク、小売店送客、クーポン、キャンペーン導線で行う。
+- 信頼を守るため、特定の広告分類を前面に出すのではなく、条件込みの実質価格を含めて価格順に比較できるようにする。
+- クーポン、ポイント還元、送料無料ラインなど、実質価格になるための条件がある場合は「条件あり」バナーを表示する。
+- 条件ありバナーから、その価格が成立する条件の詳細を確認できるようにする。
+- 条件付き価格を比較に含めるかどうかは、利用者が設定で切り替えられるようにする。
 
 ## 3. MVP Scope
 
-- Build as a Next.js + TypeScript mobile web app.
-- Store MVP state in `localStorage`.
-- Support photo-upload simulation, manual inventory entry, stock adjustment, replenishment suggestions, offer filtering, KPI counters, household settings, and auto-purchase simulation rules.
-- Do not process real payments.
-- Do not send real notifications yet; render LINE/email/Web Push preview text.
-- Do not upload images to a server in the MVP.
+- Next.js + TypeScript のモバイル Web アプリとして構築する。
+- MVP の状態は `localStorage` に保存する。
+- 写真アップロードのデモ、在庫手入力、在庫調整、補充予測、価格候補、価格検索、補充キュー、KPI、世帯設定、自動購入シミュレーション設定を扱う。
+- 実決済は処理しない。
+- 実際の LINE・メール・Web Push 通知は送信せず、通知文面のプレビューのみ表示する。
+- MVP では画像をサーバーへアップロードしない。
+- API 連携が未設定の場合でも、デモデータで主要な体験を確認できる。
 
-## 4. User Features
+## 4. Functional Requirements
 
-### Inventory
+### 4.1 Inventory Management
 
-- Upload or capture a photo and generate demo inventory candidates.
-- Manually add inventory with name, category, stock percentage, and daily usage.
-- Adjust stock by `-10%` and `+10%`.
-- Toggle auto-replenish eligibility per item.
-- Delete inventory items.
+- 利用者は、写真をアップロードまたは撮影して、在庫候補をデモ生成できる。
+- 利用者は、商品名、カテゴリ、残量%、1日あたり消費量を入力して在庫を追加できる。
+- 利用者は、登録済み在庫の残量を `-10%` / `+10%` で調整できる。
+- 利用者は、商品ごとに自動補充対象の ON/OFF を切り替えられる。
+- 利用者は、登録済み在庫を削除できる。
+- システムは、在庫一覧を補充緊急度が分かる形で表示する。
+- システムは、残日数の状態を安全・注意・緊急のような視覚的な区分で示す。
 
-### Household Settings
+### 4.2 Household Settings
 
-- Save adult, child, and pet counts.
-- Choose notification channel: LINE, email, or Web Push.
-- Toggle sponsored-offer visibility.
-- Toggle the privacy assumption that photos are deleted after analysis.
+- 利用者は、大人、子ども、ペットの人数を保存できる。
+- 利用者は、通知チャネルとして LINE、メール、Web Push を選択できる。
+- 利用者は、条件付き価格を価格比較に含めるかどうかを切り替えられる。
+- 利用者は、写真を解析後に削除する前提を設定できる。
+- システムは、世帯人数やペット数を補充予測に反映する。
+- システムは、設定保存後に保存状態が分かるメッセージを表示する。
 
-### Replenishment Prediction
+### 4.3 Replenishment Prediction
 
-- Estimate days left from stock, daily usage, household size, children, and pets.
-- Treat items under 14 days as replenishment candidates.
-- Sort inventory by replenishment urgency.
+- システムは、在庫残量、1日あたり消費量、世帯人数、子ども数、ペット数から残日数を推定する。
+- システムは、残日数が 14 日以下の商品を補充候補として扱う。
+- システムは、残日数が 10 日以下の商品数を KPI として表示する。
+- システムは、消費ペースの再計算操作により、在庫残量を更新し、補充キューを再構築できる。
+- システムは、ペット用品やベビー用品のように世帯属性と関係するカテゴリでは、世帯条件に合う候補を優先する。
 
-### Offers
+### 4.4 Offer and Price Comparison
 
-- Show price, retailer, unit price, shipping, points, reason, and label.
-- Label offers as either `実質最安` or `キャンペーン / 広告`.
-- Filter offers by all, lowest, or sponsored.
-- Count offer clicks and estimated referral revenue.
+- システムは、複数サイトの価格候補を実質価格の安い順に表示する。
+- システムは、表示価格、条件適用後の実質価格、販売元、単価、送料、ポイント、表示理由、比較根拠を表示する。
+- システムは、クーポン、ポイント還元、送料無料ラインなどを実質価格に含める場合、候補に「条件あり」バナーを表示する。
+- 利用者は、「条件あり」バナーまたは商品カードの導線から、価格成立条件の詳細を確認できる。
+- 利用者は、すべて、条件なし、条件ありのフィルタを切り替えられる。
+- システムは、条件付き価格が許可されていない場合、条件付き価格の候補を非表示にする。
+- システムは、オファーごとに比較根拠、比較対象、取得日時を確認できる情報を持つ。
+- 利用者がオファーをクリックした場合、システムはクリック数、条件付き価格クリック数、推定紹介収益を更新する。
+- 利用者が比較カード内の販売元リンクをクリックした場合も、システムはクリック数、条件付き価格クリック数、推定紹介収益を更新する。
 
-### Queue
+### 4.5 Live Price Search
 
-- Show urgent items in an approval-based replenishment queue.
-- Support approve, auto-reserve simulation, snooze, and cancel decisions.
-- Count approvals and auto-reservation simulations.
-- Snooze should temporarily increase stock to represent delayed action.
+- 利用者は、在庫商品名または任意の検索語で、複数 EC サイトの価格候補を検索できる。
+- システムは、API キーが設定されている場合、公式 API を優先して価格候補を取得する。
+- システムは、API キーが未設定の場合、公開検索ページから取得できる範囲で価格候補の抽出を試みる。
+- 利用者は、商品ページ URL を複数入力し、価格抽出を実行できる。
+- システムは、JSON-LD、meta タグ、HTML テキストなど、取得できた根拠を区別して表示する。
+- システムは、取得失敗時に、ログイン必須、bot 対策、JavaScript 描画などの可能性を利用者が理解できるメッセージを返す。
+- システムは、検索結果に価格、一致度、信頼度、取得元、根拠メモ、商品リンクを含める。
 
-### Auto-Purchase Roadmap
+### 4.6 Replenishment Queue
 
-- Save enabled/disabled state.
-- Save per-purchase maximum amount.
-- Save cancellation window.
-- Save brand-change policy.
-- Save delivery-speed policy.
-- Require approval for sponsored products by default.
-- Only allow auto-reserve when item-level auto-replenish is enabled, the price is within the limit, and policy checks pass.
+- システムは、補充候補の商品を承認制の補充キューに表示する。
+- システムは、補充候補の件数、合計目安金額、条件あり件数を表示する。
+- 利用者は、補充候補を買い物メモとしてクリップボードへコピーできる。
+- 利用者は、キュー項目に対して承認、自動予約シミュレーション、3日後に延期、今回は不要を選択できる。
+- 承認または自動予約シミュレーションが選択された場合、システムは承認数、クリック数、推定紹介収益を更新する。
+- 自動予約シミュレーションが選択された場合、システムは自動予約件数を更新する。
+- 延期が選択された場合、システムは一時的に在庫残量を増やし、補充判断を先送りした状態を表現する。
+- キューの判断結果は、在庫が削除されるまで商品単位で保持する。
 
-### Privacy and Operations
+### 4.7 Auto-Purchase Simulation
 
-- Export current demo state to clipboard.
-- Reset local demo state.
-- Make it clear that the MVP uses local browser storage.
+- 利用者は、自動購入予約シミュレーションの有効・無効を保存できる。
+- 利用者は、1回あたりの購入上限金額を保存できる。
+- 利用者は、キャンセル猶予時間を保存できる。
+- 利用者は、ブランド変更ポリシーを保存できる。
+- 利用者は、配送スピードポリシーを保存できる。
+- 利用者は、条件付き価格の商品を購入前承認必須にする設定を保存できる。
+- システムは、商品単位で自動補充が ON、実質価格が上限内、条件付き価格の承認条件を満たす、ブランド変更ポリシーに反しない場合のみ自動予約可能と判定する。
+- MVP では自動予約はシミュレーションに留め、実購入・決済・配送依頼は行わない。
 
-## 5. Technical Requirements
+### 4.8 Privacy and Operations
 
-- Use Next.js App Router under `src/app`.
-- Use React client state for the interactive MVP surface.
-- Keep reusable domain logic in pure TypeScript modules under `src/lib`.
-- Keep static assets in `public`.
-- Use Biome for formatting/linting.
-- Use TypeScript strict mode.
-- Use Docker Compose as an optional local production runtime.
+- 利用者は、現在のデモ状態をクリップボードへエクスポートできる。
+- 利用者は、端末内のデモ状態を初期化できる。
+- システムは、MVP の保存先がローカルブラウザストレージであることを明示する。
+- システムは、写真の保存・削除方針を利用者が確認できる場所に表示する。
+- 将来のサーバー保存では、在庫、設定、キュー判断、クリック、同意履歴を区別して保存する。
 
-## 6. Future Roadmap
+### 4.9 Metrics and Admin Visibility
 
-1. Connect real image recognition.
-2. Add product master data, JAN/barcode support, and category dictionaries.
-3. Integrate retailer pricing, shipping, and point calculations.
-4. Send real LINE/email notifications.
-5. Persist inventory, households, queue decisions, clicks, and consent records server-side.
-6. Add API routes under `/api`.
-7. Add ranking policy logs for sponsored-offer auditability.
-8. Add purchase intent and cancellation-window flows for safe auto-purchase.
+- システムは、クリック数、条件付き価格クリック数、承認数、自動予約シミュレーション数、推定紹介収益を記録する。
+- システムは、残り 10 日以内の商品数、自動補充許可済み商品数、自動予約可能件数を表示する。
+- システムは、条件付き価格による節約可能額を参考 KPI として表示する。
+- 将来の管理画面では、表示されたオファー、クリック、承認、キャンセル、条件付き価格の成立条件を監査できるようにする。
+
+## 5. Non-Functional Requirements
+
+- モバイルファーストで、片手操作しやすい UI にする。
+- 価格、条件、キャンペーン表示は、利用者が誤解しない文言とラベルにする。
+- 補充や購入に関わる操作は、実行前に状態と理由が分かるようにする。
+- ドメインロジックは純粋な TypeScript モジュールとして分離し、UI と API の両方から再利用できるようにする。
+- 価格取得処理は、取得元ごとの失敗を個別に扱い、全体の画面を壊さない。
+- 実運用で個人情報や購入履歴を扱う場合、同意、保存期間、削除手段を明示する。
+
+## 6. Technical Requirements
+
+- Next.js App Router を `src/app` 配下で使用する。
+- インタラクティブな MVP 画面は React client state で実装する。
+- 再利用可能なドメインロジックは `src/lib` 配下の純粋 TypeScript モジュールに置く。
+- 静的アセットは `public` 配下に置く。
+- Biome をフォーマット・Lint に使用する。
+- TypeScript strict mode を有効にする。
+- Docker Compose は任意のローカル本番相当実行環境として維持する。
+- API レスポンスは、将来のバックエンド化に備えて一貫した envelope 形式に寄せる。
+
+## 7. Out of Scope for MVP
+
+- 実決済、購入確定、配送依頼。
+- 実際の LINE、メール、Web Push 送信。
+- 本番用の画像アップロード・画像解析。
+- ユーザーアカウント、ログイン、世帯共有。
+- サーバーサイド永続化。
+- 医薬品、酒類、年齢確認が必要な商品の自動購入。
+- 小売店ごとの在庫保証、配送日時保証。
+
+## 8. Future Roadmap
+
+1. 実画像認識を接続する。
+2. 商品マスタ、JAN / バーコード、カテゴリ辞書を追加する。
+3. 小売店 API による価格、送料、ポイント計算を統合する。
+4. 実 LINE・メール・Web Push 通知を送信する。
+5. 在庫、世帯、キュー判断、クリック、同意履歴をサーバーへ永続化する。
+6. `/api` 配下のバックエンドルートを拡張する。
+7. 条件付き価格の監査ログとランキングポリシーを追加する。
+8. 購入意思確認、キャンセル猶予、購入前通知を含む安全な自動購入予約フローを追加する。
+9. 家族共有、複数世帯、買い物担当者の権限管理を追加する。

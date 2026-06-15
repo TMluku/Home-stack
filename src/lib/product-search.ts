@@ -4,7 +4,6 @@ const MAX_HTML_BYTES = 1_500_000;
 const USER_AGENT = "HomeStackPriceRadar/0.1 (+https://github.com/TMluku/Home-stack)";
 
 type SearchSourceReport = ProductSearchResult["sources"][number];
-
 type RawCandidate = Omit<ProductSearchCandidate, "id" | "matchScore" | "confidence" | "fetchedAt">;
 
 const SOURCE_LABELS: Record<ProductSearchSource, string> = {
@@ -58,7 +57,7 @@ export function extractSearchCandidatesFromHtml(
       shipping: /送料無料|送料\s*0|free shipping/i.test(snippet) ? "送料無料候補" : "送料条件は要確認",
       imageUrl: extractImageUrl(snippet, baseUrl),
       evidence: [SOURCE_LABELS[source], "検索結果HTMLから商品名・価格・リンクを抽出"],
-    } satisfies RawCandidate;
+    };
   });
 
   return candidates
@@ -97,7 +96,6 @@ async function searchRakutenApi(query: string): Promise<{ candidates: RawCandida
           itemName?: string;
           itemPrice?: number;
           itemUrl?: string;
-          imageFlag?: number;
           mediumImageUrls?: Array<{ imageUrl?: string }>;
           postageFlag?: number;
         };
@@ -106,8 +104,8 @@ async function searchRakutenApi(query: string): Promise<{ candidates: RawCandida
     const candidates: RawCandidate[] =
       payload.Items?.map((entry) => entry.Item)
         .filter((item): item is NonNullable<typeof item> => Boolean(item))
-        .map((item) => {
-          const candidate: RawCandidate = {
+        .map(
+          (item): RawCandidate => ({
             source: "rakuten",
             sourceLabel: SOURCE_LABELS.rakuten,
             title: item.itemName ?? "",
@@ -117,9 +115,8 @@ async function searchRakutenApi(query: string): Promise<{ candidates: RawCandida
             shipping: item.postageFlag === 0 ? "送料無料" : "送料条件は要確認",
             imageUrl: item.mediumImageUrls?.[0]?.imageUrl?.replace(/\?_ex=\d+x\d+$/, ""),
             evidence: ["楽天市場公式API", "商品名・価格・商品URLをAPIレスポンスから取得"],
-          };
-          return candidate;
-        })
+          }),
+        )
         .filter((candidate) => candidate.title && candidate.url && candidate.price) ?? [];
 
     return {
@@ -174,8 +171,8 @@ async function searchYahooShoppingApi(
     };
     const candidates: RawCandidate[] =
       payload.hits
-        ?.map((item) => {
-          const candidate: RawCandidate = {
+        ?.map(
+          (item): RawCandidate => ({
             source: "yahoo-shopping",
             sourceLabel: SOURCE_LABELS["yahoo-shopping"],
             title: item.name ?? "",
@@ -185,9 +182,8 @@ async function searchYahooShoppingApi(
             shipping: item.shipping?.name ?? (item.shipping?.code === 1 ? "送料無料" : "送料条件は要確認"),
             imageUrl: item.image?.medium,
             evidence: ["Yahoo!ショッピング公式API", "商品名・価格・商品URLをAPIレスポンスから取得"],
-          };
-          return candidate;
-        })
+          }),
+        )
         .filter((candidate) => candidate.title && candidate.url && candidate.price) ?? [];
 
     return {
@@ -271,17 +267,13 @@ function rankCandidates(candidates: RawCandidate[], query: string, searchedAt: s
         fetchedAt: searchedAt,
       };
     })
-    .sort((a, b) => {
-      const priceDiff = (a.price ?? Number.MAX_SAFE_INTEGER) - (b.price ?? Number.MAX_SAFE_INTEGER);
-      if (Math.abs(priceDiff) > 0) return priceDiff;
-      return b.matchScore - a.matchScore;
-    });
+    .sort((a, b) => (a.price ?? Number.MAX_SAFE_INTEGER) - (b.price ?? Number.MAX_SAFE_INTEGER) || b.matchScore - a.matchScore);
 }
 
 function splitIntoProductSnippets(html: string) {
   const anchors = [...html.matchAll(/<a\b[\s\S]*?<\/a>/gi)].map((match) => match[0]);
   const largerBlocks = [...html.matchAll(/<(?:li|article|div)\b[\s\S]{0,5000}?<\/(?:li|article|div)>/gi)].map((match) => match[0]);
-  return [...largerBlocks, ...anchors].filter((snippet) => /(?:￥|¥|円|JPY|price|itemPrice)/i.test(snippet));
+  return [...largerBlocks, ...anchors].filter((snippet) => /(?:¥|￥|円|JPY|price|itemPrice)/i.test(snippet));
 }
 
 function extractProductUrl(snippet: string, baseUrl: string) {
@@ -318,10 +310,10 @@ function extractImageUrl(snippet: string, baseUrl: string) {
 
 function extractPrice(snippet: string) {
   const text = cleanText(snippet) ?? "";
-  const priceText = text.match(/(?:￥|¥)\s*([0-9０-９][0-9０-９,，]*)|([0-9０-９][0-9０-９,，]*)\s*円|JPY\s*([0-9０-９][0-9０-９,，]*)/i);
-  const raw = priceText?.[1] ?? priceText?.[2] ?? priceText?.[3];
+  const priceText = text.match(/(?:¥|￥)\s*([0-9０-９][0-9０-９,，]*)|([0-9０-９][0-9０-９,，]*)\s*(?:円|JPY)/i);
+  const raw = priceText?.[1] ?? priceText?.[2];
   if (!raw) return undefined;
-  const price = Number(raw.replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0)).replace(/[，,]/g, ""));
+  const price = Number(toHalfWidth(raw).replace(/[,，]/g, ""));
   return Number.isFinite(price) ? price : undefined;
 }
 
@@ -355,6 +347,10 @@ function decodeEntities(value: string) {
     .replace(/&#39;/g, "'")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">");
+}
+
+function toHalfWidth(value: string) {
+  return value.replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0));
 }
 
 function dedupeByUrl<T extends { url: string }>(candidate: T, index: number, candidates: T[]) {

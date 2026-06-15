@@ -2,7 +2,7 @@
 
 The current MVP is a client-side Next.js + TypeScript application. State is stored in `localStorage` so the product flow can be validated without a backend service.
 
-The next backend milestone is to introduce real API routes under `/api` while preserving the same resource model used by the UI.
+The next backend milestone is to introduce real API routes under `/api` while preserving the same resource model used by the UI: inventory, household rules, effective-price offers, condition details, replenishment queue decisions, and metrics.
 
 ## Response Shape
 
@@ -19,6 +19,15 @@ Future API handlers should return a consistent envelope:
 
 Errors should return `ok: false`, an HTTP-aligned `status`, and `error.message` plus optional `error.details`.
 
+Current MVP routes still return a lightweight shape so the client can stay simple:
+
+```json
+{
+  "ok": true,
+  "results": []
+}
+```
+
 ## Current API Routes
 
 | Method | Path | Purpose |
@@ -32,7 +41,7 @@ Request:
 
 ```json
 {
-  "query": "猫砂 ライオン 5L"
+  "query": "猫砂 5L"
 }
 ```
 
@@ -55,6 +64,32 @@ Request:
 
 Response includes per-URL extraction status, price, title, source type, and fetch timestamp.
 
+## Offer Resource Direction
+
+The UI no longer treats offers as `lowest` versus `sponsored`. Backend offer data should instead model price ranking directly:
+
+```json
+{
+  "id": "cat-litter-petplus-coupon",
+  "title": "固まる猫砂 5L x 4袋",
+  "retailer": "PetPlus公式",
+  "listPrice": 2480,
+  "effectivePrice": 2260,
+  "unitPrice": "565円 / 袋",
+  "shipping": "送料無料",
+  "points": "初回10%OFFクーポン込み",
+  "conditions": [
+    {
+      "label": "条件あり",
+      "detail": "初回購入クーポンの適用が必要です。"
+    }
+  ],
+  "comparisonBasis": ["5L x 4袋", "送料込み", "クーポン・ポイント込みの実質価格"]
+}
+```
+
+Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is non-empty, the client displays a `条件あり` banner and links to condition details.
+
 ## Planned Resources
 
 | Method | Path | Purpose |
@@ -63,11 +98,12 @@ Response includes per-URL extraction status, price, title, source type, and fetc
 | `POST` | `/api/inventory` | Create an inventory item. |
 | `PATCH` | `/api/inventory/:id` | Update stock, auto-replenish, category, or usage rate. |
 | `DELETE` | `/api/inventory/:id` | Delete an inventory item and related queue decisions. |
-| `PUT` | `/api/settings/household` | Replace household settings. |
+| `PUT` | `/api/settings/household` | Replace household settings, including conditional-price visibility. |
 | `PUT` | `/api/settings/autopilot` | Replace auto-purchase simulation rules. |
 | `POST` | `/api/photo-detections` | Store or process photo detection results. |
 | `POST` | `/api/replenishment-plan/refresh` | Recalculate replenishment candidates. |
-| `POST` | `/api/offers/:id/click` | Record purchase or sponsored-offer clicks. |
+| `GET` | `/api/offers` | Return effective-price ranked offers with condition details. |
+| `POST` | `/api/offers/:id/click` | Record offer clicks and whether the clicked price had conditions. |
 | `PATCH` | `/api/queue/:itemId` | Approve, auto-reserve, snooze, or cancel a queue item. |
 | `GET` | `/api/state/export` | Export demo or account state. |
 | `POST` | `/api/state/reset` | Reset demo state. |
@@ -76,5 +112,6 @@ Response includes per-URL extraction status, price, title, source type, and fetc
 
 - Keep `src/lib/replenishment.ts` as pure domain logic so it can be reused by API routes and tests.
 - Add a repository boundary before connecting PostgreSQL, Supabase, or another persistent store.
-- Preserve explicit sponsored-offer labeling and never let ad ranking hide the true lowest eligible offer.
+- Preserve explicit condition details for coupons, point returns, shipping thresholds, account eligibility, and campaign windows.
+- Never rank a conditional effective price without exposing the conditions that make that price true.
 - Store click events and queue decisions as append-only events once the backend exists.

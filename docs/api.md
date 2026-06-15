@@ -150,6 +150,7 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 - Append condition-price audit events before replacing or clearing account state so ranking and click decisions remain inspectable.
 - Append candidate audit events after product search when effective-price quotes should be kept with source query, match score, source label, and price evidence.
 - Append direct price-scan audit events when URL scans return effective-price quotes that should remain inspectable.
+- The Post-MVP UI can append the current condition audit payload and load stored condition audit events for the active account on a Next.js server build. Static GitHub Pages builds keep the panel visible but report API persistence as unavailable.
 - Never rank a conditional effective price without exposing the conditions that make that price true.
 - Product search candidates should carry an `effectivePriceQuote` so sorting can use normalized price rather than raw extracted price.
 - Product search extraction should preserve evidence for inferred shipping fees, point value, and coupon value so condition banners can explain why an effective price changed.

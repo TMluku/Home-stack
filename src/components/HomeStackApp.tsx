@@ -72,6 +72,12 @@ type ServerAccountSummary = {
   notificationDraftCount: number;
 };
 
+type StoredConditionAuditEvent = ConditionAuditLogEntry & {
+  accountId: string;
+  eventType: string;
+  appendedAt: string;
+};
+
 export function HomeStackApp() {
   const [state, setState] = useState<AppState>(() => createDefaultState());
   const [loaded, setLoaded] = useState(false);
@@ -103,6 +109,11 @@ export function HomeStackApp() {
   );
   const [notificationProviderReadiness, setNotificationProviderReadiness] = useState<NotificationProviderReadiness | null>(null);
   const [notificationDispatchSummary, setNotificationDispatchSummary] = useState<NotificationDispatchSummary | null>(null);
+  const [storedAuditEvents, setStoredAuditEvents] = useState<StoredConditionAuditEvent[]>([]);
+  const [auditOpsBusy, setAuditOpsBusy] = useState(false);
+  const [auditOpsMessage, setAuditOpsMessage] = useState(
+    isStaticExport ? "GitHub Pages版では監査ログAPIは未接続です。" : "監査イベントをaccountIdごとに保存・読込できます。",
+  );
 
   useEffect(() => {
     try {
@@ -610,6 +621,68 @@ export function HomeStackApp() {
       setNotificationOpsMessage(error instanceof Error ? error.message : "通知dry-run dispatchに失敗しました。");
     } finally {
       setNotificationOpsBusy(false);
+    }
+  }
+
+  async function appendConditionAuditEvents() {
+    if (isStaticExport) {
+      setAuditOpsMessage("GitHub Pages版では監査ログ保存APIは未接続です。Next.jsサーバーで有効になります。");
+      return;
+    }
+
+    const accountId = serverAccountId.trim();
+    if (!accountId) {
+      setAuditOpsMessage("保存するaccountIdを入力してください。");
+      return;
+    }
+
+    setAuditOpsBusy(true);
+    try {
+      const response = await fetch("/api/audit/conditions/append", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ accountId, payload: serverSyncPayload }),
+      });
+      const payload = (await response.json()) as { ok?: boolean; appended?: StoredConditionAuditEvent[]; error?: string };
+      if (!response.ok || !payload.ok) throw new Error(payload.error ?? "監査イベントを保存できませんでした。");
+      const appended = payload.appended ?? [];
+      setStoredAuditEvents((current) => [...appended, ...current].slice(0, 24));
+      setAuditOpsMessage(`${accountId} に監査イベントを ${appended.length} 件保存しました。`);
+    } catch (error) {
+      setAuditOpsMessage(error instanceof Error ? error.message : "監査イベントを保存できませんでした。");
+    } finally {
+      setAuditOpsBusy(false);
+    }
+  }
+
+  async function loadConditionAuditEvents() {
+    if (isStaticExport) {
+      setAuditOpsMessage("GitHub Pages版では監査ログ読込APIは未接続です。Next.jsサーバーで有効になります。");
+      return;
+    }
+
+    const accountId = serverAccountId.trim();
+    if (!accountId) {
+      setAuditOpsMessage("読み込むaccountIdを入力してください。");
+      return;
+    }
+
+    setAuditOpsBusy(true);
+    try {
+      const response = await fetch("/api/audit/conditions/list", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ accountId }),
+      });
+      const payload = (await response.json()) as { ok?: boolean; events?: StoredConditionAuditEvent[]; error?: string };
+      if (!response.ok || !payload.ok) throw new Error(payload.error ?? "保存済み監査ログを読み込めませんでした。");
+      const events = payload.events ?? [];
+      setStoredAuditEvents(events);
+      setAuditOpsMessage(`${accountId} の保存済み監査ログを ${events.length} 件読み込みました。`);
+    } catch (error) {
+      setAuditOpsMessage(error instanceof Error ? error.message : "保存済み監査ログを読み込めませんでした。");
+    } finally {
+      setAuditOpsBusy(false);
     }
   }
 
@@ -1146,6 +1219,9 @@ export function HomeStackApp() {
 
         <PostMvpOpsPanel
           conditionAuditLog={conditionAuditLog}
+          storedAuditEvents={storedAuditEvents}
+          auditOpsBusy={auditOpsBusy}
+          auditOpsMessage={auditOpsMessage}
           notificationDrafts={notificationDrafts}
           notificationDestination={notificationDestination}
           notificationDispatchSummary={notificationDispatchSummary}
@@ -1162,7 +1238,9 @@ export function HomeStackApp() {
           serverSyncMessage={serverSyncMessage}
           serverSyncPayload={serverSyncPayload}
           onDispatchNotificationDryRun={dispatchNotificationDryRun}
+          onAppendConditionAudit={appendConditionAuditEvents}
           onLoadServerState={loadServerState}
+          onLoadConditionAudit={loadConditionAuditEvents}
           onNotificationDestinationChange={setNotificationDestination}
           onPrepareNotificationJobs={prepareNotificationJobs}
           onRefreshServerAccounts={refreshServerAccounts}
@@ -1450,6 +1528,9 @@ function LivePriceScanner({
 
 function PostMvpOpsPanel({
   conditionAuditLog,
+  storedAuditEvents,
+  auditOpsBusy,
+  auditOpsMessage,
   notificationDrafts,
   notificationDestination,
   notificationDispatchSummary,
@@ -1466,7 +1547,9 @@ function PostMvpOpsPanel({
   serverSyncMessage,
   serverSyncPayload,
   onDispatchNotificationDryRun,
+  onAppendConditionAudit,
   onLoadServerState,
+  onLoadConditionAudit,
   onNotificationDestinationChange,
   onPrepareNotificationJobs,
   onRefreshServerAccounts,
@@ -1476,6 +1559,9 @@ function PostMvpOpsPanel({
   onServerAccountIdChange,
 }: {
   conditionAuditLog: ConditionAuditLogEntry[];
+  storedAuditEvents: StoredConditionAuditEvent[];
+  auditOpsBusy: boolean;
+  auditOpsMessage: string;
   notificationDrafts: NotificationDraft[];
   notificationDestination: string;
   notificationDispatchSummary: NotificationDispatchSummary | null;
@@ -1492,7 +1578,9 @@ function PostMvpOpsPanel({
   serverSyncMessage: string;
   serverSyncPayload: ServerSyncPayload;
   onDispatchNotificationDryRun: () => void;
+  onAppendConditionAudit: () => void;
   onLoadServerState: () => void;
+  onLoadConditionAudit: () => void;
   onNotificationDestinationChange: (value: string) => void;
   onPrepareNotificationJobs: () => void;
   onRefreshServerAccounts: () => void;
@@ -1501,7 +1589,8 @@ function PostMvpOpsPanel({
   onSaveServerState: () => void;
   onServerAccountIdChange: (value: string) => void;
 }) {
-  const auditPreview = conditionAuditLog.slice(0, 8);
+  const auditPreview = (storedAuditEvents.length > 0 ? storedAuditEvents : conditionAuditLog).slice(0, 8);
+  const auditPreviewSource = storedAuditEvents.length > 0 ? "保存済み" : "現在の候補";
   const latestDraft = notificationDrafts[0];
   const officialSourceCount = priceFetchPlan.filter((step) => step.extractionPriority[0] === "official-api").length;
   const directPageCount = priceFetchPlan.filter((step) => step.source === "direct-page").length;
@@ -1540,6 +1629,31 @@ function PostMvpOpsPanel({
 
         <section className="ops-panel" aria-label="条件付き価格監査ログ">
           <h3>条件付き価格の監査ログ</h3>
+          <div className="ops-actions">
+            <button className="button button--ghost" type="button" onClick={onAppendConditionAudit} disabled={auditOpsBusy}>
+              監査保存
+            </button>
+            <button className="button button--ghost" type="button" onClick={onLoadConditionAudit} disabled={auditOpsBusy}>
+              保存済み読込
+            </button>
+          </div>
+          <p className="state-message" role="status">
+            {auditOpsMessage}
+          </p>
+          <dl className="ops-list ops-list--compact">
+            <div>
+              <dt>表示元</dt>
+              <dd>{auditPreviewSource}</dd>
+            </div>
+            <div>
+              <dt>保存済み</dt>
+              <dd>{storedAuditEvents.length}件</dd>
+            </div>
+            <div>
+              <dt>accountId</dt>
+              <dd>{serverAccountId}</dd>
+            </div>
+          </dl>
           <div className="audit-table">
             {auditPreview.map((row) => (
               <article key={row.id}>

@@ -107,6 +107,7 @@ Account resolution creates stable account IDs and email hashes for email-link/OA
 Account listing reads the server-side account index that is updated whenever account state is saved or reset.
 The Post-MVP panel can call these routes from a Next.js server build to save, load, delete, and refresh account state; the GitHub Pages build keeps the controls visible but reports that API persistence is unavailable.
 Condition audit routes append and list effective-price condition events so ranking decisions can be inspected later, including product-search candidate quotes and direct URL scan quotes.
+The Post-MVP panel can save the current condition audit payload and load stored audit events for the active account when the app is running on a Next.js server.
 Notification preparation builds queued or blocked jobs, status reports configured providers, and dispatch can dry-run provider handoff or mark adapter-ready providers as sent without calling external services yet.
 Set `HOME_STACK_LINE_CHANNEL_ACCESS_TOKEN`, `HOME_STACK_EMAIL_FROM` plus `HOME_STACK_EMAIL_TRANSPORT`, or the Web Push VAPID env values to move a channel from dry-run-only to adapter-ready.
 The Post-MVP panel can check provider status, prepare jobs, and run a dry-run dispatch when the app is running on a Next.js server.
@@ -121,4 +122,4 @@ Set `HOME_STACK_BARCODE_MASTER_URL` to hand valid JAN codes to an external HTTP 
 - Conditional prices must always expose the conditions that make the effective price true.
 - Product search candidates include effective-price quotes when shipping, point, or coupon assumptions are available, including inferred values from marketplace HTML/API results.
 - Product URL scans also return effective-price quotes when JSON-LD, meta tags, or page text expose shipping, point, or coupon signals.
-- Post-MVP panels now show price fetch plans, condition audit logs, notification drafts, and account/server-save contracts.
+- Post-MVP panels now show price fetch plans, saved condition audit logs, notification drafts, and account/server-save contracts.

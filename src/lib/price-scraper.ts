@@ -311,6 +311,7 @@ function extractTextPrice(html: string) {
     if (isShippingConditionAmountContext(text, match.index ?? 0, priceText.length)) continue;
     if (isTaxExcludedContext(text, match.index ?? 0, priceText.length)) continue;
     if (isReferencePriceContext(text, match.index ?? 0, priceText.length)) continue;
+    if (isExpiredSalePriceContext(text, match.index ?? 0, priceText.length)) continue;
     if (isUnavailablePriceContext(text, match.index ?? 0, priceText.length)) continue;
     const price = parsePrice(priceText);
     if (price) return { price, currency: inferCurrency(priceText) };
@@ -1059,6 +1060,17 @@ function isReferencePriceContext(text: string, index: number, length: number) {
     /(?:通常価格|参考価格|メーカー希望小売価格|定価|list price|regular price|was price|original price)\s*$/i.test(before) ||
     /^\s*(?:通常価格|参考価格|メーカー希望小売価格|定価|list price|regular price|was price|original price)/i.test(after)
   );
+}
+
+function isExpiredSalePriceContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 36), index);
+  const after = text.slice(index + length, index + length + 30);
+  const labelPrefix = `${before.replace(/^.*[0-9０-９][^0-9０-９]*/, "")}${text.slice(index, index + length).replace(/[0-9０-９].*$/, "")}`;
+  const words =
+    /(?:終了|終了済み|過去価格|旧価格|セール終了|タイムセール終了|期限切れ|販売終了価格|expired|ended|previous sale|past price|old price|deal ended|sale ended)\s*$/i;
+  const wordsAfter =
+    /^\s*(?:終了|終了済み|過去価格|旧価格|セール終了|タイムセール終了|期限切れ|販売終了価格|expired|ended|previous sale|past price|old price|deal ended|sale ended)/i;
+  return words.test(labelPrefix) || words.test(before) || wordsAfter.test(after);
 }
 
 function isUnavailablePriceContext(text: string, index: number, length: number) {

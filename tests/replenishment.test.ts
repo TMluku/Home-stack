@@ -365,6 +365,27 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips expired sale prices before current direct product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Current sale product</title></head>
+        <body>
+          <span>タイムセール終了 980円</span>
+          <strong>販売価格 1,480円</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1480,
+      effectivePriceQuote: {
+        listPrice: 1480,
+        effectivePrice: 1480,
+      },
+      source: "html-text",
+    });
+  });
+
   it("skips range lower-bound prices before exact direct product prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -1255,6 +1276,29 @@ describe("replenishment domain logic", () => {
       effectivePriceQuote: {
         listPrice: 1500,
         effectivePrice: 1500,
+      },
+    });
+  });
+
+  it("skips expired sale prices before current marketplace item prices", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/current-sale" title="Current sale detergent">Current sale detergent</a>
+          <span>タイムセール終了 980円</span>
+          <strong>販売価格 1,480円</strong>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/detergent/",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Current sale detergent",
+      price: 1480,
+      effectivePriceQuote: {
+        listPrice: 1480,
+        effectivePrice: 1480,
       },
     });
   });

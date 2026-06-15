@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createDefaultState } from "../src/lib/demo-state";
+import { buildNotificationJobs, summarizeNotificationJobs } from "../src/lib/notification-jobs";
 import { baseOffers } from "../src/lib/offers";
 import {
   buildConditionAuditLog,
@@ -83,5 +84,26 @@ describe("post-MVP static helpers", () => {
         conditionalAuditCount: auditLog.filter((entry) => entry.conditionCount > 0).length,
       },
     });
+  });
+
+  it("prepares notification jobs without sending real notifications", () => {
+    const state = createDefaultState();
+    const queue = buildReplenishmentQueue(state, baseOffers);
+    const notificationDrafts = buildNotificationDrafts(queue, "email", "2026-06-15T00:00:00.000Z");
+    const blockedJobs = buildNotificationJobs({
+      accountId: "acct-test",
+      drafts: notificationDrafts,
+      createdAt: "2026-06-15T00:00:00.000Z",
+    });
+    const queuedJobs = buildNotificationJobs({
+      accountId: "acct-test",
+      drafts: notificationDrafts,
+      contactPoints: { email: "user@example.test" },
+      createdAt: "2026-06-15T00:00:00.000Z",
+    });
+
+    expect(blockedJobs.every((job) => job.status === "blocked" && job.blockedReason === "missing-destination")).toBe(true);
+    expect(queuedJobs.every((job) => job.status === "queued" && job.destination === "user@example.test")).toBe(true);
+    expect(summarizeNotificationJobs(queuedJobs)).toMatchObject({ total: queuedJobs.length, queued: queuedJobs.length, blocked: 0 });
   });
 });

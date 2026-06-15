@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 import { categories, createDefaultState, detectedInventoryCandidates, normalizeState, STORAGE_KEY } from "@/lib/demo-state";
 import { recordOutboundClick, recordQueueDecision } from "@/lib/metrics";
+import type { NotificationJobSummary } from "@/lib/notification-jobs";
+import { buildNotificationJobs, summarizeNotificationJobs } from "@/lib/notification-jobs";
 import { baseOffers } from "@/lib/offers";
 import type { ConditionAuditLogEntry, NotificationDraft, PriceFetchPlanStep, ServerSyncPayload } from "@/lib/post-mvp";
 import {
@@ -57,6 +59,7 @@ const filterLabels: Record<OfferFilter, string> = {
 };
 
 const isStaticExport = process.env.NEXT_PUBLIC_STATIC_EXPORT === "true";
+const serverSyncAccountId = "demo-account";
 
 export function HomeStackApp() {
   const [state, setState] = useState<AppState>(() => createDefaultState());
@@ -104,6 +107,17 @@ export function HomeStackApp() {
   const reservableCount = queue.filter((entry) => entry.autoReservable).length;
   const conditionAuditLog = useMemo(() => buildConditionAuditLog(offers), [offers]);
   const notificationDrafts = useMemo(() => buildNotificationDrafts(queue, state.household.channel), [queue, state.household.channel]);
+  const notificationJobSummary = useMemo(
+    () =>
+      summarizeNotificationJobs(
+        buildNotificationJobs({
+          accountId: serverSyncAccountId,
+          drafts: notificationDrafts,
+          contactPoints: {},
+        }),
+      ),
+    [notificationDrafts],
+  );
   const priceFetchPlan = useMemo(
     () => buildPriceFetchPlan(productSearchQuery || janCode || activeOffer?.title || "", livePriceUrls.split(/\r?\n/)),
     [productSearchQuery, janCode, activeOffer, livePriceUrls],
@@ -900,6 +914,7 @@ export function HomeStackApp() {
         <PostMvpOpsPanel
           conditionAuditLog={conditionAuditLog}
           notificationDrafts={notificationDrafts}
+          notificationJobSummary={notificationJobSummary}
           priceFetchPlan={priceFetchPlan}
           queueItemCount={queueSummary.itemCount}
           queueTotal={queueSummary.totalEffectivePrice}
@@ -1169,6 +1184,7 @@ function LivePriceScanner({
 function PostMvpOpsPanel({
   conditionAuditLog,
   notificationDrafts,
+  notificationJobSummary,
   priceFetchPlan,
   queueItemCount,
   queueTotal,
@@ -1176,6 +1192,7 @@ function PostMvpOpsPanel({
 }: {
   conditionAuditLog: ConditionAuditLogEntry[];
   notificationDrafts: NotificationDraft[];
+  notificationJobSummary: NotificationJobSummary;
   priceFetchPlan: PriceFetchPlanStep[];
   queueItemCount: number;
   queueTotal: number;
@@ -1237,7 +1254,7 @@ function PostMvpOpsPanel({
             <div>
               <dt>通知候補</dt>
               <dd>
-                {notificationDrafts.length}件 / queue {queueItemCount}件
+                {notificationDrafts.length}件 / queued {notificationJobSummary.queued}件
               </dd>
             </div>
             <div>
@@ -1245,8 +1262,10 @@ function PostMvpOpsPanel({
               <dd>{yenFormatter.format(queueTotal)}</dd>
             </div>
             <div>
-              <dt>送信先</dt>
-              <dd>{latestDraft ? channelLabels[latestDraft.channel] : "LINE / Email / Web Push adapter"}</dd>
+              <dt>送信待ち</dt>
+              <dd>
+                blocked {notificationJobSummary.blocked}件 / queue {queueItemCount}件
+              </dd>
             </div>
           </dl>
           <p>

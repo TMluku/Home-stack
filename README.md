@@ -88,8 +88,10 @@ When the app runs as a Next.js server, account sync payloads can be saved throug
 - `POST /api/state/save`
 - `POST /api/state/load`
 - `POST /api/state/reset`
+- `POST /api/notifications/prepare`
 
 By default, saved JSON files are written under `.server-state/`. Set `HOME_STACK_STATE_STORE_DIR` to use another local directory. GitHub Pages remains static and does not run these API routes.
+Notification preparation builds queued or blocked jobs, but it does not send real LINE, email, or Web Push messages yet.
 
 ## Important Data Notes
 

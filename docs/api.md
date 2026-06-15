@@ -38,6 +38,7 @@ Current MVP routes still return a lightweight shape so the client can stay simpl
 | `POST` | `/api/state/save` | Save a server-sync payload for an account in the configured server state store. |
 | `POST` | `/api/state/load` | Load saved account state from the configured server state store. |
 | `POST` | `/api/state/reset` | Delete saved account state from the configured server state store. |
+| `POST` | `/api/notifications/prepare` | Convert notification drafts into queued or blocked delivery jobs without sending real notifications. |
 
 ### `POST /api/product-search`
 
@@ -117,4 +118,5 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 - Replace the file-backed repository with PostgreSQL, Supabase, or another durable store before multi-user production launch.
 - Preserve explicit condition details for coupons, point returns, shipping thresholds, account eligibility, and campaign windows.
 - Never rank a conditional effective price without exposing the conditions that make that price true.
+- Notification preparation must keep delivery as a separate adapter step. Missing LINE/email/Web Push destinations should produce blocked jobs, not silent drops.
 - Store click events and queue decisions as append-only events once the backend exists.

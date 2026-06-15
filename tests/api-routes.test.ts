@@ -2,6 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { POST as prepareNotifications } from "../src/app/api/notifications/prepare/route";
 import { POST as scanPrices } from "../src/app/api/price-scan/route";
 import { POST as searchProducts } from "../src/app/api/product-search/route";
 import { POST as exportState } from "../src/app/api/state/export/route";
@@ -173,5 +174,46 @@ describe("API route contracts", () => {
     } finally {
       await rm(storeDir, { recursive: true, force: true });
     }
+  });
+
+  it("prepares notification jobs from a sync payload without delivering them", async () => {
+    const exportResponse = await exportState(
+      new Request("http://localhost/api/state/export", {
+        method: "POST",
+        body: JSON.stringify({
+          accountId: "acct-notify",
+          state: {
+            household: { channel: "email" },
+          },
+        }),
+      }),
+    );
+    const exported = await exportResponse.json();
+
+    const blockedResponse = await prepareNotifications(
+      new Request("http://localhost/api/notifications/prepare", {
+        method: "POST",
+        body: JSON.stringify({ payload: exported.payload }),
+      }),
+    );
+    const blocked = await blockedResponse.json();
+
+    expect(blockedResponse.status).toBe(200);
+    expect(blocked.summary.blocked).toBe(blocked.summary.total);
+
+    const queuedResponse = await prepareNotifications(
+      new Request("http://localhost/api/notifications/prepare", {
+        method: "POST",
+        body: JSON.stringify({
+          payload: exported.payload,
+          contactPoints: { email: "user@example.test" },
+        }),
+      }),
+    );
+    const queued = await queuedResponse.json();
+
+    expect(queuedResponse.status).toBe(200);
+    expect(queued.summary.queued).toBe(queued.summary.total);
+    expect(queued.jobs[0].payload.message).toContain("実質価格");
   });
 });

@@ -15,6 +15,7 @@ import { POST as exportState } from "../src/app/api/state/export/route";
 import { POST as loadState } from "../src/app/api/state/load/route";
 import { POST as resetState } from "../src/app/api/state/reset/route";
 import { POST as saveState } from "../src/app/api/state/save/route";
+import { POST as getStateStatus } from "../src/app/api/state/status/route";
 
 describe("API route contracts", () => {
   afterEach(() => {
@@ -230,6 +231,41 @@ describe("API route contracts", () => {
         }),
       );
       expect(missingResponse.status).toBe(404);
+    } finally {
+      await rm(storeDir, { recursive: true, force: true });
+    }
+  });
+
+  it("reports the configured server state repository status", async () => {
+    const storeDir = await mkdtemp(join(tmpdir(), "home-stack-state-status-"));
+    process.env.HOME_STACK_STATE_STORE_DIR = storeDir;
+
+    try {
+      const response = await getStateStatus(
+        new Request("http://localhost/api/state/status", {
+          method: "POST",
+          body: JSON.stringify({ accountId: "acct/status test" }),
+        }),
+      );
+      const payload = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(payload).toMatchObject({
+        ok: true,
+        account: { accountId: "acct-status-test" },
+        status: {
+          kind: "file-json",
+          configuredBy: "env",
+          writable: true,
+          schemaVersion: "post-mvp-sync-v1",
+          supports: {
+            accountState: true,
+            auditEvents: true,
+            replaceableRepository: true,
+          },
+        },
+      });
+      expect(payload.status.storeDir).toBe(storeDir);
     } finally {
       await rm(storeDir, { recursive: true, force: true });
     }

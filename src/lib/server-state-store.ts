@@ -2,6 +2,22 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ConditionAuditLogEntry, ServerSyncPayload } from "./post-mvp";
 
+export type ServerStateStoreKind = "file-json";
+
+export type ServerStateStoreStatus = {
+  kind: ServerStateStoreKind;
+  configuredBy: "default" | "env";
+  storeDir: string;
+  writable: boolean;
+  schemaVersion: ServerSyncPayload["schemaVersion"];
+  supports: {
+    accountState: true;
+    auditEvents: true;
+    replaceableRepository: true;
+  };
+  checkedAt: string;
+};
+
 export type StoredServerState = {
   accountId: string;
   savedAt: string;
@@ -18,6 +34,35 @@ const DEFAULT_STORE_DIR = ".server-state";
 
 export function getServerStateStoreDir() {
   return process.env.HOME_STACK_STATE_STORE_DIR || join(process.cwd(), DEFAULT_STORE_DIR);
+}
+
+export async function getServerStateStoreStatus(checkedAt = new Date().toISOString()): Promise<ServerStateStoreStatus> {
+  const storeDir = getServerStateStoreDir();
+  const probePath = join(storeDir, ".healthcheck");
+  let writable = false;
+
+  try {
+    await mkdir(storeDir, { recursive: true });
+    await writeFile(probePath, checkedAt, "utf8");
+    await rm(probePath, { force: true });
+    writable = true;
+  } catch {
+    writable = false;
+  }
+
+  return {
+    kind: "file-json",
+    configuredBy: process.env.HOME_STACK_STATE_STORE_DIR ? "env" : "default",
+    storeDir,
+    writable,
+    schemaVersion: "post-mvp-sync-v1",
+    supports: {
+      accountState: true,
+      auditEvents: true,
+      replaceableRepository: true,
+    },
+    checkedAt,
+  };
 }
 
 export function normalizeAccountId(accountId: string) {

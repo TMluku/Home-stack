@@ -43,6 +43,7 @@ Current MVP routes still return a lightweight shape so the client can stay simpl
 | `POST` | `/api/state/save` | Save a server-sync payload for an account in the configured server state store. |
 | `POST` | `/api/state/load` | Load saved account state from the configured server state store. |
 | `POST` | `/api/state/reset` | Delete saved account state from the configured server state store. |
+| `POST` | `/api/state/status` | Report the configured server state repository kind, normalized account ID, and write readiness. |
 | `POST` | `/api/notifications/prepare` | Convert notification drafts into queued or blocked delivery jobs without sending real notifications. |
 | `POST` | `/api/notifications/dispatch` | Dry-run notification delivery through the adapter boundary and report skipped/failed jobs without sending real messages. |
 
@@ -120,7 +121,7 @@ Ranking should sort by `effectivePrice`, then by `listPrice`. If `conditions` is
 ## Implementation Notes
 
 - Keep `src/lib/replenishment.ts` as pure domain logic so it can be reused by API routes and tests.
-- `src/lib/server-state-store.ts` is the repository boundary for account state. It writes JSON files to `.server-state/` by default, or `HOME_STACK_STATE_STORE_DIR` when configured.
+- `src/lib/server-state-store.ts` is the repository boundary for account state. It writes JSON files to `.server-state/` by default, or `HOME_STACK_STATE_STORE_DIR` when configured. `/api/state/status` exposes the active repository kind and write readiness for deployment checks.
 - Replace the file-backed repository with PostgreSQL, Supabase, or another durable store before multi-user production launch.
 - Account profiles should use stable account IDs and email hashes. Do not place raw email addresses inside saved sync payloads.
 - Preserve explicit condition details for coupons, point returns, shipping thresholds, account eligibility, and campaign windows.

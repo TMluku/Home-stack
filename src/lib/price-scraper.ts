@@ -342,7 +342,11 @@ function appendAdjustmentEvidence(
 }
 
 function evidenceToConditionLabels(evidence: string[]) {
-  return evidence.some((entry) => entry.includes("shipping condition requires retailer confirmation")) ? ["送料条件あり"] : [];
+  return [
+    evidence.some((entry) => entry.includes("shipping condition requires retailer confirmation")) ? "送料条件あり" : "",
+    evidence.some((entry) => entry.includes("point condition requires retailer confirmation")) ? "ポイント条件あり" : "",
+    evidence.some((entry) => entry.includes("coupon condition requires retailer confirmation")) ? "クーポン条件あり" : "",
+  ].filter(Boolean);
 }
 
 function extractStructuredAdjustments(record: Record<string, unknown>): PriceAdjustments {
@@ -510,16 +514,24 @@ function inferPriceAdjustments(html: string, listPrice: number): PriceAdjustment
   const shippingFee = extractShippingFeeFromText(text);
   const pointValue = extractPointValue(text, listPrice);
   const couponValue = extractCouponValue(text, listPrice);
+  const pointConditionRequired = !pointValue && hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"]);
+  const couponConditionRequired = !couponValue && hasAmbiguousRewardCopy(text, ["coupon", "discount", "off", "クーポン"]);
   return {
     shippingFee,
     pointValue,
     couponValue,
-    conditionLabels: shippingConditionRequired ? ["送料条件あり"] : [],
+    conditionLabels: [
+      shippingConditionRequired ? "送料条件あり" : "",
+      pointConditionRequired ? "ポイント条件あり" : "",
+      couponConditionRequired ? "クーポン条件あり" : "",
+    ].filter(Boolean),
     evidence: [
       typeof shippingFee === "number" ? `shipping fee from page text: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
       shippingConditionRequired ? "shipping condition requires retailer confirmation" : "",
       pointValue ? `point value from page text: ${pointValue.toLocaleString("ja-JP")} JPY` : "",
+      pointConditionRequired ? "point condition requires retailer confirmation" : "",
       couponValue ? `coupon value from page text: ${couponValue.toLocaleString("ja-JP")} JPY` : "",
+      couponConditionRequired ? "coupon condition requires retailer confirmation" : "",
     ].filter(Boolean),
   };
 }

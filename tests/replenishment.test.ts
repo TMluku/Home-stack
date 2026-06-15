@@ -245,9 +245,13 @@ describe("replenishment domain logic", () => {
         pointValue: 0,
         couponValue: 0,
         effectivePrice: 1000,
-        conditionRequired: false,
+        conditionRequired: true,
       },
     });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
   });
 
   it("keeps conditional free-shipping thresholds as retailer-confirmed conditions", () => {

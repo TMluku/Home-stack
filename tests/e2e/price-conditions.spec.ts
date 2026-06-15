@@ -27,6 +27,10 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(conditionalProof.locator(".effective-proof__formula")).toContainText(/表示.*送料.*ポイント.*クーポン.*実質/);
   await expect(conditionalProof.locator(".effective-proof__notice")).toContainText("条件成立時の見込み");
   await expect(conditionalProof.locator(".effective-proof__details li")).toHaveCount(6);
+  const conditionLink = conditionalProof.getByRole("link", { name: "販売ページで条件を見る" });
+  await expect(conditionLink).toHaveAttribute("href", /^https?:\/\//);
+  await expect(conditionLink).toHaveAttribute("target", "_blank");
+  await expect(conditionLink).toHaveAttribute("rel", /noreferrer/);
 
   const unconditionalProof = page.locator(".effective-proof").filter({ hasText: "価格根拠を確認" }).first();
   await expect(unconditionalProof.locator("details")).not.toHaveAttribute("open", "");

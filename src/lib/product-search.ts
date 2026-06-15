@@ -44,6 +44,7 @@ export function extractSearchCandidatesFromHtml(html: string, source: Marketplac
     const price = extractPrice(snippet);
     const title = extractTitle(snippet);
     if (!url || !title || !price) return null;
+    const adjustments = inferPriceAdjustments(snippet, price);
 
     return {
       source,
@@ -53,12 +54,14 @@ export function extractSearchCandidatesFromHtml(html: string, source: Marketplac
       price,
       effectivePriceQuote: buildEffectivePriceQuote({
         listPrice: price,
-        shippingFee: inferShippingFee(snippet),
+        shippingFee: adjustments.shippingFee,
+        pointValue: adjustments.pointValue,
+        couponValue: adjustments.couponValue,
       }),
       currency: "JPY",
-      shipping: /送料無料|送料\s*0|free shipping/i.test(snippet) ? "送料無料候補" : "送料条件は要確認",
+      shipping: adjustments.shippingLabel,
       imageUrl: extractImageUrl(snippet, baseUrl),
-      evidence: [SOURCE_LABELS[source], "検索結果HTMLから商品名・価格・リンクを抽出"],
+      evidence: [SOURCE_LABELS[source], "検索結果HTMLから商品名・価格・リンクを抽出", ...adjustments.evidence],
     };
   });
 
@@ -100,6 +103,7 @@ async function searchRakutenApi(query: string): Promise<{ candidates: RawCandida
           itemUrl?: string;
           mediumImageUrls?: Array<{ imageUrl?: string }>;
           postageFlag?: number;
+          pointRate?: number;
         };
       }>;
     };
@@ -116,6 +120,7 @@ async function searchRakutenApi(query: string): Promise<{ candidates: RawCandida
             effectivePriceQuote: buildEffectivePriceQuote({
               listPrice: item.itemPrice ?? 0,
               shippingFee: item.postageFlag === 0 ? 0 : undefined,
+              pointValue: inferPointValueFromRate(item.itemPrice, item.pointRate),
             }),
             currency: "JPY",
             shipping: item.postageFlag === 0 ? "送料無料" : "送料条件は要確認",
@@ -173,6 +178,7 @@ async function searchYahooShoppingApi(
         price?: number;
         image?: { medium?: string };
         shipping?: { code?: number; name?: string };
+        point?: { amount?: number };
       }>;
     };
     const candidates: RawCandidate[] =
@@ -187,6 +193,7 @@ async function searchYahooShoppingApi(
             effectivePriceQuote: buildEffectivePriceQuote({
               listPrice: item.price ?? 0,
               shippingFee: item.shipping?.code === 1 ? 0 : undefined,
+              pointValue: item.point?.amount,
             }),
             currency: "JPY",
             shipping: item.shipping?.name ?? (item.shipping?.code === 1 ? "送料無料" : "送料条件は要確認"),
@@ -331,8 +338,89 @@ function extractPrice(snippet: string) {
   return Number.isFinite(price) ? price : undefined;
 }
 
-function inferShippingFee(snippet: string) {
-  return /送料無料|送料\s*0|free shipping/i.test(snippet) ? 0 : undefined;
+function inferPriceAdjustments(snippet: string, listPrice: number) {
+  const text = cleanText(snippet) ?? "";
+  const freeShipping = /送料無料|送料\s*0|free shipping/i.test(text);
+  const shippingFee = freeShipping ? 0 : extractAmountAroundLabel(text, ["送料", "shipping", "postage"]);
+  const pointValue = extractPointValue(text, listPrice);
+  const couponValue = extractCouponValue(text, listPrice);
+  const evidence = [
+    typeof shippingFee === "number" ? `shipping fee inferred: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
+    pointValue ? `point value inferred: ${pointValue.toLocaleString("ja-JP")} JPY` : "",
+    couponValue ? `coupon value inferred: ${couponValue.toLocaleString("ja-JP")} JPY` : "",
+  ].filter(Boolean);
+
+  return {
+    shippingFee,
+    pointValue,
+    couponValue,
+    shippingLabel:
+      shippingFee === 0
+        ? "送料無料候補"
+        : typeof shippingFee === "number"
+          ? `送料 ${shippingFee.toLocaleString("ja-JP")}円込みで再計算`
+          : "送料条件は要確認",
+    evidence,
+  };
+}
+
+function extractPointValue(text: string, listPrice: number) {
+  const explicit = extractAmountAroundLabel(text, ["ポイント", "point", "points"]);
+  if (explicit) return explicit;
+  const rate = extractRateAroundLabel(text, ["ポイント", "point", "points"]);
+  return inferPointValueFromRate(listPrice, rate);
+}
+
+function extractCouponValue(text: string, listPrice: number) {
+  const explicit = extractAmountAroundLabel(text, ["クーポン", "coupon", "値引", "discount"]);
+  if (explicit) return explicit;
+  const rate = extractRateAroundLabel(text, ["クーポン", "coupon", "off", "discount"]);
+  return rate ? Math.round(listPrice * (rate / 100)) : undefined;
+}
+
+function extractAmountAroundLabel(text: string, labels: string[]) {
+  for (const label of labels) {
+    const escaped = escapeRegExp(label);
+    const patterns = [
+      new RegExp(`${escaped}[^0-9０-９]{0,16}(?:¥|￥|JPY)?\\s*([0-9０-９][0-9０-９,，]*)`, "i"),
+      new RegExp(`(?:¥|￥|JPY)?\\s*([0-9０-９][0-9０-９,，]*)[^0-9０-９]{0,16}${escaped}`, "i"),
+    ];
+    for (const pattern of patterns) {
+      const amount = parseSearchAmount(text.match(pattern)?.[1]);
+      if (amount) return amount;
+    }
+  }
+  return undefined;
+}
+
+function extractRateAroundLabel(text: string, labels: string[]) {
+  for (const label of labels) {
+    const escaped = escapeRegExp(label);
+    const patterns = [
+      new RegExp(`${escaped}[^0-9０-９]{0,16}([0-9０-９]{1,2})\\s*%`, "i"),
+      new RegExp(`([0-9０-９]{1,2})\\s*%[^0-9０-９]{0,16}${escaped}`, "i"),
+    ];
+    for (const pattern of patterns) {
+      const rate = parseSearchAmount(text.match(pattern)?.[1]);
+      if (rate && rate <= 80) return rate;
+    }
+  }
+  return undefined;
+}
+
+function inferPointValueFromRate(price?: number, rate?: number) {
+  if (!price || !rate || rate <= 0) return undefined;
+  return Math.round(price * (rate / 100));
+}
+
+function parseSearchAmount(value?: string) {
+  if (!value) return undefined;
+  const amount = Number(toHalfWidth(value).replace(/[,，]/g, ""));
+  return Number.isFinite(amount) && amount > 0 ? amount : undefined;
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function calculateMatchScore(query: string, title: string) {

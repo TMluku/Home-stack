@@ -190,4 +190,36 @@ describe("replenishment domain logic", () => {
     });
     expect(candidates[0]?.url).toBe("https://search.rakuten.co.jp/item/123");
   });
+
+  it("normalizes marketplace HTML shipping, point, and coupon conditions into effective quotes", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/conditioned" title="Test paper towel 12 rolls">Test paper towel 12 rolls</a>
+          <span>price 1,980 JPY</span>
+          <span>shipping 300</span>
+          <span>points 120</span>
+          <span>coupon 200</span>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=paper",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      price: 1980,
+      shipping: "送料 300円込みで再計算",
+      effectivePriceQuote: {
+        listPrice: 1980,
+        shippingFee: 300,
+        pointValue: 120,
+        couponValue: 200,
+        effectivePrice: 1960,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.evidence).toEqual(
+      expect.arrayContaining(["shipping fee inferred: 300 JPY", "point value inferred: 120 JPY", "coupon value inferred: 200 JPY"]),
+    );
+  });
 });

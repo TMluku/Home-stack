@@ -23,6 +23,7 @@ Before manual QA, confirm these gates are green:
 - inventory chip opens ranked candidates
 - effective-price proof cards render
 - condition-required cards expose evidence and seller-page links
+- static URL-scan demo cards expose condition banners that jump to proof details
 - no horizontal overflow at mobile width
 
 The `Browser E2E` GitHub Actions workflow uploads a `mobile-qa-evidence` artifact for each run. It includes:
@@ -61,8 +62,11 @@ Current status: automated mobile Chromium coverage is available from GitHub Acti
 10. Confirm the first conditional candidate shows the price-condition details summary.
 11. Open the condition details and confirm evidence rows are readable, with condition labels such as `購入条件あり`, `送料条件あり`, `ポイント条件あり`, or `クーポン条件あり` visible when they apply.
 12. Tap the seller-page condition link and confirm it opens a seller/search page in a new tab.
-13. Return to Home Stack and confirm the page still scrolls normally.
-14. Rotate the phone once, if practical, and confirm no major overlap or horizontal scrolling.
+13. Paste `https://example.com/demo-condition-item` into `商品ページURL`.
+14. Tap `ライブ価格を取得`.
+15. Confirm the URL-scan result shows a `条件あり` banner and that tapping it jumps to the proof details for the same result.
+16. Return to Home Stack and confirm the page still scrolls normally.
+17. Rotate the phone once, if practical, and confirm no major overlap or horizontal scrolling.
 
 ## Evidence To Attach
 
@@ -73,6 +77,7 @@ For a pass, keep enough evidence to reconstruct what was checked:
 - `mobile-price-condition-proof.png` screenshot filename
 - `mobile-price-condition-proof.json` metrics filename
 - phone screenshot showing the price-condition proof
+- phone screenshot showing the URL-scan condition proof, when URL scan was changed
 - published URL tested
 - any browser/device accessibility setting that changes layout, such as text scaling
 

@@ -17,6 +17,7 @@ The MVP focuses on local validation of the product flow:
 - Estimate days left from stock, usage, household size, children, and pets.
 - Compare replenishment offers by effective price, including coupon, point, and shipping conditions.
 - Show `条件あり` banners when an effective price depends on specific conditions.
+- Let users open the condition details from those banners in both marketplace search cards and product URL scan cards.
 - Build an approval-based replenishment queue.
 - Show purchase-intent confirmation and cancellation-window status before any simulated reservation.
 - Copy a shopping memo from the queue.
@@ -89,6 +90,7 @@ Manual smartphone QA for Pages:
 - Confirm the price-search visual loads.
 - Tap an inventory chip and confirm candidates appear in price order.
 - Confirm condition-required cards show `価格条件を確認`, concrete condition badges such as `購入条件あり` or `クーポン条件あり`, evidence rows, and a link to the seller page without horizontal scrolling.
+- Paste `https://example.com/demo-condition-item` into `商品ページURL`, tap `ライブ価格を取得`, then confirm the URL-scan `条件あり` banner jumps to the same style of price-condition proof.
 
 Record real-device passes in `docs/mobile-qa.md`.
 
@@ -108,7 +110,7 @@ The repository publishes GitHub Pages from the `gh-pages` branch with `.github/w
 - Workflows run on Node 24-compatible action versions.
 - The Pages build uses `/Home-stack` as the base path.
 - The workflow adds `out/.nojekyll` so GitHub Pages serves the Next.js `_next/` assets.
-- Because GitHub Pages is static hosting, product search and URL price scan fall back to local demo candidates, JAN lookup, and external marketplace search links until a server API is connected.
+- Because GitHub Pages is static hosting, product search and URL price scan fall back to local demo candidates, JAN lookup, effective-price proof cards, and external marketplace/search links until a server API is connected.
 - `pnpm run check:pages` reports whether `main`, `gh-pages`, the public Pages URL, and optional GitHub API Pages settings look ready.
 - If `https://tmluku.github.io/Home-stack/` still returns 404 after `gh-pages` is published, confirm that repository Settings > Pages is enabled. Private repositories may require a paid GitHub plan or a visibility change before Pages can be created.
 
@@ -206,5 +208,5 @@ Photo detection returns demo candidates by default. Set `HOME_STACK_IMAGE_RECOGN
 - Price candidates are for validation and can differ from live checkout totals.
 - Conditional prices must always expose the conditions that make the effective price true.
 - Product search candidates include effective-price quotes when shipping, point, coupon, purchase-condition, or campaign-window assumptions are available, including inferred values from marketplace HTML and normalized values from official API results.
-- Product URL scans also return effective-price quotes when JSON-LD, meta tags, embedded JSON, data attributes, Amazon spans, or page text expose shipping, point, coupon, purchase-condition, or pack-total signals.
+- Product URL scans also return effective-price quotes when JSON-LD, meta tags, embedded JSON, data attributes, Amazon spans, or page text expose shipping, point, coupon, purchase-condition, or pack-total signals. The static Pages build shows demo URL-scan proof cards so the condition-detail flow can be QA'd before a server API is connected.
 - Post-MVP panels now show price fetch plans, saved condition audit logs, notification drafts, and account/server-save contracts.

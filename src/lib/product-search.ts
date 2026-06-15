@@ -459,10 +459,9 @@ function inferPriceAdjustments(snippet: string, listPrice: number) {
 }
 
 function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number, source: MarketplaceSearchSource) {
-  const shippingFee = extractOfficialShippingFee(record, source);
-  const shippingName = readStringPath(record, ["shipping.name", "shippingLabel", "postageLabel"]);
-  const shippingConditionRequired = Boolean(shippingName && hasConditionalShippingCopy(shippingName));
   const officialText = collectRecordText(record);
+  const shippingConditionRequired = hasConditionalShippingCopy(officialText);
+  const shippingFee = shippingConditionRequired ? undefined : extractOfficialShippingFee(record, source);
   const purchaseConditionRequired = hasPurchaseConditionCopy(officialText);
   const pointHasConditionalText =
     hasAmbiguousRewardCopy(officialText, ["point", "points", "ポイント"]) ||

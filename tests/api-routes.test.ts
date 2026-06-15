@@ -346,6 +346,68 @@ describe("API route contracts", () => {
     expect(yahooCandidate.evidence).not.toEqual(expect.arrayContaining(["official shipping: free"]));
   });
 
+  it("keeps official explicit free-shipping amounts conditional when threshold copy is present", async () => {
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "Threshold shipping Rakuten item",
+                  itemPrice: 1200,
+                  itemUrl: "https://rakuten.example.test/threshold-shipping",
+                  shippingFee: 0,
+                  shippingCondition: "送料無料ライン 3,980円以上で対象",
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          hits: [
+            {
+              name: "Threshold shipping Yahoo item",
+              url: "https://shopping.example.test/threshold-shipping",
+              price: 1300,
+              shippingFee: 0,
+              shippingNote: "free shipping on orders over 3,980 JPY",
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+
+    const response = await searchProducts(
+      new Request("http://localhost/api/product-search", {
+        method: "POST",
+        body: JSON.stringify({ query: "threshold shipping official" }),
+      }),
+    );
+    const payload = await response.json();
+    const rakutenCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "rakuten");
+    const yahooCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "yahoo-shopping");
+
+    expect(response.status).toBe(200);
+    for (const candidate of [rakutenCandidate, yahooCandidate]) {
+      expect(candidate.effectivePriceQuote).toMatchObject({
+        shippingFee: 0,
+        conditionRequired: true,
+      });
+      expect(candidate.effectivePriceQuote.conditionLabels).toEqual(expect.arrayContaining(["送料条件あり"]));
+      expect(candidate.evidence).toEqual(expect.arrayContaining(["official shipping condition requires retailer confirmation"]));
+      expect(candidate.evidence).not.toEqual(expect.arrayContaining(["official shipping: free"]));
+    }
+  });
+
   it("keeps official ambiguous reward strings as conditions instead of discounts", async () => {
     process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
     process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";

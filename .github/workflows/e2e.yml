@@ -42,3 +42,14 @@ jobs:
 
       - name: Run browser E2E
         run: pnpm run test:e2e:browser
+
+      - name: Upload mobile QA evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mobile-qa-evidence
+          path: |
+            test-results/**/*.png
+            playwright-report/**
+          if-no-files-found: ignore
+          retention-days: 14

@@ -21,7 +21,7 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(unconditionalProof.locator("details")).not.toHaveAttribute("open", "");
 });
 
-test("keeps the price condition proof usable on mobile width", async ({ page }) => {
+test("keeps the price condition proof usable on mobile width", async ({ page }, testInfo) => {
   await page.goto("/");
   await page.locator(".inventory-search-chips .chip").first().click();
 
@@ -37,4 +37,11 @@ test("keeps the price condition proof usable on mobile width", async ({ page }) 
   expect(metrics.bodyWidth).toBeLessThanOrEqual(metrics.viewportWidth);
   expect(metrics.overflowCount).toBe(0);
   await expect(page.locator(".effective-proof__details").first()).toBeVisible();
+
+  if (testInfo.project.name === "mobile-chrome") {
+    await page.screenshot({
+      fullPage: true,
+      path: testInfo.outputPath("mobile-price-condition-proof.png"),
+    });
+  }
 });

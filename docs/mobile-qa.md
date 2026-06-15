@@ -24,6 +24,8 @@ Before manual QA, confirm these gates are green:
 - condition-required cards expose evidence and seller-page links
 - no horizontal overflow at mobile width
 
+The `Browser E2E` GitHub Actions workflow uploads a `mobile-qa-evidence` artifact for each run. It includes the mobile Chromium screenshot `mobile-price-condition-proof.png` when the responsive price-condition proof completes, plus any Playwright report files. Use that artifact as automated display evidence before running the real-device checklist below.
+
 ## Real Device Matrix
 
 Record each real-device pass here.

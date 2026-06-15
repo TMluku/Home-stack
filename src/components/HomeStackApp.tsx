@@ -62,6 +62,7 @@ const filterLabels: Record<OfferFilter, string> = {
 
 const isStaticExport = process.env.NEXT_PUBLIC_STATIC_EXPORT === "true";
 const staticAssetBasePath = isStaticExport ? "/Home-stack" : "";
+const publicPagesUrl = "https://tmluku.github.io/Home-stack/";
 const serverSyncAccountId = "demo-account";
 
 type ServerAccountSummary = {
@@ -111,6 +112,7 @@ export function HomeStackApp() {
   const [privacyMessage, setPrivacyMessage] = useState("操作待ち");
   const [planMessage, setPlanMessage] = useState("補充プランを再計算");
   const [queueMessage, setQueueMessage] = useState("買い物メモを作成できます");
+  const [publicUrlMessage, setPublicUrlMessage] = useState("実機スマホQA用の公開URLをコピーできます");
   const [activeOfferId, setActiveOfferId] = useState(baseOffers[0]?.id ?? "");
   const [livePriceUrls, setLivePriceUrls] = useState("");
   const [livePriceResults, setLivePriceResults] = useState<LivePriceResult[]>([]);
@@ -212,6 +214,15 @@ export function HomeStackApp() {
       updater(draft);
       return normalizeState(draft);
     });
+  }
+
+  async function copyPublicPagesUrl() {
+    try {
+      await navigator.clipboard.writeText(publicPagesUrl);
+      setPublicUrlMessage("公開URLをコピーしました");
+    } catch {
+      setPublicUrlMessage(publicPagesUrl);
+    }
   }
 
   function handlePhotoUpload(file?: File) {
@@ -825,7 +836,11 @@ export function HomeStackApp() {
               <a className="button button--ghost" href="#offers">
                 価格順リストを見る
               </a>
+              <button className="button button--ghost" type="button" onClick={copyPublicPagesUrl}>
+                公開URLをコピー
+              </button>
             </div>
+            <p className="hero__hint">{publicUrlMessage}</p>
             <dl className="radar-strip">
               <div>
                 <dt>10日以内</dt>

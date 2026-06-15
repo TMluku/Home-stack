@@ -4,6 +4,8 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await page.goto("/");
 
   await expect(page.locator(".price-insight-visual img")).toHaveAttribute("src", /price-insight-visual\.png/);
+  await page.getByRole("button", { name: "公開URLをコピー" }).click();
+  await expect(page.locator(".hero__hint")).toContainText(/公開URLをコピーしました|https:\/\/tmluku\.github\.io\/Home-stack\//);
 
   await page.locator(".inventory-search-chips .chip").first().click();
 

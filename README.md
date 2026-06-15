@@ -90,7 +90,8 @@ Manual smartphone QA for Pages:
 - Tap `QA記録をコピー` on the hero and paste the generated row into the real-device matrix in `docs/mobile-qa.md`; the copied memo includes the public URL, Browser E2E workflow URL, `mobile-qa-evidence` artifact name, and expected evidence filenames.
 - Confirm the price-search visual loads.
 - Tap an inventory chip and confirm candidates appear in price order.
-- Confirm condition-required cards show `価格条件を確認`, concrete condition badges such as `購入条件あり` or `クーポン条件あり`, evidence rows, and a link to the seller page without horizontal scrolling.
+- Confirm condition-required cards show `価格成立条件の要約`, concrete condition badges such as `購入条件あり` or `クーポン条件あり`, evidence rows, and a link to the seller page without horizontal scrolling.
+- Open `価格順リストを見る` and confirm comparison cards show a compact condition summary before the detailed condition rows.
 - Paste `https://example.com/demo-condition-item` into `商品ページURL`, tap `ライブ価格を取得`, then confirm the URL-scan `条件あり` banner jumps to the same style of price-condition proof.
 
 Record real-device passes in `docs/mobile-qa.md`.
@@ -133,7 +134,7 @@ Use this checklist when changing price extraction, condition labels, static Page
 
 2. Publish through `main`; `.github/workflows/pages-branch.yml` updates `gh-pages` automatically.
 3. Confirm GitHub Actions are green: `CI`, `Browser E2E`, `Publish GitHub Pages Branch`, and `pages-build-deployment`.
-4. Download the `mobile-qa-evidence` artifact from the latest `Browser E2E` run and inspect `mobile-price-condition-proof.png` plus `mobile-price-condition-proof.json`; the JSON should include hero visual/QR metrics, mobile overflow metrics, and condition-proof rows.
+4. Download the `mobile-qa-evidence` artifact from the latest `Browser E2E` run and inspect `mobile-price-condition-proof.png` plus `mobile-price-condition-proof.json`; the JSON should include hero visual/QR metrics, mobile overflow metrics, condition summaries, and condition-proof rows.
 5. Confirm the public app responds at `https://tmluku.github.io/Home-stack/`.
 6. For UI or price-condition changes, complete the real-device checklist in `docs/mobile-qa.md`; use the hero `QA記録をコピー` button to seed the matrix row, then replace the device/browser/result placeholders.
 7. Clean local generated artifacts before committing unrelated follow-up work:

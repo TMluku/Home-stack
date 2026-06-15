@@ -1585,6 +1585,17 @@ function buildConditionSummaryItems(labels: string[]) {
   return items.filter((item): item is { label: string; detail: string } => Boolean(item));
 }
 
+function buildOfferConditionSummaryItems(conditions: Offer["conditions"]) {
+  const details = conditions.map((condition) => condition.detail).join(" ");
+  const items = [
+    /初回|購入|利用済み|アカウント|定期|まとめ|セット/.test(details) ? { label: "購入", detail: "初回・定期・数量条件を見る" } : null,
+    /送料|送料無料|配送|単品/.test(details) ? { label: "送料", detail: "送料無料ライン・単品送料を見る" } : null,
+    /ポイント|還元|付与|利用先|PayPay|楽天/.test(details) ? { label: "ポイント", detail: "付与時期・利用先・上限を見る" } : null,
+    /クーポン|OFF|割引|併用|対象者/.test(details) ? { label: "クーポン", detail: "取得条件・利用済み有無を見る" } : null,
+  ];
+  return items.filter((item): item is { label: string; detail: string } => Boolean(item));
+}
+
 function ProductSearchPanel({
   inventory,
   query,
@@ -1752,58 +1763,82 @@ function PriceComparisonPanel({
         </div>
       </div>
       <div className="comparison-grid">
-        {competitors.map((competitor, index) => (
-          <article
-            className={competitor.retailer === offer.retailer ? "comparison-card is-selected" : "comparison-card"}
-            key={competitor.retailer}
-          >
-            <span>
-              {index + 1}位 {competitor.retailer}
-            </span>
-            <strong>{yenFormatter.format(competitor.effectivePrice)}</strong>
-            {competitor.listPrice !== competitor.effectivePrice ? (
-              <small>表示価格 {yenFormatter.format(competitor.listPrice)}</small>
-            ) : null}
-            <small>
-              {competitor.shipping} / {competitor.points}
-            </small>
-            <ComparisonPriceBreakdown competitor={competitor} />
-            {competitor.conditions.length > 0 ? (
-              <a className="condition-banner" href={`#conditions-${offer.id}`}>
-                条件あり
-              </a>
-            ) : (
-              <span className="condition-banner condition-banner--plain">条件なし</span>
-            )}
-            <p>{competitor.note}</p>
-            <button className="link-button" type="button" onClick={(event) => onOutboundClick(event, offer, competitor)}>
-              このサイトで探す
-            </button>
-          </article>
-        ))}
+        {competitors.map((competitor, index) => {
+          const conditionSummaryItems = buildOfferConditionSummaryItems(competitor.conditions);
+          return (
+            <article
+              className={competitor.retailer === offer.retailer ? "comparison-card is-selected" : "comparison-card"}
+              key={competitor.retailer}
+            >
+              <span>
+                {index + 1}位 {competitor.retailer}
+              </span>
+              <strong>{yenFormatter.format(competitor.effectivePrice)}</strong>
+              {competitor.listPrice !== competitor.effectivePrice ? (
+                <small>表示価格 {yenFormatter.format(competitor.listPrice)}</small>
+              ) : null}
+              <small>
+                {competitor.shipping} / {competitor.points}
+              </small>
+              <ComparisonPriceBreakdown competitor={competitor} />
+              {conditionSummaryItems.length > 0 ? <ConditionSummaryList items={conditionSummaryItems} compact /> : null}
+              {competitor.conditions.length > 0 ? (
+                <a className="condition-banner" href={`#conditions-${offer.id}`}>
+                  条件あり
+                </a>
+              ) : (
+                <span className="condition-banner condition-banner--plain">条件なし</span>
+              )}
+              <p>{competitor.note}</p>
+              <button className="link-button" type="button" onClick={(event) => onOutboundClick(event, offer, competitor)}>
+                このサイトで探す
+              </button>
+            </article>
+          );
+        })}
       </div>
       <div className="condition-details" id={`conditions-${offer.id}`}>
         <h4>価格条件の詳細</h4>
-        {competitors.map((competitor) => (
-          <details key={`${competitor.retailer}-conditions`} open={competitor.conditions.length > 0}>
-            <summary>
-              {competitor.retailer}: {competitor.conditions.length > 0 ? "条件あり" : "条件なし"}
-            </summary>
-            {competitor.conditions.length > 0 ? (
-              <ul>
-                {competitor.conditions.map((condition) => (
-                  <li key={`${competitor.retailer}-${condition.detail}`}>
-                    <strong>{condition.label}</strong>: {condition.detail}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>表示価格をそのまま実質価格として扱います。</p>
-            )}
-          </details>
-        ))}
+        {competitors.map((competitor) => {
+          const conditionSummaryItems = buildOfferConditionSummaryItems(competitor.conditions);
+          return (
+            <details key={`${competitor.retailer}-conditions`} open={competitor.conditions.length > 0}>
+              <summary>
+                {competitor.retailer}: {competitor.conditions.length > 0 ? "条件あり" : "条件なし"}
+              </summary>
+              {competitor.conditions.length > 0 ? (
+                <>
+                  <ConditionSummaryList items={conditionSummaryItems} />
+                  <ul>
+                    {competitor.conditions.map((condition) => (
+                      <li key={`${competitor.retailer}-${condition.detail}`}>
+                        <strong>{condition.label}</strong>: {condition.detail}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p>表示価格をそのまま実質価格として扱います。</p>
+              )}
+            </details>
+          );
+        })}
       </div>
     </section>
+  );
+}
+
+function ConditionSummaryList({ items, compact = false }: { items: Array<{ label: string; detail: string }>; compact?: boolean }) {
+  if (items.length === 0) return null;
+  return (
+    <dl className={compact ? "condition-summary condition-summary--compact" : "condition-summary"} aria-label="価格成立条件の要約">
+      {items.map((item) => (
+        <div key={`${item.label}-${item.detail}`}>
+          <dt>{item.label}</dt>
+          <dd>{item.detail}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 

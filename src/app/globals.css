@@ -1455,6 +1455,47 @@ h3 {
   color: var(--muted);
 }
 
+.condition-summary {
+  display: grid;
+  gap: 0.4rem;
+  grid-template-columns: repeat(auto-fit, minmax(9.4rem, 1fr));
+  margin: 0.55rem 0 0;
+}
+
+.condition-summary div {
+  background: #f7fbff;
+  border: 1px solid #d4e7f7;
+  border-radius: 0.5rem;
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+  padding: 0.48rem 0.55rem;
+}
+
+.condition-summary dt {
+  color: #20506d;
+  font-size: 0.68rem;
+  font-weight: 950;
+}
+
+.condition-summary dd {
+  color: var(--ink);
+  font-size: 0.73rem;
+  font-weight: 850;
+  line-height: 1.35;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.condition-summary--compact {
+  grid-template-columns: 1fr;
+  margin: 0.1rem 0;
+}
+
+.condition-summary--compact div {
+  padding: 0.42rem 0.5rem;
+}
+
 .condition-banner {
   background: #fbf3db;
   border: 1px solid #ecd58f;

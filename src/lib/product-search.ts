@@ -400,6 +400,7 @@ function extractPrice(snippet: string) {
 function inferPriceAdjustments(snippet: string, listPrice: number) {
   const text = cleanText(snippet) ?? "";
   const shippingConditionRequired = hasConditionalShippingCopy(text);
+  const purchaseConditionRequired = hasPurchaseConditionCopy(text);
   const shippingFee = extractShippingFeeFromText(text);
   const pointValue = extractPointValue(text, listPrice);
   const couponValue = extractCouponValue(text, listPrice);
@@ -415,6 +416,7 @@ function inferPriceAdjustments(snippet: string, listPrice: number) {
   const evidence = [
     typeof shippingFee === "number" ? `shipping fee inferred: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
     shippingConditionRequired ? "shipping condition requires retailer confirmation" : "",
+    purchaseConditionRequired ? "purchase condition requires retailer confirmation" : "",
     pointValue ? `point value inferred: ${pointValue.toLocaleString("ja-JP")} JPY` : "",
     pointConditionRequired ? "point condition requires retailer confirmation" : "",
     couponValue ? `coupon value inferred: ${couponValue.toLocaleString("ja-JP")} JPY` : "",
@@ -427,6 +429,7 @@ function inferPriceAdjustments(snippet: string, listPrice: number) {
     couponValue,
     conditionLabels: [
       shippingConditionRequired ? "送料条件あり" : "",
+      purchaseConditionRequired ? "購入条件あり" : "",
       pointConditionRequired ? "ポイント条件あり" : "",
       couponConditionRequired ? "クーポン条件あり" : "",
     ].filter(Boolean),
@@ -445,10 +448,14 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   const shippingName = readStringPath(record, ["shipping.name", "shippingLabel", "postageLabel"]);
   const shippingConditionRequired = Boolean(shippingName && hasConditionalShippingCopy(shippingName));
   const officialText = collectRecordText(record);
+  const purchaseConditionRequired = hasPurchaseConditionCopy(officialText);
   const pointHasConditionalText =
+    hasAmbiguousRewardCopy(officialText, ["point", "points", "ポイント"]) ||
     hasRewardMultiplierCopy(officialText, ["point", "points", "ポイント"]) ||
     hasRewardThresholdCopy(officialText, ["point", "points", "ポイント"]);
-  const couponHasConditionalText = hasRewardThresholdCopy(officialText, ["coupon", "discount", "off", "クーポン"]);
+  const couponHasConditionalText =
+    hasAmbiguousRewardCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
+    hasRewardThresholdCopy(officialText, ["coupon", "discount", "off", "クーポン"]);
   const rawPointValue =
     readRewardNumberPath(record, ["point.amount", "pointValue", "pointAmount", "points", "rewardPoint"], ["point", "points", "ポイント"]) ??
     inferPointValueFromRate(
@@ -491,6 +498,7 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   const evidence = [
     typeof shippingFee === "number" ? (shippingFee === 0 ? "official shipping: free" : `official shipping fee: ${shippingFee} JPY`) : "",
     shippingConditionRequired ? "official shipping condition requires retailer confirmation" : "",
+    purchaseConditionRequired ? "official purchase condition requires retailer confirmation" : "",
     pointValue ? `official point value: ${pointValue} JPY` : "",
     pointConditionRequired ? "official point condition requires retailer confirmation" : "",
     couponValue ? `official coupon value: ${couponValue} JPY` : "",
@@ -505,6 +513,7 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
     couponValue,
     conditionLabels: [
       shippingConditionRequired ? "送料条件あり" : "",
+      purchaseConditionRequired ? "購入条件あり" : "",
       pointWindowRequired ? "ポイント期間あり" : "",
       pointConditionRequired ? "ポイント条件あり" : "",
       couponWindowRequired ? "クーポン期間あり" : "",
@@ -639,6 +648,35 @@ function hasConditionalShippingCopy(text: string) {
       );
     }),
   );
+}
+
+function hasPurchaseConditionCopy(text: string) {
+  const purchaseWords = [
+    "初回",
+    "初めて",
+    "初回限定",
+    "定期",
+    "定期購入",
+    "定期おトク便",
+    "おトク便",
+    "まとめ買い",
+    "セット",
+    "複数個",
+    "2個",
+    "3個",
+    "箱買い",
+    "first order",
+    "first purchase",
+    "first-time",
+    "subscribe",
+    "subscription",
+    "subscribe & save",
+    "bundle",
+    "multi-pack",
+    "multipack",
+    "set of",
+  ];
+  return purchaseWords.some((word) => new RegExp(escapeRegExp(word), "i").test(text));
 }
 
 function hasAmbiguousRewardCopy(text: string, labels: string[]) {

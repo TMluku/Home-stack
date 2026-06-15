@@ -352,6 +352,7 @@ function appendAdjustmentEvidence(
 function evidenceToConditionLabels(evidence: string[]) {
   return [
     evidence.some((entry) => entry.includes("shipping condition requires retailer confirmation")) ? "送料条件あり" : "",
+    evidence.some((entry) => entry.includes("purchase condition requires retailer confirmation")) ? "購入条件あり" : "",
     evidence.some((entry) => entry.includes("point condition requires retailer confirmation")) ? "ポイント条件あり" : "",
     evidence.some((entry) => entry.includes("coupon condition requires retailer confirmation")) ? "クーポン条件あり" : "",
   ].filter(Boolean);
@@ -520,6 +521,7 @@ function extractMetaAmount(html: string, keys: string[]) {
 function inferPriceAdjustments(html: string, listPrice: number): PriceAdjustments {
   const text = extractPlainText(html);
   const shippingConditionRequired = hasConditionalShippingCopy(text);
+  const purchaseConditionRequired = hasPurchaseConditionCopy(text);
   const shippingFee = extractShippingFeeFromText(text);
   const pointValue = extractPointValue(text, listPrice);
   const couponValue = extractCouponValue(text, listPrice);
@@ -538,12 +540,14 @@ function inferPriceAdjustments(html: string, listPrice: number): PriceAdjustment
     couponValue,
     conditionLabels: [
       shippingConditionRequired ? "送料条件あり" : "",
+      purchaseConditionRequired ? "購入条件あり" : "",
       pointConditionRequired ? "ポイント条件あり" : "",
       couponConditionRequired ? "クーポン条件あり" : "",
     ].filter(Boolean),
     evidence: [
       typeof shippingFee === "number" ? `shipping fee from page text: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
       shippingConditionRequired ? "shipping condition requires retailer confirmation" : "",
+      purchaseConditionRequired ? "purchase condition requires retailer confirmation" : "",
       pointValue ? `point value from page text: ${pointValue.toLocaleString("ja-JP")} JPY` : "",
       pointConditionRequired ? "point condition requires retailer confirmation" : "",
       couponValue ? `coupon value from page text: ${couponValue.toLocaleString("ja-JP")} JPY` : "",
@@ -623,6 +627,35 @@ function hasConditionalShippingCopy(text: string) {
       );
     }),
   );
+}
+
+function hasPurchaseConditionCopy(text: string) {
+  const purchaseWords = [
+    "初回",
+    "初めて",
+    "初回限定",
+    "定期",
+    "定期購入",
+    "定期おトク便",
+    "おトク便",
+    "まとめ買い",
+    "セット",
+    "複数個",
+    "2個",
+    "3個",
+    "箱買い",
+    "first order",
+    "first purchase",
+    "first-time",
+    "subscribe",
+    "subscription",
+    "subscribe & save",
+    "bundle",
+    "multi-pack",
+    "multipack",
+    "set of",
+  ];
+  return purchaseWords.some((word) => new RegExp(escapeRegExp(word), "i").test(text));
 }
 
 function hasAmbiguousRewardCopy(text: string, labels: string[]) {

@@ -401,6 +401,29 @@ describe("replenishment domain logic", () => {
     );
   });
 
+  it("marks subscription and first-order direct prices as purchase conditions", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Subscription product</title></head>
+        <body>
+          <span>定期おトク便 初回限定 price 1,180 JPY</span>
+          <span>まとめ買いセット対象</span>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1180,
+      effectivePriceQuote: {
+        listPrice: 1180,
+        effectivePrice: 1180,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["購入条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["purchase condition requires retailer confirmation"]));
+  });
+
   it("keeps conditional free-shipping thresholds as retailer-confirmed conditions", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -892,6 +915,31 @@ describe("replenishment domain logic", () => {
     expect(candidates[0]?.evidence).not.toEqual(
       expect.arrayContaining(["point value inferred: 120 JPY", "coupon value inferred: 300 JPY"]),
     );
+  });
+
+  it("marks marketplace subscription and bundle prices as purchase conditions", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/subscription" title="Subscription detergent">Subscription detergent</a>
+          <span>subscribe & save first order 1,180 JPY</span>
+          <span>bundle set of 3 eligible</span>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      price: 1180,
+      effectivePriceQuote: {
+        listPrice: 1180,
+        effectivePrice: 1180,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["購入条件あり"]));
+    expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["purchase condition requires retailer confirmation"]));
   });
 
   it("keeps marketplace free-shipping thresholds out of effective-price shipping deductions", () => {

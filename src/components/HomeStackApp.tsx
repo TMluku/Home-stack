@@ -1519,6 +1519,9 @@ function formatPriceEvidence(entry: string) {
 
   if (/^official shipping: free$/i.test(entry)) return "送料: 公式APIで送料無料を確認";
   if (/shipping condition requires retailer confirmation/i.test(entry)) return "送料条件: 送料無料ラインや会員条件は販売ページで確認";
+  if (/purchase condition requires retailer confirmation/i.test(entry)) {
+    return "購入条件: 初回限定、定期購入、まとめ買い、セット条件を販売ページで確認";
+  }
 
   const pointValue = entry.match(/^(?:official )?point value(?: inferred| from [^:]+)?: ([\d,]+) JPY$/i);
   if (pointValue) return `ポイント: ${pointValue[1]}円相当を実質価格から控除`;

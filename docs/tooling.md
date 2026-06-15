@@ -13,6 +13,7 @@ Home Stack is now a Next.js + TypeScript app using the App Router.
 | `pnpm run typecheck` | Run TypeScript type checking. |
 | `pnpm test` | Run the current verification suite, which is type checking for this MVP. |
 | `pnpm run check` | Run type checking, linting, and tests. |
+| `pnpm run clean:generated` | Remove local build, export, preview, log, dependency, and server-state artifacts. |
 | `pnpm run lint` | Run Biome checks. |
 | `pnpm run format` | Format supported files with Biome. |
 | `pnpm run docker:up` | Build and start the app with Docker Compose. |

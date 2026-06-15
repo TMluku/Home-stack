@@ -61,6 +61,12 @@ pnpm.cmd run build
 - Biome lint
 - Vitest tests
 
+Remove generated build, preview, log, dependency, and local server-state artifacts with:
+
+```powershell
+pnpm.cmd run clean:generated
+```
+
 ## GitHub Pages
 
 The repository includes a GitHub Pages deployment workflow at `.github/workflows/pages.yml`.

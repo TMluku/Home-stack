@@ -11,6 +11,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "ci": "turbo run typecheck lint build",
+    "clean:generated": "node scripts/clean-generated.mjs",
     "lint": "biome check .",
     "format": "biome format --write .",
     "prepare": "lefthook install",

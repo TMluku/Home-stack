@@ -1383,7 +1383,8 @@ h3 {
   margin-top: 0.85rem;
 }
 
-.ops-panel input {
+.ops-panel input,
+.ops-panel select {
   background: var(--white);
   border: 1px solid var(--line);
   border-radius: 0.5rem;
@@ -1391,6 +1392,12 @@ h3 {
   min-height: 2.6rem;
   padding: 0.65rem 0.75rem;
   width: 100%;
+}
+
+.account-resolve-grid {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.85rem;
 }
 
 .field-label {

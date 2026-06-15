@@ -87,6 +87,18 @@ type StoredNotificationEvent = {
   summary: Partial<NotificationJobSummary & NotificationDispatchSummary>;
 };
 
+type ResolvedAccountProfile = {
+  accountId: string;
+  authMode: "demo" | "email-link" | "oauth";
+  emailHash?: string;
+  provider?: "email" | "google" | "github" | "apple";
+  displayName?: string;
+  createdAt: string;
+  verified: boolean;
+};
+
+type AccountProvider = NonNullable<ResolvedAccountProfile["provider"]>;
+
 export function HomeStackApp() {
   const [state, setState] = useState<AppState>(() => createDefaultState());
   const [loaded, setLoaded] = useState(false);
@@ -106,6 +118,10 @@ export function HomeStackApp() {
   const [productSearchResult, setProductSearchResult] = useState<ProductSearchResult | null>(null);
   const [productSearchStatus, setProductSearchStatus] = useState("商品名から複数ECサイトの価格候補を検索できます。");
   const [serverAccountId, setServerAccountId] = useState(serverSyncAccountId);
+  const [accountEmail, setAccountEmail] = useState("");
+  const [accountDisplayName, setAccountDisplayName] = useState("");
+  const [accountProvider, setAccountProvider] = useState<AccountProvider>("email");
+  const [resolvedAccountProfile, setResolvedAccountProfile] = useState<ResolvedAccountProfile | null>(null);
   const [serverAccounts, setServerAccounts] = useState<ServerAccountSummary[]>([]);
   const [serverSyncBusy, setServerSyncBusy] = useState(false);
   const [serverSyncMessage, setServerSyncMessage] = useState(
@@ -450,6 +466,35 @@ export function HomeStackApp() {
       );
     } catch (error) {
       setServerSyncMessage(error instanceof Error ? error.message : "保存済みアカウント一覧を取得できませんでした。");
+    } finally {
+      setServerSyncBusy(false);
+    }
+  }
+
+  async function resolveServerAccount() {
+    if (isStaticExport) {
+      setServerSyncMessage("GitHub Pages版ではアカウント解決APIは未接続です。Next.jsサーバーで有効になります。");
+      return;
+    }
+
+    setServerSyncBusy(true);
+    try {
+      const response = await fetch("/api/account/resolve", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: accountEmail,
+          displayName: accountDisplayName,
+          provider: accountProvider,
+        }),
+      });
+      const payload = (await response.json()) as { ok?: boolean; profile?: ResolvedAccountProfile; error?: string };
+      if (!response.ok || !payload.ok || !payload.profile) throw new Error(payload.error ?? "アカウントを解決できませんでした。");
+      setResolvedAccountProfile(payload.profile);
+      setServerAccountId(payload.profile.accountId);
+      setServerSyncMessage(`${payload.profile.accountId} を保存対象に設定しました。`);
+    } catch (error) {
+      setServerSyncMessage(error instanceof Error ? error.message : "アカウントを解決できませんでした。");
     } finally {
       setServerSyncBusy(false);
     }
@@ -1287,6 +1332,10 @@ export function HomeStackApp() {
           priceFetchPlan={priceFetchPlan}
           queueItemCount={queueSummary.itemCount}
           queueTotal={queueSummary.totalEffectivePrice}
+          accountDisplayName={accountDisplayName}
+          accountEmail={accountEmail}
+          accountProvider={accountProvider}
+          resolvedAccountProfile={resolvedAccountProfile}
           serverAccountId={serverAccountId}
           serverAccounts={serverAccounts}
           serverSyncBusy={serverSyncBusy}
@@ -1301,9 +1350,13 @@ export function HomeStackApp() {
           onPrepareNotificationJobs={prepareNotificationJobs}
           onRefreshServerAccounts={refreshServerAccounts}
           onRefreshNotificationStatus={refreshNotificationStatus}
+          onResolveServerAccount={resolveServerAccount}
           onResetServerState={resetServerSavedState}
           onSaveServerState={saveServerState}
           onSelectServerAccount={selectSavedServerAccount}
+          onAccountDisplayNameChange={setAccountDisplayName}
+          onAccountEmailChange={setAccountEmail}
+          onAccountProviderChange={setAccountProvider}
           onServerAccountIdChange={setServerAccountId}
         />
       </main>
@@ -1599,6 +1652,10 @@ function PostMvpOpsPanel({
   priceFetchPlan,
   queueItemCount,
   queueTotal,
+  accountDisplayName,
+  accountEmail,
+  accountProvider,
+  resolvedAccountProfile,
   serverAccountId,
   serverAccounts,
   serverSyncBusy,
@@ -1613,9 +1670,13 @@ function PostMvpOpsPanel({
   onPrepareNotificationJobs,
   onRefreshServerAccounts,
   onRefreshNotificationStatus,
+  onResolveServerAccount,
   onResetServerState,
   onSaveServerState,
   onSelectServerAccount,
+  onAccountDisplayNameChange,
+  onAccountEmailChange,
+  onAccountProviderChange,
   onServerAccountIdChange,
 }: {
   conditionAuditLog: ConditionAuditLogEntry[];
@@ -1633,6 +1694,10 @@ function PostMvpOpsPanel({
   priceFetchPlan: PriceFetchPlanStep[];
   queueItemCount: number;
   queueTotal: number;
+  accountDisplayName: string;
+  accountEmail: string;
+  accountProvider: AccountProvider;
+  resolvedAccountProfile: ResolvedAccountProfile | null;
   serverAccountId: string;
   serverAccounts: ServerAccountSummary[];
   serverSyncBusy: boolean;
@@ -1647,9 +1712,13 @@ function PostMvpOpsPanel({
   onPrepareNotificationJobs: () => void;
   onRefreshServerAccounts: () => void;
   onRefreshNotificationStatus: () => void;
+  onResolveServerAccount: () => void;
   onResetServerState: () => void;
   onSaveServerState: () => void;
   onSelectServerAccount: (accountId: string) => void;
+  onAccountDisplayNameChange: (value: string) => void;
+  onAccountEmailChange: (value: string) => void;
+  onAccountProviderChange: (value: AccountProvider) => void;
   onServerAccountIdChange: (value: string) => void;
 }) {
   const auditPreview = (storedAuditEvents.length > 0 ? storedAuditEvents : conditionAuditLog).slice(0, 8);
@@ -1846,7 +1915,45 @@ function PostMvpOpsPanel({
             onChange={(event) => onServerAccountIdChange(event.target.value)}
             placeholder="demo-account"
           />
+          <div className="account-resolve-grid">
+            <label className="field-label" htmlFor="server-account-email">
+              email
+            </label>
+            <input
+              id="server-account-email"
+              type="email"
+              value={accountEmail}
+              onChange={(event) => onAccountEmailChange(event.target.value)}
+              placeholder="user@example.test"
+            />
+            <label className="field-label" htmlFor="server-account-provider">
+              provider
+            </label>
+            <select
+              id="server-account-provider"
+              value={accountProvider}
+              onChange={(event) => onAccountProviderChange(event.target.value as AccountProvider)}
+            >
+              <option value="email">email</option>
+              <option value="google">google</option>
+              <option value="github">github</option>
+              <option value="apple">apple</option>
+            </select>
+            <label className="field-label" htmlFor="server-account-display-name">
+              displayName
+            </label>
+            <input
+              id="server-account-display-name"
+              type="text"
+              value={accountDisplayName}
+              onChange={(event) => onAccountDisplayNameChange(event.target.value)}
+              placeholder="Home Stack user"
+            />
+          </div>
           <div className="ops-actions">
+            <button className="button button--ghost" type="button" onClick={onResolveServerAccount} disabled={serverSyncBusy}>
+              accountId解決
+            </button>
             <button className="button button--primary" type="button" onClick={onSaveServerState} disabled={serverSyncBusy}>
               サーバー保存
             </button>
@@ -1863,6 +1970,22 @@ function PostMvpOpsPanel({
           <p className="state-message" role="status">
             {serverSyncMessage}
           </p>
+          {resolvedAccountProfile ? (
+            <dl className="ops-list ops-list--compact">
+              <div>
+                <dt>auth</dt>
+                <dd>{resolvedAccountProfile.authMode}</dd>
+              </div>
+              <div>
+                <dt>provider</dt>
+                <dd>{resolvedAccountProfile.provider ?? "demo"}</dd>
+              </div>
+              <div>
+                <dt>emailHash</dt>
+                <dd>{resolvedAccountProfile.emailHash ?? "none"}</dd>
+              </div>
+            </dl>
+          ) : null}
           {serverAccounts.length > 0 ? (
             <div className="account-list">
               {serverAccounts.slice(0, 3).map((account) => (

@@ -1377,13 +1377,16 @@ export function HomeStackApp() {
 function EffectivePriceProof({
   quote,
   evidence,
+  verificationUrl,
 }: {
   quote?: ProductSearchResult["candidates"][number]["effectivePriceQuote"] | LivePriceResult["effectivePriceQuote"];
   evidence?: string[];
+  verificationUrl?: string;
 }) {
   if (!quote) return null;
 
   const proofCount = evidence?.length ?? quote.evidence.length;
+  const proofEvidence = [...new Set([...(evidence ?? []), ...quote.evidence])].filter(Boolean).slice(0, 6);
 
   return (
     <fieldset className="effective-proof">
@@ -1410,6 +1413,19 @@ function EffectivePriceProof({
       </div>
       <p>{quote.conditionLabels.length > 0 ? quote.conditionLabels.join(" / ") : "控除条件なし"}</p>
       <small>根拠 {proofCount}件 / 条件は購入前に販売サイトで再確認</small>
+      <details className="effective-proof__details" open={quote.conditionRequired}>
+        <summary>{quote.conditionRequired ? "価格条件を確認" : "価格根拠を確認"}</summary>
+        <ul>
+          {proofEvidence.map((entry) => (
+            <li key={entry}>{entry}</li>
+          ))}
+        </ul>
+        {verificationUrl ? (
+          <a href={verificationUrl} target="_blank" rel="noreferrer">
+            販売ページで条件を見る
+          </a>
+        ) : null}
+      </details>
     </fieldset>
   );
 }
@@ -1536,7 +1552,7 @@ function ProductSearchPanel({
                 {candidate.effectivePriceQuote?.conditionLabels.length ? (
                   <p>{candidate.effectivePriceQuote.conditionLabels.join(" / ")}</p>
                 ) : null}
-                <EffectivePriceProof quote={candidate.effectivePriceQuote} evidence={candidate.evidence} />
+                <EffectivePriceProof quote={candidate.effectivePriceQuote} evidence={candidate.evidence} verificationUrl={candidate.url} />
                 <small>{candidate.evidence.join(" / ")}</small>
                 <a href={candidate.url} target="_blank" rel="noreferrer">
                   商品ページを見る
@@ -1675,7 +1691,7 @@ function LivePriceScanner({
                     : "取得不可"}
               </strong>
               {result.effectivePriceQuote?.conditionLabels.length ? <p>{result.effectivePriceQuote.conditionLabels.join(" / ")}</p> : null}
-              <EffectivePriceProof quote={result.effectivePriceQuote} />
+              <EffectivePriceProof quote={result.effectivePriceQuote} verificationUrl={result.url} />
               <p>{result.title ?? result.url}</p>
               <small>
                 {new Date(result.fetchedAt).toLocaleString("ja-JP")} / {result.error ?? result.url}

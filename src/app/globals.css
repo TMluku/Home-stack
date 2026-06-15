@@ -944,6 +944,43 @@ h3 {
   font-weight: 800;
 }
 
+.effective-proof__details {
+  background: #fbfaf8;
+  border: 1px solid #eadfd0;
+  border-radius: 0.5rem;
+  grid-column: 1 / -1;
+  padding: 0.55rem;
+}
+
+.effective-proof__details summary {
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.effective-proof__details ul {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.45rem 0 0;
+  padding-left: 1rem;
+}
+
+.effective-proof__details li {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.effective-proof__details a {
+  color: var(--blue);
+  display: inline-block;
+  font-size: 0.76rem;
+  font-weight: 900;
+  margin-top: 0.45rem;
+}
+
 .url-scan-box {
   color: var(--muted);
   display: grid;

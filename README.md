@@ -65,7 +65,7 @@ pnpm.cmd run test:e2e
 - Biome lint
 - Vitest tests
 
-`test:e2e` checks the published GitHub Pages URL by default. Override it with `HOME_STACK_PAGES_URL` when validating another deployment.
+`test:e2e` checks the published GitHub Pages URL and the visual asset used by the price-search UI by default. Override it with `HOME_STACK_PAGES_URL` when validating another deployment.
 
 Remove generated build, preview, log, dependency, and local server-state artifacts with:
 

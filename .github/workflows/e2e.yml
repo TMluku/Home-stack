@@ -50,6 +50,7 @@ jobs:
           name: mobile-qa-evidence
           path: |
             test-results/**/*.png
+            test-results/**/*.json
             playwright-report/**
           if-no-files-found: ignore
           retention-days: 14

@@ -1,3 +1,4 @@
+import { writeFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 
 test("shows ranked price candidates with condition evidence and visual asset", async ({ page }) => {
@@ -83,6 +84,38 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
   await expect(page.locator(".effective-proof__details").first()).toBeVisible();
 
   if (testInfo.project.name === "mobile-chrome") {
+    const conditionSummary = await page
+      .locator(".effective-proof")
+      .first()
+      .evaluate((proof) => ({
+        badges: [...proof.querySelectorAll(".effective-proof__badge")].map((badge) => badge.textContent?.trim()).filter(Boolean),
+        breakdownItems: [...proof.querySelectorAll(".effective-proof__breakdown-item")]
+          .map((item) => item.textContent?.trim())
+          .filter(Boolean),
+        detailRows: [...proof.querySelectorAll(".effective-proof__details li")].map((item) => item.textContent?.trim()).filter(Boolean),
+        detailsOpen: proof.querySelector(".effective-proof__details")?.hasAttribute("open") ?? false,
+        sellerLink: proof.querySelector(".effective-proof__details a")?.getAttribute("href") ?? null,
+      }));
+    await writeFile(
+      testInfo.outputPath("mobile-price-condition-proof.json"),
+      JSON.stringify(
+        {
+          capturedAt: new Date().toISOString(),
+          url: page.url(),
+          viewport: page.viewportSize(),
+          metrics,
+          conditionSummary,
+          assertions: [
+            "document width fits viewport",
+            "no mobile horizontal overflow candidates",
+            "effective price proof details are visible",
+            "condition evidence remains readable on mobile width",
+          ],
+        },
+        null,
+        2,
+      ),
+    );
     await page.screenshot({
       fullPage: true,
       path: testInfo.outputPath("mobile-price-condition-proof.png"),

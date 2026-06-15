@@ -24,7 +24,13 @@ Before manual QA, confirm these gates are green:
 - condition-required cards expose evidence and seller-page links
 - no horizontal overflow at mobile width
 
-The `Browser E2E` GitHub Actions workflow uploads a `mobile-qa-evidence` artifact for each run. It includes the mobile Chromium screenshot `mobile-price-condition-proof.png` when the responsive price-condition proof completes, plus any Playwright report files. Use that artifact as automated display evidence before running the real-device checklist below.
+The `Browser E2E` GitHub Actions workflow uploads a `mobile-qa-evidence` artifact for each run. It includes:
+
+- `mobile-price-condition-proof.png`: full-page mobile Chromium screenshot
+- `mobile-price-condition-proof.json`: captured URL, viewport, overflow metrics, condition badges, price-breakdown rows, seller link, and the assertions covered by the automated pass
+- Playwright report files, when generated
+
+Use that artifact as automated display evidence before running the real-device checklist below.
 
 Automated evidence is not a substitute for the real-device rows below. Treat the objective as incomplete until at least one physical phone/browser pass is recorded with the published URL.
 
@@ -60,7 +66,9 @@ Current status: automated mobile Chromium coverage is available from GitHub Acti
 For a pass, keep enough evidence to reconstruct what was checked:
 
 - GitHub Actions run URL for `Browser E2E`
-- `mobile-qa-evidence` artifact name or screenshot filename
+- `mobile-qa-evidence` artifact name
+- `mobile-price-condition-proof.png` screenshot filename
+- `mobile-price-condition-proof.json` metrics filename
 - phone screenshot showing the price-condition proof
 - published URL tested
 - any browser/device accessibility setting that changes layout, such as text scaling

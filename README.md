@@ -128,7 +128,7 @@ Use this checklist when changing price extraction, condition labels, static Page
 
 2. Publish through `main`; `.github/workflows/pages-branch.yml` updates `gh-pages` automatically.
 3. Confirm GitHub Actions are green: `CI`, `Browser E2E`, `Publish GitHub Pages Branch`, and `pages-build-deployment`.
-4. Download the `mobile-qa-evidence` artifact from the latest `Browser E2E` run and inspect `mobile-price-condition-proof.png`.
+4. Download the `mobile-qa-evidence` artifact from the latest `Browser E2E` run and inspect `mobile-price-condition-proof.png` plus `mobile-price-condition-proof.json`.
 5. Confirm the public app responds at `https://tmluku.github.io/Home-stack/`.
 6. For UI or price-condition changes, complete the real-device checklist in `docs/mobile-qa.md`.
 7. Clean local generated artifacts before committing unrelated follow-up work:

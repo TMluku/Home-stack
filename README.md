@@ -77,7 +77,7 @@ pnpm.cmd run check:real-device-qa
 
 `test:e2e` checks the published GitHub Pages URL, the visual asset used by the price-search UI, the visual condition caption/legend, the public QR SVG structure/dimensions, and the real-device QA cue text by default. Override it with `HOME_STACK_PAGES_URL` when validating another deployment.
 
-`test:e2e:browser` builds the static Pages export, serves it locally, and verifies the price-search flow in mobile and desktop Chromium. `check:mobile-qa-evidence` validates the generated screenshot and metrics JSON, including the hero visual, public QR, published Pages URL, Browser E2E workflow link, QA checklist, mobile overflow metrics, candidate condition-banner anchors, all condition-banner links resolving to open proof details, condition action note, deduction confirmation checklist, condition audit grid, condition memo copy action, price-verification lanes, comparison-card fallback price, and price-condition proof details before those files are used for manual QA. Install the browser once with:
+`test:e2e:browser` builds the static Pages export, serves it locally, and verifies the price-search flow in mobile and desktop Chromium. `check:mobile-qa-evidence` validates the generated screenshot and metrics JSON, including the hero visual, public QR, published Pages URL, Browser E2E workflow link, QA checklist, mobile overflow metrics, candidate condition-banner anchors, accessible condition-banner detail labels, all condition-banner links resolving to open proof details, condition action note, deduction confirmation checklist, condition audit grid, condition memo copy action, price-verification lanes, comparison-card fallback price, and price-condition proof details before those files are used for manual QA. Install the browser once with:
 
 ```powershell
 pnpm.cmd exec playwright install chromium
@@ -95,7 +95,7 @@ Manual smartphone QA for Pages:
 - Tap `QA記録をコピー` on the hero and paste the generated row into the real-device matrix in `docs/mobile-qa.md`; the copied memo includes the public URL, Browser E2E workflow URL, `mobile-qa-evidence` artifact name, expected evidence filenames, `条件確認メモ`, `condition audit grid`, and a real-phone screenshot filename placeholder.
 - Confirm the price-search visual loads.
 - Tap an inventory chip and confirm candidates appear in price order.
-- Confirm condition-required cards show `条件価格の要点`, `価格条件の確認先`, `条件確認メモ`, `控除してよい条件`, `条件成立チェック` / condition audit grid, `価格成立条件の要約`, concrete condition badges such as `購入条件あり` or `クーポン条件あり`, the fallback recompare price when conditions do not apply, the condition decision rows for what to confirm/reject on the seller page, evidence rows, and a link to the seller page without horizontal scrolling.
+- Confirm condition-required cards show `条件価格の要点`, `価格条件の確認先`, `条件確認メモ`, `控除してよい条件`, `条件成立チェック` / condition audit grid, `価格成立条件の要約`, accessible `条件あり` detail links, concrete condition badges such as `購入条件あり` or `クーポン条件あり`, the fallback recompare price when conditions do not apply, the condition decision rows for what to confirm/reject on the seller page, evidence rows, and a link to the seller page without horizontal scrolling.
 - Open `価格順リストを見る` and confirm comparison cards show a compact condition summary and condition-fallback recompare price before the detailed condition rows.
 - Paste `https://example.com/demo-condition-item` into `商品ページURL`, tap `ライブ価格を取得`, then confirm the URL-scan `条件あり` banner jumps to the same style of price-condition proof.
 
@@ -171,7 +171,7 @@ Price-condition operation notes:
 - Direct URL meta price extraction should ignore reward, coupon, shipping, gift-card, or store-credit amounts in meta tags such as `twitter:data1`, then fall back to the next product-price source.
 - Direct URL data-attribute price extraction should skip used, app-only, subscription, purchase-condition, coupon-applied, shipping-condition, or payment-fee contexts before accepting an attribute price.
 - Direct URL and Amazon-style price scans should ignore unavailable machine states such as `out_of_stock`, `soldout`, preorder, or discontinued before falling back to the next current offer price.
-- Direct URL scans and marketplace HTML parsing should skip payment/COD/cash-on-delivery fee amounts as item prices, even when the fee label appears after the amount.
+- Direct URL scans and marketplace HTML parsing should skip payment/COD/cash-on-delivery, warranty, gift-wrap, rental, lease, repair, restocking, and return-shipping fee amounts as item prices, even when the fee label appears after the amount.
 - Amazon-style price scans and marketplace HTML parsing should skip `coupon applied`, `discount after clip`, clipped-coupon, promo, discount-applied, member-only, app-only, or login-required price blocks as the base item price, then preserve condition evidence for seller-page confirmation.
 - Official marketplace API reward records with `coupon applied`, clipped-coupon, promo, or discount-applied copy should keep coupon amounts as conditions instead of guaranteed deductions.
 

@@ -1905,7 +1905,11 @@ function ProductSearchPanel({
                   一致度 {candidate.matchScore}% / {candidate.confidence} / {candidate.shipping ?? "送料条件は要確認"}
                 </p>
                 {candidate.effectivePriceQuote?.conditionLabels.length ? (
-                  <a className="condition-banner" href={`#candidate-conditions-${candidate.id}`}>
+                  <a
+                    className="condition-banner"
+                    href={`#candidate-conditions-${candidate.id}`}
+                    aria-label={`条件ありの詳細を開く: ${candidate.title}`}
+                  >
                     条件あり: {candidate.effectivePriceQuote.conditionLabels.join(" / ")}
                   </a>
                 ) : null}
@@ -1976,7 +1980,11 @@ function PriceComparisonPanel({
               ) : null}
               {conditionSummaryItems.length > 0 ? <ConditionSummaryList items={conditionSummaryItems} compact /> : null}
               {competitor.conditions.length > 0 ? (
-                <a className="condition-banner" href={`#conditions-${offer.id}`}>
+                <a
+                  className="condition-banner"
+                  href={`#conditions-${offer.id}`}
+                  aria-label={`条件ありの詳細を開く: ${competitor.retailer}`}
+                >
                   条件あり
                 </a>
               ) : (
@@ -2111,7 +2119,11 @@ function LivePriceScanner({
                     : "取得不可"}
               </strong>
               {result.effectivePriceQuote?.conditionLabels.length ? (
-                <a className="condition-banner" href={`#live-conditions-${index}`}>
+                <a
+                  className="condition-banner"
+                  href={`#live-conditions-${index}`}
+                  aria-label={`条件ありの詳細を開く: ${result.title ?? result.url}`}
+                >
                   条件あり: {result.effectivePriceQuote.conditionLabels.join(" / ")}
                 </a>
               ) : null}

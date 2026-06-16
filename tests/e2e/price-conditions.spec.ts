@@ -65,6 +65,7 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   const conditionBanner = page.locator(".market-card .condition-banner").first();
   await expect(conditionBanner).toContainText("条件あり");
   await expect(conditionBanner).toHaveAttribute("href", /#candidate-conditions-/);
+  await expect(conditionBanner).toHaveAttribute("aria-label", /条件ありの詳細を開く:/);
   await conditionBanner.click();
   await expect(page).toHaveURL(/#candidate-conditions-/);
   await expect(conditionalProof).toBeInViewport();
@@ -152,6 +153,7 @@ test("keeps offer cards sorted by effective price while filtering by conditions"
   await expect(page.locator(".comparison-breakdown").first()).toContainText("実質");
   await expect(page.locator(".comparison-breakdown__adjustment--subtract").first()).toBeVisible();
   const conditionalComparisonCard = page.locator(".comparison-card").filter({ hasText: "条件あり" }).first();
+  await expect(conditionalComparisonCard.locator(".condition-banner")).toHaveAttribute("aria-label", /条件ありの詳細を開く:/);
   await expect(conditionalComparisonCard.locator(".comparison-recompare")).toHaveAttribute("aria-label", /条件不成立時価格/);
   await expect(conditionalComparisonCard.locator(".comparison-recompare")).toContainText("条件外なら");
   await expect(conditionalComparisonCard.locator(".comparison-recompare")).toContainText("再比較");
@@ -190,6 +192,7 @@ test("links live scan condition banners to proof details on the static Pages bui
   const liveConditionBanner = page.locator(".live-price-card .condition-banner").first();
   await expect(liveConditionBanner).toContainText("条件あり");
   await expect(liveConditionBanner).toHaveAttribute("href", "#live-conditions-0");
+  await expect(liveConditionBanner).toHaveAttribute("aria-label", /条件ありの詳細を開く:/);
   await liveConditionBanner.click();
   await expect(page).toHaveURL(/#live-conditions-0/);
 
@@ -339,6 +342,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
           return {
             text: banner.textContent?.trim() ?? "",
             href,
+            ariaLabel: banner.getAttribute("aria-label") ?? "",
             targetExists: Boolean(target),
             targetDetailsOpen: target ? (details ? details.hasAttribute("open") : true) : false,
           };
@@ -346,6 +350,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
     );
     expect(conditionAnchorSummary.length).toBeGreaterThanOrEqual(2);
     expect(conditionAnchorSummary.every((anchor) => anchor.href.startsWith("#"))).toBe(true);
+    expect(conditionAnchorSummary.every((anchor) => anchor.ariaLabel.includes("条件ありの詳細を開く"))).toBe(true);
     expect(conditionAnchorSummary.every((anchor) => anchor.targetExists)).toBe(true);
     expect(conditionAnchorSummary.every((anchor) => anchor.targetDetailsOpen)).toBe(true);
     await writeFile(
@@ -384,6 +389,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
             "condition decision rows show confirm and reject guidance",
             "static URL scan condition banner jumps to proof details",
             "all condition banners resolve to open proof details",
+            "condition banners expose accessible detail labels",
           ],
         },
         null,

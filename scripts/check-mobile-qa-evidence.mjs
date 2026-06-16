@@ -24,6 +24,7 @@ const expectedAssertions = [
   "condition decision rows show confirm and reject guidance",
   "static URL scan condition banner jumps to proof details",
   "all condition banners resolve to open proof details",
+  "condition banners expose accessible detail labels",
 ];
 
 const files = await listFiles(root).catch(() => []);
@@ -211,6 +212,8 @@ for (const file of jsonFiles) {
   } else {
     for (const [index, anchor] of conditionAnchors.entries()) {
       if (!String(anchor.href ?? "").startsWith("#")) failures.push(`${file}: condition anchor ${index} is not an in-page link`);
+      if (!String(anchor.ariaLabel ?? "").includes("条件ありの詳細を開く"))
+        failures.push(`${file}: condition anchor ${index} is missing an accessible detail label`);
       if (anchor.targetExists !== true) failures.push(`${file}: condition anchor ${index} target is missing`);
       if (anchor.targetDetailsOpen !== true) failures.push(`${file}: condition anchor ${index} details are not open`);
     }

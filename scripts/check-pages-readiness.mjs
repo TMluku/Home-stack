@@ -38,9 +38,11 @@ if (repo && token) {
       permissions: repoResponse.data.permissions,
     };
 
-    if (repoResponse.data.private && !repoResponse.data.has_pages) {
+    if (repoResponse.data.private) {
       report.ok = false;
-      report.nextSteps.push("Enable GitHub Pages for this private repository, or make the repository public if that fits the project.");
+      report.nextSteps.push(
+        "This repository is private. For public QA and external release links, change visibility to public (recommended for this MVP workflow).",
+      );
     } else if (!repoResponse.data.has_pages) {
       report.ok = false;
       report.nextSteps.push("Enable GitHub Pages in repository Settings > Pages.");

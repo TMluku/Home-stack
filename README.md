@@ -102,7 +102,7 @@ pnpm.cmd exec playwright install chromium
   - `pages-build-deployment` page published for the latest commit
   - `https://tmluku.github.io/Home-stack/` opens on mobile and desktop
 
-- If the page is not public yet, complete GitHub repository privacy settings first; private repositories cannot reliably host external QA links.
+- If you need external QA links and phone checks, this repository should be public.
 
 When the real-device gate fails, it prints row-level missing evidence such as the published URL, Browser E2E workflow/run URL, mobile evidence filenames, condition-action note, or real-phone screenshot note.
 

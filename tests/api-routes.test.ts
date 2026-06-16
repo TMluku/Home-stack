@@ -99,7 +99,6 @@ describe("API route contracts", () => {
       }),
     );
     const payload = await response.json();
-
     expect(response.status).toBe(200);
     expect(payload.ok).toBe(true);
     expect(payload.results).toHaveLength(5);
@@ -108,6 +107,48 @@ describe("API route contracts", () => {
       effectivePrice: 1280,
     });
     expect(fetchMock).toHaveBeenCalledTimes(5);
+  });
+
+  it("skips non-product reward amounts in price meta tags", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        `
+          <html>
+            <head>
+              <title>Reward meta fixture</title>
+              <meta name="twitter:data1" content="PayPay points 300 JPY">
+              <meta itemprop="price" content="1980">
+            </head>
+            <body>
+              <main>
+                <h1>Detergent refill current offer</h1>
+                <p>item price 1,980 JPY</p>
+              </main>
+            </body>
+          </html>
+        `,
+        { status: 200 },
+      ),
+    );
+
+    const response = await scanPrices(
+      new Request("http://localhost/api/price-scan", {
+        method: "POST",
+        body: JSON.stringify({ urls: ["https://example.com/reward-meta"] }),
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.results[0]).toMatchObject({
+      ok: true,
+      price: 1980,
+      source: "meta",
+    });
+    expect(payload.results[0].effectivePriceQuote).toMatchObject({
+      listPrice: 1980,
+      effectivePrice: 1980,
+    });
   });
 
   it("rejects empty product search requests", async () => {

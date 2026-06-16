@@ -163,23 +163,35 @@ function findPriceInJsonLd(value: unknown): ExtractedPrice {
 }
 
 function extractMetaPrice(html: string) {
+  const metaTags = [...html.matchAll(/<meta\b[^>]*>/gi)].map((match) => match[0]);
   const candidates = [
-    /<meta[^>]+property=["']product:price:amount["'][^>]+content=["']([^"']+)["'][^>]*>/i,
-    /<meta[^>]+property=["']og:price:amount["'][^>]+content=["']([^"']+)["'][^>]*>/i,
-    /<meta[^>]+name=["']twitter:data1["'][^>]+content=["']([^"']+)["'][^>]*>/i,
-    /<meta[^>]+itemprop=["']price["'][^>]+content=["']([^"']+)["'][^>]*>/i,
+    { attribute: "property", value: "product:price:amount" },
+    { attribute: "property", value: "og:price:amount" },
+    { attribute: "name", value: "twitter:data1" },
+    { attribute: "itemprop", value: "price" },
   ];
 
-  for (const pattern of candidates) {
-    const value = matchContent(html, pattern);
-    const price = parsePrice(value);
+  for (const candidate of candidates) {
+    const tag = metaTags.find(
+      (metaTag) => matchContent(metaTag, new RegExp(`\\b${candidate.attribute}=["']([^"']+)["']`, "i")) === candidate.value,
+    );
+    const content = tag ? matchContent(tag, /\bcontent=["']([^"']+)["']/i) : undefined;
+    if (tag && content && isNonProductMetaAmountContext(tag, content)) continue;
+    const price = parsePrice(content);
     if (price) {
       const adjustments = extractMetaAdjustments(html);
-      return { price, currency: inferCurrency(value), adjustments, evidence: adjustments.evidence };
+      return { price, currency: inferCurrency(content), adjustments, evidence: adjustments.evidence };
     }
   }
 
   return {};
+}
+
+function isNonProductMetaAmountContext(tag: string, value: string) {
+  const context = extractPlainText(`${tag} ${value}`) || `${tag} ${value}`;
+  return /(?:ポイント|還元|付与|獲得|クーポン|割引|値引|送料|配送料|配送|送料無料|商品券|ギフト券|point|points|reward|cashback|coupon|discount|off|shipping|postage|delivery|free shipping|gift card|gift certificate|voucher|store credit)/i.test(
+    context,
+  );
 }
 
 function extractEmbeddedJsonPrice(html: string) {

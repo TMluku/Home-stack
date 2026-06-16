@@ -321,4 +321,86 @@ describe("mobile QA evidence gate", () => {
       },
     );
   });
+
+  it("rejects condition proof JSON when condition-banner anchors lack accessible detail labels", async () => {
+    await withEvidenceDir(
+      {
+        "mobile-price-condition-proof.png": minimalPng(390, 1200),
+        "mobile-price-condition-proof.json": JSON.stringify({
+          url: "http://127.0.0.1:4173/Home-stack/#live-conditions-0",
+          expectedPagesUrl: "https://tmluku.github.io/Home-stack/",
+          viewport: { width: 390, height: 844 },
+          metrics: { bodyWidth: 390, viewportWidth: 390, overflowCount: 0 },
+          heroAssetSummary: {
+            visual: {
+              src: "/Home-stack/price-insight-visual.png",
+              complete: true,
+              naturalWidth: 1693,
+              naturalHeight: 929,
+              renderedWidth: 320,
+              renderedHeight: 176,
+            },
+            qr: {
+              src: "/Home-stack/pages-qr.svg",
+              complete: true,
+              naturalWidth: 128,
+              naturalHeight: 128,
+              renderedWidth: 96,
+              renderedHeight: 96,
+            },
+            qaPointCount: 3,
+          },
+          qaTemplateSummary: {
+            text: "https://tmluku.github.io/Home-stack/ mobile-qa-evidence mobile-price-condition-proof.png mobile-price-condition-proof.json condition audit grid 実機スクリーンショット",
+            browserE2eHref: browserE2eWorkflowUrl,
+          },
+          candidateConditionSummary: {
+            bannerText: "条件あり",
+            bannerHref: "#candidate-conditions-demo",
+            badges: ["条件あり"],
+            detailsOpen: true,
+            sellerLink: "https://example.com/item",
+          },
+          liveScanSummary: {
+            bannerText: "条件あり",
+            bannerHref: "#live-conditions-0",
+            badges: ["条件あり"],
+            detailsOpen: true,
+            sellerLink: "https://example.com/live",
+          },
+          conditionAnchorSummary: [
+            { text: "条件あり", href: "#candidate-conditions-demo", ariaLabel: "", targetExists: true, targetDetailsOpen: true },
+            { text: "条件あり", href: "#live-conditions-0", targetExists: true, targetDetailsOpen: true },
+          ],
+          assertions: [
+            "document width fits viewport",
+            "no mobile horizontal overflow candidates",
+            "price-search visual asset renders on mobile",
+            "price-search visual caption explains condition comparison",
+            "public Pages QR renders on mobile",
+            "real-device QA checklist is present on the hero",
+            "effective price proof details are visible",
+            "condition price quick-read remains visible",
+            "condition guardrails show verification target and fallback price",
+            "condition action note explains seller-page checks",
+            "condition confirmation checklist states when deductions may apply",
+            "condition audit grid shows amount target deadline stacking and fallback checks",
+            "condition evidence remains readable on mobile width",
+            "condition fallback recompare price is visible",
+            "condition memo copy action is visible on mobile",
+            "comparison card fallback recompare price is visible",
+            "condition decision rows show confirm and reject guidance",
+            "static URL scan condition banner jumps to proof details",
+            "all condition banners resolve to open proof details",
+            "condition banners expose accessible detail labels",
+          ],
+        }),
+      },
+      (dirPath) => {
+        const result = spawnSync(process.execPath, [mobileEvidenceScriptPath, dirPath], { encoding: "utf8" });
+        expect(result.status).toBe(1);
+        expect(result.stderr).toContain("accessible detail label");
+      },
+    );
+  });
 });

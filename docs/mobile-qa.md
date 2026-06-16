@@ -29,12 +29,12 @@ Before manual QA, confirm these gates are green:
 The `Browser E2E` GitHub Actions workflow uploads a `mobile-qa-evidence` artifact for each run. It includes:
 
 - `mobile-price-condition-proof.png`: full-page mobile Chromium screenshot
-- `mobile-price-condition-proof.json`: captured URL, expected published Pages URL, Browser E2E workflow link, viewport, overflow metrics, hero visual/QR metrics, QA checklist count, condition badges, condition quick-read rows, condition guardrails, condition action note, deduction confirmation checklist, condition audit grid, condition memo copy action, condition-banner anchor resolution, condition-summary rows, price-breakdown rows, price-verification lanes, condition fallback recompare price, comparison-card fallback recompare price, seller link, and the assertions covered by the automated pass
+- `mobile-price-condition-proof.json`: captured URL, expected published Pages URL, Browser E2E workflow link, viewport, overflow metrics, hero visual/QR metrics, QA checklist count, condition badges, condition quick-read rows, condition guardrails, condition action note, deduction confirmation checklist, condition audit grid, condition memo copy action, condition-banner anchor resolution, accessible condition-banner detail labels, condition-summary rows, price-breakdown rows, price-verification lanes, condition fallback recompare price, comparison-card fallback recompare price, seller link, and the assertions covered by the automated pass
 - Playwright report files, when generated
 
 Use that artifact as automated display evidence before running the real-device checklist below.
 
-Run `pnpm.cmd run check:mobile-qa-evidence` after `pnpm.cmd run test:e2e:browser` to confirm the screenshot and metrics JSON exist, the captured URL is tied to the expected published Pages URL or local static preview, the Browser E2E workflow link is present, the mobile viewport has no horizontal overflow, the hero visual and public QR loaded, the real-device QA checklist is present, the condition quick-read rows, condition guardrails, condition action note, deduction confirmation checklist, condition audit grid, condition memo copy action, price-verification lanes, condition summary, fallback recompare price, comparison-card fallback recompare price, decision rows, and detail rows are open, and the seller/search link is present.
+Run `pnpm.cmd run check:mobile-qa-evidence` after `pnpm.cmd run test:e2e:browser` to confirm the screenshot and metrics JSON exist, the captured URL is tied to the expected published Pages URL or local static preview, the Browser E2E workflow link is present, the mobile viewport has no horizontal overflow, the hero visual and public QR loaded, the real-device QA checklist is present, the condition quick-read rows, condition guardrails, condition action note, deduction confirmation checklist, condition audit grid, condition memo copy action, price-verification lanes, condition summary, accessible condition detail links, fallback recompare price, comparison-card fallback recompare price, decision rows, and detail rows are open, and the seller/search link is present.
 
 Automated evidence is not a substitute for the real-device rows below. Treat the objective as incomplete until at least one physical phone/browser pass is recorded with the published URL.
 
@@ -69,7 +69,7 @@ Current status: automated mobile Chromium coverage is available from GitHub Acti
 13. Tap the seller-page condition link and confirm it opens a seller/search page in a new tab.
 14. Paste `https://example.com/demo-condition-item` into `商品ページURL`.
 15. Tap `ライブ価格を取得`.
-16. Confirm the URL-scan result shows a `条件あり` banner and that tapping it jumps to the proof details for the same result.
+16. Confirm the URL-scan result shows a `条件あり` banner, that the link clearly opens condition details, and that tapping it jumps to the proof details for the same result.
 17. Return to Home Stack and confirm the page still scrolls normally.
 18. Rotate the phone once, if practical, and confirm no major overlap or horizontal scrolling.
 

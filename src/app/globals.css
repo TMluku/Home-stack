@@ -714,6 +714,7 @@ h3 {
 .link-button,
 .queue-actions button {
   font-size: 0.82rem;
+  min-height: 2.5rem;
   padding: 0.5rem 0.75rem;
 }
 
@@ -1457,8 +1458,8 @@ h3 {
   cursor: pointer;
   font-size: 0.72rem;
   font-weight: 950;
-  min-height: 2rem;
-  padding: 0.42rem 0.62rem;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.65rem;
 }
 
 .effective-proof__copy-status {
@@ -1592,11 +1593,18 @@ h3 {
 }
 
 .effective-proof__details a {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d6e2f5;
+  border-radius: 0.45rem;
   color: var(--blue);
-  display: inline-block;
+  display: inline-flex;
   font-size: 0.76rem;
   font-weight: 900;
+  line-height: 1.25;
   margin-top: 0.45rem;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.65rem;
 }
 
 .url-scan-box {
@@ -1905,6 +1913,7 @@ h3 {
 }
 
 .condition-banner {
+  align-items: center;
   background: #fbf3db;
   border: 1px solid #ecd58f;
   border-radius: 0.4rem;
@@ -1913,7 +1922,9 @@ h3 {
   font-size: 0.75rem;
   font-weight: 900;
   justify-self: start;
-  padding: 0.28rem 0.55rem;
+  line-height: 1.25;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.65rem;
 }
 
 .condition-banner--plain {

@@ -26,6 +26,7 @@ const expectedAssertions = [
   "static URL scan condition banner jumps to proof details",
   "all condition banners resolve to open proof details",
   "condition banners expose accessible detail labels",
+  "primary mobile tap targets are at least 40 CSS pixels",
 ];
 
 const files = await listFiles(root).catch(() => []);
@@ -227,6 +228,23 @@ for (const file of jsonFiles) {
         failures.push(`${file}: condition anchor ${index} is missing an accessible detail label`);
       if (anchor.targetExists !== true) failures.push(`${file}: condition anchor ${index} target is missing`);
       if (anchor.targetDetailsOpen !== true) failures.push(`${file}: condition anchor ${index} details are not open`);
+    }
+  }
+
+  const tapTargets = payload.tapTargetSummary;
+  if (!Array.isArray(tapTargets) || tapTargets.length < 8) {
+    failures.push(`${file}: missing primary mobile tap target summary`);
+  } else {
+    for (const [index, target] of tapTargets.entries()) {
+      if (!target || typeof target !== "object") {
+        failures.push(`${file}: tap target ${index} is invalid`);
+        continue;
+      }
+      const width = Number(target.width);
+      const height = Number(target.height);
+      if (width < 40 || height < 40) {
+        failures.push(`${file}: tap target ${index} is too small (${width}x${height})`);
+      }
     }
   }
 

@@ -360,6 +360,29 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
     expect(conditionAnchorSummary.every((anchor) => anchor.ariaLabel.includes("条件ありの詳細を開く"))).toBe(true);
     expect(conditionAnchorSummary.every((anchor) => anchor.targetExists)).toBe(true);
     expect(conditionAnchorSummary.every((anchor) => anchor.targetDetailsOpen)).toBe(true);
+    const tapTargetSummary = await page.evaluate(() => {
+      const selectors = [
+        ".hero__actions .button",
+        ".inventory-search-chips .chip",
+        ".condition-banner[href]",
+        ".effective-proof__copy button",
+        ".effective-proof__details a",
+        ".live-price-panel .button",
+      ];
+      return selectors.flatMap((selector) =>
+        [...document.querySelectorAll<HTMLElement>(selector)].slice(0, 6).map((element) => {
+          const rect = element.getBoundingClientRect();
+          return {
+            selector,
+            text: element.textContent?.trim().slice(0, 40) ?? "",
+            width: Math.round(rect.width),
+            height: Math.round(rect.height),
+          };
+        }),
+      );
+    });
+    expect(tapTargetSummary.length).toBeGreaterThanOrEqual(8);
+    expect(tapTargetSummary.every((target) => target.width >= 40 && target.height >= 40)).toBe(true);
     await writeFile(
       testInfo.outputPath("mobile-price-condition-proof.json"),
       JSON.stringify(
@@ -376,6 +399,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
           comparisonSummary,
           liveScanSummary,
           conditionAnchorSummary,
+          tapTargetSummary,
           assertions: [
             "document width fits viewport",
             "no mobile horizontal overflow candidates",
@@ -398,6 +422,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
             "static URL scan condition banner jumps to proof details",
             "all condition banners resolve to open proof details",
             "condition banners expose accessible detail labels",
+            "primary mobile tap targets are at least 40 CSS pixels",
           ],
         },
         null,

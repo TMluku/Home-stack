@@ -3036,6 +3036,39 @@ describe("replenishment domain logic", () => {
     );
   });
 
+  it("skips capped marketplace reward amounts before item prices", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/capped-reward" title="Capped reward detergent">Capped reward detergent</a>
+          <span>Points capped at 1,000 JPY during campaign</span>
+          <span>Coupon savings cap 500 JPY for selected sellers</span>
+          <strong>Current price 5,000 JPY</strong>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/detergent/",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Capped reward detergent",
+      price: 5000,
+      effectivePriceQuote: {
+        listPrice: 5000,
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 5000,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(candidates[0]?.evidence).not.toEqual(
+      expect.arrayContaining(["point value inferred: 1000 JPY", "coupon value inferred: 500 JPY"]),
+    );
+  });
+
   it("does not treat marketplace point multipliers as guaranteed yen discounts", () => {
     const candidates = extractSearchCandidatesFromHtml(
       `

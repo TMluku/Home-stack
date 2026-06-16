@@ -26,6 +26,7 @@ const evaluations = qaRows.map(([date, device, browser, network, result, notes])
   const hasBrowserE2eEvidenceUrl = notes.includes(expectedBrowserE2eWorkflowUrl) || browserE2eRunUrlPattern.test(notes);
   const hasAutomatedEvidence = /mobile-qa-evidence|mobile-price-condition-proof/i.test(notes);
   const hasEvidenceFiles = /mobile-price-condition-proof\.png/i.test(notes) && /mobile-price-condition-proof\.json/i.test(notes);
+  const hasConditionAuditGrid = /条件成立チェック|condition audit grid/i.test(notes);
   const hasConditionActionNote = /条件確認メモ|condition action note/i.test(notes);
   const hasRealDeviceScreenshot =
     /(?:phone|real[- ]?device|実機|スマホ|端末).{0,40}(?:screenshot|screen shot|スクリーンショット|画面)|(?:screenshot|screen shot|スクリーンショット|画面).{0,40}(?:phone|real[- ]?device|実機|スマホ|端末)/i.test(
@@ -38,6 +39,7 @@ const evaluations = qaRows.map(([date, device, browser, network, result, notes])
   if (!hasBrowserE2eEvidenceUrl) issues.push("Browser E2E workflow or run URL");
   if (!hasAutomatedEvidence) issues.push("mobile-qa-evidence note");
   if (!hasEvidenceFiles) issues.push("mobile-price-condition-proof.png and mobile-price-condition-proof.json");
+  if (!hasConditionAuditGrid) issues.push("condition audit grid");
   if (!hasConditionActionNote) issues.push("譚｡莉ｶ遒ｺ隱阪Γ繝｢ / condition action note");
   if (!hasRealDeviceScreenshot) issues.push("real-phone screenshot note");
 
@@ -57,6 +59,7 @@ if (passes.length === 0) {
     [
       `FAIL ${qaFile}: no real-device GitHub Pages QA pass is recorded.`,
       "Add a non-placeholder matrix row with Result `Pass`, the tested published URL, Browser E2E workflow or run URL, `mobile-qa-evidence` notes, mobile evidence filenames, `条件確認メモ`, and a real-phone screenshot note.",
+      "The row notes must also mention `condition audit grid` after checking the condition成立 audit grid on the phone.",
       rowDiagnostics ? `Checked dated rows:\n${rowDiagnostics}` : "No dated QA rows were found in the matrix.",
     ].join("\n"),
   );

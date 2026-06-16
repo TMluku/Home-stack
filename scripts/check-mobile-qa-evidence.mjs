@@ -75,6 +75,7 @@ for (const file of jsonFiles) {
   if (qaTemplate.browserE2eHref !== expectedBrowserE2eWorkflowUrl) failures.push(`${file}: missing Browser E2E workflow link`);
   if (!qaTemplateText.includes(expectedPagesUrl)) failures.push(`${file}: QA template does not include published Pages URL`);
   if (!qaTemplateText.includes("mobile-qa-evidence")) failures.push(`${file}: QA template does not mention mobile-qa-evidence`);
+  if (!qaTemplateText.includes("condition audit grid")) failures.push(`${file}: QA template does not mention condition audit grid`);
   if (!qaTemplateText.includes("実機スクリーンショット"))
     failures.push(`${file}: QA template does not mention real-phone screenshot notes`);
   if (!qaTemplateText.includes("mobile-price-condition-proof.png") || !qaTemplateText.includes("mobile-price-condition-proof.json")) {

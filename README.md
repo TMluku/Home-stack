@@ -77,13 +77,13 @@ pnpm.cmd run check:real-device-qa
 
 `test:e2e` checks the published GitHub Pages URL, the visual asset used by the price-search UI, and the public QR SVG structure/dimensions by default. Override it with `HOME_STACK_PAGES_URL` when validating another deployment.
 
-`test:e2e:browser` builds the static Pages export, serves it locally, and verifies the price-search flow in mobile and desktop Chromium. `check:mobile-qa-evidence` validates the generated screenshot and metrics JSON, including the hero visual, public QR, published Pages URL, Browser E2E workflow link, QA checklist, mobile overflow metrics, candidate condition-banner anchors, all condition-banner links resolving to open proof details, condition action note, deduction confirmation checklist, condition memo copy action, price-verification lanes, comparison-card fallback price, and price-condition proof details before those files are used for manual QA. Install the browser once with:
+`test:e2e:browser` builds the static Pages export, serves it locally, and verifies the price-search flow in mobile and desktop Chromium. `check:mobile-qa-evidence` validates the generated screenshot and metrics JSON, including the hero visual, public QR, published Pages URL, Browser E2E workflow link, QA checklist, mobile overflow metrics, candidate condition-banner anchors, all condition-banner links resolving to open proof details, condition action note, deduction confirmation checklist, condition audit grid, condition memo copy action, price-verification lanes, comparison-card fallback price, and price-condition proof details before those files are used for manual QA. Install the browser once with:
 
 ```powershell
 pnpm.cmd exec playwright install chromium
 ```
 
-`check:real-device-qa` is a manual release gate. It intentionally fails until `docs/mobile-qa.md` contains a non-placeholder real-phone `Pass` row with the tested Pages URL, `mobile-qa-evidence` notes, `条件確認メモ`, and a real-phone screenshot note.
+`check:real-device-qa` is a manual release gate. It intentionally fails until `docs/mobile-qa.md` contains a non-placeholder real-phone `Pass` row with the tested Pages URL, `mobile-qa-evidence` notes, `条件確認メモ`, `condition audit grid`, and a real-phone screenshot note.
 
 When the real-device gate fails, it prints row-level missing evidence such as the published URL, Browser E2E workflow/run URL, mobile evidence filenames, condition-action note, or real-phone screenshot note.
 
@@ -92,10 +92,10 @@ Manual smartphone QA for Pages:
 - Open `https://tmluku.github.io/Home-stack/` on a real phone.
 - Or scan the hero QR code from another device to open the published Pages URL.
 - On the hero, use `公開URLをコピー` or `URLを共有` to send the Pages URL to the device/browser used for real-device QA.
-- Tap `QA記録をコピー` on the hero and paste the generated row into the real-device matrix in `docs/mobile-qa.md`; the copied memo includes the public URL, Browser E2E workflow URL, `mobile-qa-evidence` artifact name, expected evidence filenames, `条件確認メモ`, and a real-phone screenshot filename placeholder.
+- Tap `QA記録をコピー` on the hero and paste the generated row into the real-device matrix in `docs/mobile-qa.md`; the copied memo includes the public URL, Browser E2E workflow URL, `mobile-qa-evidence` artifact name, expected evidence filenames, `条件確認メモ`, `condition audit grid`, and a real-phone screenshot filename placeholder.
 - Confirm the price-search visual loads.
 - Tap an inventory chip and confirm candidates appear in price order.
-- Confirm condition-required cards show `条件価格の要点`, `価格条件の確認先`, `条件確認メモ`, `控除してよい条件`, `価格成立条件の要約`, concrete condition badges such as `購入条件あり` or `クーポン条件あり`, the fallback recompare price when conditions do not apply, the condition decision rows for what to confirm/reject on the seller page, evidence rows, and a link to the seller page without horizontal scrolling.
+- Confirm condition-required cards show `条件価格の要点`, `価格条件の確認先`, `条件確認メモ`, `控除してよい条件`, `条件成立チェック` / condition audit grid, `価格成立条件の要約`, concrete condition badges such as `購入条件あり` or `クーポン条件あり`, the fallback recompare price when conditions do not apply, the condition decision rows for what to confirm/reject on the seller page, evidence rows, and a link to the seller page without horizontal scrolling.
 - Open `価格順リストを見る` and confirm comparison cards show a compact condition summary and condition-fallback recompare price before the detailed condition rows.
 - Paste `https://example.com/demo-condition-item` into `商品ページURL`, tap `ライブ価格を取得`, then confirm the URL-scan `条件あり` banner jumps to the same style of price-condition proof.
 
@@ -139,7 +139,7 @@ Use this checklist when changing price extraction, condition labels, static Page
 
 2. Publish through `main`; `.github/workflows/pages-branch.yml` updates `gh-pages` automatically.
 3. Confirm GitHub Actions are green: `CI`, `Browser E2E`, `Publish GitHub Pages Branch`, and `pages-build-deployment`.
-4. Download the `mobile-qa-evidence` artifact from the latest `Browser E2E` run and inspect `mobile-price-condition-proof.png` plus `mobile-price-condition-proof.json`; the JSON should include the published Pages URL, Browser E2E workflow link, hero visual/QR metrics, mobile overflow metrics, candidate condition-banner anchors, all condition-banner links resolving to open proof details, condition-price quick-read items, condition guardrails, condition action note, deduction confirmation checklist, condition memo copy action, price-verification lanes, comparison-card fallback price, condition summaries, and condition-proof rows.
+4. Download the `mobile-qa-evidence` artifact from the latest `Browser E2E` run and inspect `mobile-price-condition-proof.png` plus `mobile-price-condition-proof.json`; the JSON should include the published Pages URL, Browser E2E workflow link, hero visual/QR metrics, mobile overflow metrics, candidate condition-banner anchors, all condition-banner links resolving to open proof details, condition-price quick-read items, condition guardrails, condition action note, deduction confirmation checklist, condition audit grid, condition memo copy action, price-verification lanes, comparison-card fallback price, condition summaries, and condition-proof rows.
 5. Confirm the public app responds at `https://tmluku.github.io/Home-stack/`.
 6. For UI or price-condition changes, complete the real-device checklist in `docs/mobile-qa.md`; use the hero `QA記録をコピー` button to seed the matrix row, then replace the device/browser/result placeholders.
 7. Run the manual real-device gate after recording the phone pass:

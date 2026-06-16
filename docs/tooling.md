@@ -13,7 +13,7 @@ Home Stack is now a Next.js + TypeScript app using the App Router.
 | `pnpm run check:pages` | Check remote branch, Pages URL, and optional GitHub API readiness for the Pages deployment. |
 | `pnpm run deploy:pages-branch` | Publish an existing `out/` export to the `gh-pages` branch. |
 | `pnpm run preview:pages` | Serve the static Pages export locally under `/Home-stack/`. |
-| `pnpm run test:e2e` | Smoke-test the published GitHub Pages URL, visual asset response, QR SVG, and real-device QA cue text. |
+| `pnpm run test:e2e` | Smoke-test the published GitHub Pages URL, visual asset response, visual caption/legend, QR SVG, and real-device QA cue text. |
 | `pnpm run test:e2e:browser` | Run Playwright against the static Pages export in mobile and desktop Chromium, including visual load checks plus mobile price-condition screenshot and metrics JSON under `test-results/`. |
 | `pnpm run check:mobile-qa-evidence` | Validate the generated mobile QA screenshot and metrics JSON under `test-results/`. |
 | `pnpm run check:real-device-qa` | Confirm `docs/mobile-qa.md` contains a real-phone GitHub Pages `Pass` row with published URL and evidence notes; failures list the missing row-level evidence. |

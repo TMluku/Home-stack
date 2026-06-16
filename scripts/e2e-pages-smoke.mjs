@@ -20,6 +20,11 @@ const checks = [
   ["references the price insight visual", html.includes("price-insight-visual.png")],
   ["serves the price insight visual image", assetResponse.ok && assetContentType.includes("image/")],
   ["serves the expected price insight visual dimensions", assetDimensions?.width === 1693 && assetDimensions?.height === 929],
+  [
+    "renders the price insight visual condition caption",
+    html.includes("条件込み価格を先に見る") && html.includes("条件なし価格と証跡を同じカードで確認"),
+  ],
+  ["renders the price insight visual legend", html.includes("条件込み") && html.includes("戻し価格") && html.includes("証跡")],
   ["references the public Pages QR", html.includes("pages-qr.svg")],
   ["serves the public Pages QR SVG", qrResponse.ok && qrContentType.includes("image/")],
   ["serves a structured public Pages QR SVG", qrSvg.includes("<svg") && qrSvg.includes('id="qr-path"')],

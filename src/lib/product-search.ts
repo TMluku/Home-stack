@@ -431,18 +431,22 @@ function inferPriceAdjustments(snippet: string, listPrice: number) {
   const couponRewardLooksConditional = hasDateLikeRewardCopy(text, ["coupon", "discount", "off"]) || hasCouponCodeConditionCopy(text);
   const pointValue = pointRewardLooksConditional ? undefined : extractPointValue(text, listPrice);
   const couponValue = couponRewardLooksConditional ? undefined : extractCouponValue(text, listPrice);
-  const pointConditionRequired =
+  const pointRewardAmountTooLarge = hasOversizedRewardAmount(text, ["point", "points"], listPrice, 0.35);
+  const couponRewardAmountTooLarge = hasOversizedRewardAmount(text, ["coupon", "discount", "off"], listPrice, 0.6);
+  let pointConditionRequired =
     !pointValue &&
     (hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"]) ||
       hasRewardMultiplierCopy(text, ["point", "points", "ポイント"]) ||
       hasDateLikeRewardCopy(text, ["point", "points", "ポイント"]) ||
       hasRewardThresholdCopy(text, ["point", "points", "ポイント"]));
-  const couponConditionRequired =
+  let couponConditionRequired =
     !couponValue &&
     (hasAmbiguousRewardCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
       hasRewardThresholdCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
       hasDateLikeRewardCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
       hasCouponCodeConditionCopy(text));
+  pointConditionRequired = pointConditionRequired || (!pointValue && pointRewardAmountTooLarge);
+  couponConditionRequired = couponConditionRequired || (!couponValue && couponRewardAmountTooLarge);
   const evidence = [
     typeof shippingFee === "number" ? `shipping fee inferred: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
     shippingConditionRequired ? "shipping condition requires retailer confirmation" : "",
@@ -649,6 +653,12 @@ function extractCouponValue(text: string, listPrice: number) {
   if (explicit && explicit / listPrice <= 0.6) return explicit;
   const rate = extractRateAroundLabel(text, ["クーポン", "coupon", "off", "discount"]);
   return rate && rate <= 60 ? Math.round(listPrice * (rate / 100)) : undefined;
+}
+
+function hasOversizedRewardAmount(text: string, labels: string[], listPrice: number, maxRatio: number) {
+  if (!listPrice) return false;
+  const explicit = extractAmountAroundLabel(text, labels);
+  return Boolean(explicit && explicit / listPrice > maxRatio);
 }
 
 function extractShippingFeeFromText(text: string) {

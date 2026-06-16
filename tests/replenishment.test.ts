@@ -830,6 +830,36 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.evidence).not.toEqual(expect.arrayContaining(["point value from page text: 10 JPY"]));
   });
 
+  it("marks oversized direct-page rewards conditional instead of deducting them", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Oversized reward product</title></head>
+        <body>
+          <span>price 1,000 JPY</span>
+          <span>points 900 JPY</span>
+          <span>coupon 900 JPY</span>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1000,
+      effectivePriceQuote: {
+        listPrice: 1000,
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 1000,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(
+      expect.arrayContaining(["point value from page text: 900 JPY", "coupon value from page text: 900 JPY"]),
+    );
+  });
+
   it("does not deduct threshold coupon claims from broad product page text", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -2622,6 +2652,38 @@ describe("replenishment domain logic", () => {
     });
     expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["point condition requires retailer confirmation"]));
     expect(candidates[0]?.evidence).not.toEqual(expect.arrayContaining(["point value inferred: 10 JPY"]));
+  });
+
+  it("marks oversized marketplace rewards conditional instead of deducting them", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/oversized-reward" title="Oversized reward detergent">Oversized reward detergent</a>
+          <span>price 1,000 JPY</span>
+          <span>points 900 JPY</span>
+          <span>coupon 900 JPY</span>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      price: 1000,
+      effectivePriceQuote: {
+        listPrice: 1000,
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 1000,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(candidates[0]?.evidence).not.toEqual(
+      expect.arrayContaining(["point value inferred: 900 JPY", "coupon value inferred: 900 JPY"]),
+    );
   });
 
   it("does not deduct marketplace threshold coupons as guaranteed discounts", () => {

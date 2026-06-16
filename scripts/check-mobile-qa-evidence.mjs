@@ -12,6 +12,7 @@ const expectedAssertions = [
   "real-device QA checklist is present on the hero",
   "effective price proof details are visible",
   "condition price quick-read remains visible",
+  "condition guardrails show verification target and fallback price",
   "condition evidence remains readable on mobile width",
   "condition fallback recompare price is visible",
   "condition decision rows show confirm and reject guidance",
@@ -98,6 +99,16 @@ for (const file of jsonFiles) {
   }
   if (!quickReadText.includes("控除合計") || !quickReadText.includes("要確認")) {
     failures.push(`${file}: missing condition-price quick-read deduction or decision labels`);
+  }
+  if (!Array.isArray(summary.guardrailItems) || summary.guardrailItems.length !== 3) {
+    failures.push(`${file}: expected three condition guardrail items`);
+  }
+  const guardrailText = Array.isArray(summary.guardrailItems) ? summary.guardrailItems.join(" ") : "";
+  if (!guardrailText.includes("確認先") || !guardrailText.includes("販売ページ")) {
+    failures.push(`${file}: missing condition guardrail verification target`);
+  }
+  if (!guardrailText.includes("根拠") || !guardrailText.includes("未成立時")) {
+    failures.push(`${file}: missing condition guardrail evidence or fallback labels`);
   }
   if (!Array.isArray(summary.breakdownItems) || summary.breakdownItems.length !== 5) {
     failures.push(`${file}: expected five price-breakdown rows`);

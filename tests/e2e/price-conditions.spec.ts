@@ -80,6 +80,12 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(conditionalProof.locator(".effective-proof__quick-read")).toContainText("条件なし");
   await expect(conditionalProof.locator(".effective-proof__quick-read")).toContainText("控除合計");
   await expect(conditionalProof.locator(".effective-proof__quick-read")).toContainText("要確認");
+  await expect(conditionalProof.locator(".effective-proof__guardrails")).toHaveAttribute("aria-label", "価格条件の確認先");
+  await expect(conditionalProof.locator(".effective-proof__guardrails div")).toHaveCount(3);
+  await expect(conditionalProof.locator(".effective-proof__guardrails")).toContainText("確認先");
+  await expect(conditionalProof.locator(".effective-proof__guardrails")).toContainText("販売ページ");
+  await expect(conditionalProof.locator(".effective-proof__guardrails")).toContainText("根拠");
+  await expect(conditionalProof.locator(".effective-proof__guardrails")).toContainText("未成立時");
   await expect(conditionalProof.locator(".effective-proof__breakdown")).toHaveAttribute("aria-label", "実質価格の計算内訳");
   await expect(conditionalProof.locator(".effective-proof__breakdown-item")).toHaveCount(5);
   await expect(conditionalProof.locator(".effective-proof__breakdown-item--total")).toContainText("実質価格");
@@ -237,6 +243,9 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
         quickReadItems: [...proof.querySelectorAll(".effective-proof__quick-read-item")]
           .map((item) => item.textContent?.trim())
           .filter(Boolean),
+        guardrailItems: [...proof.querySelectorAll(".effective-proof__guardrails div")]
+          .map((item) => item.textContent?.trim())
+          .filter(Boolean),
         breakdownItems: [...proof.querySelectorAll(".effective-proof__breakdown-item")]
           .map((item) => item.textContent?.trim())
           .filter(Boolean),
@@ -289,6 +298,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
             "real-device QA checklist is present on the hero",
             "effective price proof details are visible",
             "condition price quick-read remains visible",
+            "condition guardrails show verification target and fallback price",
             "condition evidence remains readable on mobile width",
             "condition fallback recompare price is visible",
             "condition decision rows show confirm and reject guidance",

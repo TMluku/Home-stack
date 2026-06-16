@@ -1794,9 +1794,33 @@ function ProductSearchPanel({
         <p>APIキーがある場合は公式APIを優先し、未設定なら取得できる範囲で公開ページから候補を抽出します。</p>
       </div>
 
-      <div className="price-insight-visual" aria-hidden="true">
-        <Image src={`${staticAssetBasePath}/price-insight-visual.png`} alt="" width={1600} height={900} priority />
-      </div>
+      <figure className="price-insight-visual" aria-label="価格条件を含めた比較フロー">
+        <Image
+          src={`${staticAssetBasePath}/price-insight-visual.png`}
+          alt="条件込み価格、条件なし価格、証跡確認を並べた価格比較プレビュー"
+          width={1600}
+          height={900}
+          priority
+        />
+        <figcaption>
+          <strong>条件込み価格を先に見る</strong>
+          <span>条件なし価格と証跡を同じカードで確認</span>
+        </figcaption>
+        <dl className="price-insight-visual__legend" aria-label="価格画像の確認ポイント">
+          <div>
+            <dt>条件込み</dt>
+            <dd>送料・ポイント・クーポンを反映</dd>
+          </div>
+          <div>
+            <dt>戻し価格</dt>
+            <dd>条件不成立時に再比較</dd>
+          </div>
+          <div>
+            <dt>証跡</dt>
+            <dd>販売ページで成立条件を確認</dd>
+          </div>
+        </dl>
+      </figure>
 
       <fieldset className="inventory-search-chips">
         <legend className="visually-hidden">在庫から検索</legend>

@@ -26,6 +26,11 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   });
   expect(visualMetrics?.renderedWidth ?? 0).toBeGreaterThan(250);
   expect(visualMetrics?.renderedHeight ?? 0).toBeGreaterThan(130);
+  await expect(page.locator(".price-insight-visual figcaption")).toContainText("条件込み価格");
+  await expect(page.locator(".price-insight-visual__legend div")).toHaveCount(3);
+  await expect(page.locator(".price-insight-visual__legend")).toContainText("条件込み");
+  await expect(page.locator(".price-insight-visual__legend")).toContainText("戻し価格");
+  await expect(page.locator(".price-insight-visual__legend")).toContainText("証跡");
   await expect(page.getByAltText("Home Stack GitHub Pages 公開URLのQRコード")).toHaveAttribute("src", /pages-qr\.svg/);
   await expect(page.getByLabel("実機スマホQA確認ポイント").locator("li")).toHaveCount(3);
   await page.getByRole("button", { name: "公開URLをコピー" }).click();
@@ -220,6 +225,10 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
     return {
       visual: readImage(visual),
       qr: readImage(qr),
+      visualCaption: document.querySelector(".price-insight-visual figcaption")?.textContent?.trim() ?? null,
+      visualLegendItems: [...document.querySelectorAll(".price-insight-visual__legend div")]
+        .map((item) => item.textContent?.trim())
+        .filter(Boolean),
       qaPointCount: document.querySelectorAll('[aria-label="実機スマホQA確認ポイント"] li').length,
     };
   });
@@ -359,6 +368,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
             "document width fits viewport",
             "no mobile horizontal overflow candidates",
             "price-search visual asset renders on mobile",
+            "price-search visual caption explains condition comparison",
             "public Pages QR renders on mobile",
             "real-device QA checklist is present on the hero",
             "effective price proof details are visible",

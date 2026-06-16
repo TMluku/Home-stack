@@ -8,6 +8,7 @@ const expectedAssertions = [
   "document width fits viewport",
   "no mobile horizontal overflow candidates",
   "price-search visual asset renders on mobile",
+  "price-search visual caption explains condition comparison",
   "public Pages QR renders on mobile",
   "real-device QA checklist is present on the hero",
   "effective price proof details are visible",
@@ -61,6 +62,14 @@ for (const file of jsonFiles) {
   }
   if (visual.renderedWidth < 250 || visual.renderedHeight < 130) {
     failures.push(`${file}: rendered price-search visual is too small`);
+  }
+  if (!String(heroAssets.visualCaption ?? "").includes("条件込み価格")) failures.push(`${file}: missing price-search visual caption`);
+  if (!Array.isArray(heroAssets.visualLegendItems) || heroAssets.visualLegendItems.length !== 3) {
+    failures.push(`${file}: expected three price-search visual legend items`);
+  }
+  const visualLegendText = Array.isArray(heroAssets.visualLegendItems) ? heroAssets.visualLegendItems.join(" ") : "";
+  if (!visualLegendText.includes("条件込み") || !visualLegendText.includes("戻し価格") || !visualLegendText.includes("証跡")) {
+    failures.push(`${file}: missing price-search visual legend labels`);
   }
 
   const qr = heroAssets.qr ?? {};

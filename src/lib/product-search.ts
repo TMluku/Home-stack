@@ -71,6 +71,7 @@ export function extractSearchCandidatesFromHtml(html: string, source: Marketplac
     const title = extractTitle(snippet);
     if (!url || !title || !price) return null;
     if (hasUsedConditionCopy(title)) return null;
+    if (hasSampleTrialProductCopy(title)) return null;
     if (hasUnavailableOfferCopy(snippet)) return null;
     const adjustments = inferPriceAdjustments(snippet, price);
 
@@ -150,6 +151,7 @@ async function searchRakutenApi(query: string): Promise<{ candidates: RawCandida
         .filter((item): item is NonNullable<typeof item> => Boolean(item))
         .filter((item) => !hasUnavailableMachineState(item as OfficialApiRecord))
         .filter((item) => !hasUsedConditionCopy(collectRecordText(item)))
+        .filter((item) => !hasSampleTrialProductCopy(collectRecordText(item)))
         .filter((item) => !hasUnavailableOfferCopy(collectRecordText(item)))
         .map((item): RawCandidate => {
           const signals = buildOfficialPriceSignals(item as OfficialApiRecord, item.itemPrice ?? 0, "rakuten");
@@ -236,6 +238,7 @@ async function searchYahooShoppingApi(
       payload.hits
         ?.filter((item) => !hasUnavailableMachineState(item as OfficialApiRecord))
         ?.filter((item) => !hasUsedConditionCopy(collectRecordText(item)))
+        ?.filter((item) => !hasSampleTrialProductCopy(collectRecordText(item)))
         ?.filter((item) => !hasUnavailableOfferCopy(collectRecordText(item)))
         ?.map((item): RawCandidate => {
           const signals = buildOfficialPriceSignals(item as OfficialApiRecord, item.price ?? 0, "yahoo-shopping");
@@ -1385,6 +1388,12 @@ function isUsedConditionPriceContext(text: string, index: number, length: number
 
 function hasUsedConditionCopy(text: string) {
   return /(?:中古|中古品|訳あり|アウトレット|開封済み|展示品|再生品|箱潰れ|箱つぶれ|used|pre-owned|preowned|open box|open-box|outlet|refurbished|renewed|damaged box|UsedCondition|RefurbishedCondition|DamagedCondition)/i.test(
+    text,
+  );
+}
+
+function hasSampleTrialProductCopy(text: string) {
+  return /(?:\bsample[-\s]?(?:size|trial|tester|pack|item|product)?\b|\btrial[-\s]?(?:size|pack|item|product)?\b|\btester\b|\bmini\s*size\b|\btravel\s*size\b|\btry\s*me\s*size\b|\u30b5\u30f3\u30d7\u30eb|\u304a\u8a66\u3057|\u8a66\u4f9b\u54c1|\u30c6\u30b9\u30bf\u30fc|\u30df\u30cb\u30b5\u30a4\u30ba|\u30c8\u30e9\u30d9\u30eb\u30b5\u30a4\u30ba)/i.test(
     text,
   );
 }

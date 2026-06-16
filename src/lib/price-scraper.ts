@@ -144,7 +144,8 @@ function findPriceInJsonLd(value: unknown): ExtractedPrice {
 
   const rawPrice = record.price;
   const price = parsePrice(rawPrice);
-  if (price && !hasUsedConditionCopy(collectStructuredText(record))) {
+  const recordText = collectStructuredText(record);
+  if (price && !hasUsedConditionCopy(recordText) && !hasSampleTrialProductCopy(recordText)) {
     const adjustments = extractStructuredAdjustments(record);
     return {
       price,
@@ -231,7 +232,8 @@ function findPriceInEmbeddedJson(value: unknown): ExtractedPrice {
   }
 
   const price = extractFirstAmountForKeys(record, ["salePrice", "currentPrice", "itemPrice", "taxIncludedPrice", "price"]);
-  if (price && isEmbeddedProductRecord(record) && !hasUsedConditionCopy(collectStructuredText(record))) {
+  const recordText = collectStructuredText(record);
+  if (price && isEmbeddedProductRecord(record) && !hasUsedConditionCopy(recordText) && !hasSampleTrialProductCopy(recordText)) {
     const adjustments = extractEmbeddedAdjustments(record);
     return {
       price,
@@ -256,6 +258,7 @@ function extractAttributePrice(html: string) {
   for (const tag of tags) {
     const decodedTag = decodeEntities(tag);
     if (hasUsedConditionCopy(decodedTag)) continue;
+    if (hasSampleTrialProductCopy(decodedTag)) continue;
     if (hasPurchaseConditionCopy(decodedTag)) continue;
     if (hasRestrictedPriceCopy(decodedTag)) continue;
     if (hasConditionalDiscountPriceCopy(decodedTag)) continue;
@@ -1411,6 +1414,12 @@ function isUsedConditionPriceContext(text: string, index: number, length: number
 
 function hasUsedConditionCopy(text: string) {
   return /(?:中古|中古品|訳あり|アウトレット|開封済み|展示品|再生品|箱潰れ|箱つぶれ|used|pre-owned|preowned|open box|open-box|outlet|refurbished|renewed|damaged box|UsedCondition|RefurbishedCondition|DamagedCondition)/i.test(
+    text,
+  );
+}
+
+function hasSampleTrialProductCopy(text: string) {
+  return /(?:\bsample[-\s]?(?:size|trial|tester|pack|item|product)?\b|\btrial[-\s]?(?:size|pack|item|product)?\b|\btester\b|\bmini\s*size\b|\btravel\s*size\b|\btry\s*me\s*size\b|\u30b5\u30f3\u30d7\u30eb|\u304a\u8a66\u3057|\u8a66\u4f9b\u54c1|\u30c6\u30b9\u30bf\u30fc|\u30df\u30cb\u30b5\u30a4\u30ba|\u30c8\u30e9\u30d9\u30eb\u30b5\u30a4\u30ba)/i.test(
     text,
   );
 }

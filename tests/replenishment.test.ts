@@ -243,6 +243,42 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips sample JSON-LD offers before regular product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Structured regular product</title>
+          <script type="application/ld+json">
+            {
+              "@type": "Product",
+              "name": "Structured regular product",
+              "offers": [
+                {
+                  "@type": "Offer",
+                  "name": "Sample size product",
+                  "price": "300",
+                  "priceCurrency": "JPY"
+                },
+                {
+                  "@type": "Offer",
+                  "name": "Regular size product",
+                  "price": "2,400",
+                  "priceCurrency": "JPY"
+                }
+              ]
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2400,
+      currency: "JPY",
+      source: "json-ld",
+    });
+  });
+
   it("does not use JSON-LD aggregate range prices as direct product prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -305,6 +341,42 @@ describe("replenishment domain logic", () => {
 
     expect(extracted).toMatchObject({
       price: 1480,
+      currency: "JPY",
+      source: "embedded-json",
+    });
+  });
+
+  it("skips sample embedded JSON prices before regular product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Embedded regular product</title>
+          <script id="__NEXT_DATA__" type="application/json">
+            {
+              "props": {
+                "pageProps": {
+                  "offers": [
+                    {
+                      "productName": "Trial size detergent",
+                      "currentPrice": "300",
+                      "currency": "JPY"
+                    },
+                    {
+                      "productName": "Regular size detergent",
+                      "currentPrice": "2,400",
+                      "currency": "JPY"
+                    }
+                  ]
+                }
+              }
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2400,
       currency: "JPY",
       source: "embedded-json",
     });
@@ -793,6 +865,23 @@ describe("replenishment domain logic", () => {
 
     expect(extracted).toMatchObject({
       price: 1480,
+      source: "data-attribute",
+    });
+  });
+
+  it("skips sample data-attribute prices before regular attribute prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Attribute regular product</title></head>
+        <body>
+          <button data-current-price="300" data-label="sample size product">Try sample</button>
+          <button data-current-price="2,400" data-label="regular item price">Buy regular</button>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2400,
       source: "data-attribute",
     });
   });
@@ -2552,6 +2641,29 @@ describe("replenishment domain logic", () => {
     expect(candidates.map((candidate) => candidate.price)).not.toEqual(expect.arrayContaining([300, 500]));
   });
 
+  it("filters marketplace sample products before price ranking", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/sample" title="Sample size detergent">Sample size detergent</a>
+          <span>price 300 JPY</span>
+        </article>
+        <article>
+          <a href="/item/regular" title="Regular size detergent">Regular size detergent</a>
+          <span>price 2,400 JPY</span>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/detergent/",
+    );
+
+    expect(candidates.map((candidate) => candidate.url)).not.toEqual(expect.arrayContaining(["https://search.rakuten.co.jp/item/sample"]));
+    expect(candidates[0]).toMatchObject({
+      url: "https://search.rakuten.co.jp/item/regular",
+      price: 2400,
+    });
+  });
+
   it("skips discount amounts before product totals in marketplace HTML", () => {
     const candidates = extractSearchCandidatesFromHtml(
       `
@@ -3826,6 +3938,85 @@ describe("replenishment domain logic", () => {
       expect(result.candidates[0]).toMatchObject({
         url: "https://example.com/yahoo-available",
         price: 1280,
+      });
+    } finally {
+      if (previousRakutenId === undefined) delete process.env.RAKUTEN_APPLICATION_ID;
+      else process.env.RAKUTEN_APPLICATION_ID = previousRakutenId;
+      if (previousYahooId === undefined) delete process.env.YAHOO_SHOPPING_APP_ID;
+      else process.env.YAHOO_SHOPPING_APP_ID = previousYahooId;
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("filters official API sample products before price ranking", async () => {
+    const previousRakutenId = process.env.RAKUTEN_APPLICATION_ID;
+    const previousYahooId = process.env.YAHOO_SHOPPING_APP_ID;
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "Sample size official detergent",
+                  itemPrice: 300,
+                  itemUrl: "https://example.com/rakuten-sample",
+                  postageFlag: 0,
+                },
+              },
+              {
+                Item: {
+                  itemName: "Regular size official detergent",
+                  itemPrice: 2400,
+                  itemUrl: "https://example.com/rakuten-regular",
+                  postageFlag: 0,
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (requestUrl.includes("shopping.yahooapis.jp")) {
+        return new Response(
+          JSON.stringify({
+            hits: [
+              {
+                name: "Trial size Yahoo detergent",
+                price: 500,
+                url: "https://example.com/yahoo-trial",
+                shipping: { code: 1, name: "free shipping" },
+              },
+              {
+                name: "Regular size Yahoo detergent",
+                price: 2200,
+                url: "https://example.com/yahoo-regular",
+                shipping: { code: 1, name: "free shipping" },
+              },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response("not found", { status: 404 });
+    });
+
+    try {
+      const result = await searchProductPrices("official detergent");
+
+      expect(result.candidates.map((candidate) => candidate.url)).not.toEqual(
+        expect.arrayContaining(["https://example.com/rakuten-sample", "https://example.com/yahoo-trial"]),
+      );
+      expect(result.candidates.map((candidate) => candidate.url)).toEqual(
+        expect.arrayContaining(["https://example.com/rakuten-regular", "https://example.com/yahoo-regular"]),
+      );
+      expect(result.candidates[0]).toMatchObject({
+        url: "https://example.com/yahoo-regular",
+        price: 2200,
       });
     } finally {
       if (previousRakutenId === undefined) delete process.env.RAKUTEN_APPLICATION_ID;

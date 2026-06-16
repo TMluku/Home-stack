@@ -480,6 +480,28 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["購入条件あり"]));
   });
 
+  it("skips sample and trial prices before direct product totals", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Full size product</title></head>
+        <body>
+          <span>sample price 300 JPY</span>
+          <span>trial size 500 JPY</span>
+          <strong>item price 2,400 JPY</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2400,
+      source: "html-text",
+      effectivePriceQuote: {
+        listPrice: 2400,
+        effectivePrice: 2400,
+      },
+    });
+  });
+
   it("skips discount amounts before product totals on direct product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -2503,6 +2525,31 @@ describe("replenishment domain logic", () => {
       },
     });
     expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["購入条件あり"]));
+  });
+
+  it("skips marketplace sample and trial prices before item totals", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/full-size" title="Full size detergent">Full size detergent</a>
+          <span>sample price 300 JPY</span>
+          <span>trial size 500 JPY</span>
+          <strong>item price 2,400 JPY</strong>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Full size detergent",
+      price: 2400,
+      effectivePriceQuote: {
+        listPrice: 2400,
+        effectivePrice: 2400,
+      },
+    });
+    expect(candidates.map((candidate) => candidate.price)).not.toEqual(expect.arrayContaining([300, 500]));
   });
 
   it("skips discount amounts before product totals in marketplace HTML", () => {

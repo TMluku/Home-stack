@@ -336,6 +336,7 @@ function extractTextPrice(html: string) {
     const priceText = match[0];
     if (isUnitPriceContext(text, match.index ?? 0, priceText.length)) continue;
     if (isPackComponentPriceContext(text, match.index ?? 0, priceText.length)) continue;
+    if (isSampleTrialPriceContext(text, match.index ?? 0, priceText.length)) continue;
     if (isRangeLowerBoundPriceContext(text, match.index ?? 0, priceText.length)) continue;
     if (isEffectivePriceContext(text, match.index ?? 0, priceText.length)) continue;
     if (isInstallmentAmountContext(text, match.index ?? 0, priceText.length)) continue;
@@ -1221,6 +1222,14 @@ function isPackComponentPriceContext(text: string, index: number, length: number
     /^\s*(?:x|×|✕|\*)\s*[0-9０-９]+\s*(?:個|枚|本|袋|箱|ケース|セット|pack|packs|pcs|pieces|count)/i.test(after) ||
     /^\s*(?:for|each in)\s*[0-9０-９]+\s*(?:pack|packs|pcs|pieces|count)/i.test(after)
   );
+}
+
+function isSampleTrialPriceContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 36), index);
+  const after = text.slice(index + length, index + length + 36);
+  const sampleWords = /(?:sample|trial|tester|mini\s*size|travel\s*size|sample[-\s]?size|trial[-\s]?size)\s*(?:price|deal)?\s*$/i;
+  const sampleAfter = /^\s*(?:sample|trial|tester|mini\s*size|travel\s*size|sample[-\s]?size|trial[-\s]?size)(?:\s*(?:price|deal))?/i;
+  return sampleWords.test(before) || sampleAfter.test(after);
 }
 
 function isRangeLowerBoundPriceContext(text: string, index: number, length: number) {

@@ -1514,6 +1514,15 @@ function EffectivePriceProof({
   const confirmationItems = quote.conditionRequired
     ? ["販売ページの金額・送料と一致", "対象者・期間・併用可否を満たす", "満たさない控除は戻し価格で再比較"]
     : [];
+  const conditionAuditItems = quote.conditionRequired
+    ? [
+        { label: "金額", value: "商品価格・送料・控除額が販売ページと一致" },
+        { label: "対象", value: "会員/アプリ/初回/支払い方法の対象条件を確認" },
+        { label: "期限", value: "取得日がキャンペーン期間内なら採用" },
+        { label: "併用", value: "ポイントとクーポンの併用可否を確認" },
+        { label: "不成立", value: `${yenFormatter.format(recomparePrice)}で再比較` },
+      ]
+    : [];
   const verificationLanes = [
     { label: "採用価格", detail: `表示価格 ${yenFormatter.format(quote.listPrice)} を比較の土台にする` },
     {
@@ -1580,6 +1589,16 @@ function EffectivePriceProof({
             <li key={item}>{item}</li>
           ))}
         </ul>
+      ) : null}
+      {conditionAuditItems.length > 0 ? (
+        <dl className="effective-proof__audit" aria-label="条件成立チェック">
+          {conditionAuditItems.map((item) => (
+            <div key={item.label}>
+              <dt>{item.label}</dt>
+              <dd>{item.value}</dd>
+            </div>
+          ))}
+        </dl>
       ) : null}
       {conditionSummaryItems.length > 0 ? (
         <dl className="effective-proof__summary" aria-label="価格成立条件の要約">

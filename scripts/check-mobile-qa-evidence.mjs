@@ -15,6 +15,7 @@ const expectedAssertions = [
   "condition guardrails show verification target and fallback price",
   "condition action note explains seller-page checks",
   "condition confirmation checklist states when deductions may apply",
+  "condition audit grid shows amount target deadline stacking and fallback checks",
   "condition evidence remains readable on mobile width",
   "condition fallback recompare price is visible",
   "condition memo copy action is visible on mobile",
@@ -129,6 +130,19 @@ for (const file of jsonFiles) {
     !confirmationText.includes("戻し価格で再比較")
   ) {
     failures.push(`${file}: missing condition confirmation checklist text`);
+  }
+  if (!Array.isArray(summary.auditItems) || summary.auditItems.length !== 5) {
+    failures.push(`${file}: expected five condition audit items`);
+  }
+  const auditText = Array.isArray(summary.auditItems) ? summary.auditItems.join(" ") : "";
+  if (
+    !auditText.includes("金額") ||
+    !auditText.includes("対象") ||
+    !auditText.includes("期限") ||
+    !auditText.includes("併用") ||
+    !auditText.includes("不成立")
+  ) {
+    failures.push(`${file}: missing condition audit grid labels`);
   }
   if (!Array.isArray(summary.breakdownItems) || summary.breakdownItems.length !== 5) {
     failures.push(`${file}: expected five price-breakdown rows`);

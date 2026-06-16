@@ -90,6 +90,13 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(conditionalProof.locator(".effective-proof__confirmation")).toContainText("金額・送料と一致");
   await expect(conditionalProof.locator(".effective-proof__confirmation")).toContainText("対象者・期間・併用可否");
   await expect(conditionalProof.locator(".effective-proof__confirmation")).toContainText("戻し価格で再比較");
+  await expect(conditionalProof.locator(".effective-proof__audit")).toHaveAttribute("aria-label", "条件成立チェック");
+  await expect(conditionalProof.locator(".effective-proof__audit div")).toHaveCount(5);
+  await expect(conditionalProof.locator(".effective-proof__audit")).toContainText("金額");
+  await expect(conditionalProof.locator(".effective-proof__audit")).toContainText("対象");
+  await expect(conditionalProof.locator(".effective-proof__audit")).toContainText("期限");
+  await expect(conditionalProof.locator(".effective-proof__audit")).toContainText("併用");
+  await expect(conditionalProof.locator(".effective-proof__audit")).toContainText("不成立");
   await expect(conditionalProof.locator(".effective-proof__guardrails")).toContainText("確認先");
   await expect(conditionalProof.locator(".effective-proof__guardrails")).toContainText("販売ページ");
   await expect(conditionalProof.locator(".effective-proof__guardrails")).toContainText("根拠");
@@ -265,6 +272,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
         confirmationItems: [...proof.querySelectorAll(".effective-proof__confirmation li")]
           .map((item) => item.textContent?.trim())
           .filter(Boolean),
+        auditItems: [...proof.querySelectorAll(".effective-proof__audit div")].map((item) => item.textContent?.trim()).filter(Boolean),
         breakdownItems: [...proof.querySelectorAll(".effective-proof__breakdown-item")]
           .map((item) => item.textContent?.trim())
           .filter(Boolean),
@@ -357,6 +365,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
             "condition guardrails show verification target and fallback price",
             "condition action note explains seller-page checks",
             "condition confirmation checklist states when deductions may apply",
+            "condition audit grid shows amount target deadline stacking and fallback checks",
             "condition evidence remains readable on mobile width",
             "condition fallback recompare price is visible",
             "condition memo copy action is visible on mobile",

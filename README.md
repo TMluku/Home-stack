@@ -75,7 +75,7 @@ pnpm.cmd run check:real-device-qa
 - Biome lint
 - Vitest tests
 
-`test:e2e` checks the published GitHub Pages URL and the visual asset used by the price-search UI by default. Override it with `HOME_STACK_PAGES_URL` when validating another deployment.
+`test:e2e` checks the published GitHub Pages URL, the visual asset used by the price-search UI, and the public QR SVG structure/dimensions by default. Override it with `HOME_STACK_PAGES_URL` when validating another deployment.
 
 `test:e2e:browser` builds the static Pages export, serves it locally, and verifies the price-search flow in mobile and desktop Chromium. `check:mobile-qa-evidence` validates the generated screenshot and metrics JSON, including the hero visual, public QR, published Pages URL, Browser E2E workflow link, QA checklist, mobile overflow metrics, candidate condition-banner anchors, all condition-banner links resolving to open proof details, condition action note, deduction confirmation checklist, condition memo copy action, price-verification lanes, comparison-card fallback price, and price-condition proof details before those files are used for manual QA. Install the browser once with:
 

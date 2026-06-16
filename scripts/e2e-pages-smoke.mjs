@@ -10,6 +10,7 @@ const assetDimensions = readPngDimensions(assetBuffer);
 const qrUrl = new URL("pages-qr.svg", response.url);
 const qrResponse = await fetch(qrUrl, { redirect: "follow" });
 const qrContentType = qrResponse.headers.get("content-type") ?? "";
+const qrSvg = qrResponse.ok ? await qrResponse.text() : "";
 
 const checks = [
   ["responds with a 2xx status", response.ok],
@@ -21,6 +22,8 @@ const checks = [
   ["serves the expected price insight visual dimensions", assetDimensions?.width === 1693 && assetDimensions?.height === 929],
   ["references the public Pages QR", html.includes("pages-qr.svg")],
   ["serves the public Pages QR SVG", qrResponse.ok && qrContentType.includes("image/")],
+  ["serves a structured public Pages QR SVG", qrSvg.includes("<svg") && qrSvg.includes('id="qr-path"')],
+  ["serves the expected public Pages QR dimensions", qrSvg.includes('width="33mm"') && qrSvg.includes('height="33mm"')],
 ];
 
 const failures = checks.filter(([, passed]) => !passed);

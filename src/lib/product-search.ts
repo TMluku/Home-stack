@@ -433,11 +433,13 @@ function inferPriceAdjustments(snippet: string, listPrice: number) {
     !pointValue &&
     (hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"]) ||
       hasRewardMultiplierCopy(text, ["point", "points", "ポイント"]) ||
+      hasDateLikeRewardCopy(text, ["point", "points", "ポイント"]) ||
       hasRewardThresholdCopy(text, ["point", "points", "ポイント"]));
   const couponConditionRequired =
     !couponValue &&
     (hasAmbiguousRewardCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
       hasRewardThresholdCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
+      hasDateLikeRewardCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
       hasCouponCodeConditionCopy(text));
   const evidence = [
     typeof shippingFee === "number" ? `shipping fee inferred: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",

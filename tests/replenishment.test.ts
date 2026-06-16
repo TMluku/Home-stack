@@ -2737,6 +2737,39 @@ describe("replenishment domain logic", () => {
     );
   });
 
+  it("does not deduct marketplace reward date strings as guaranteed discounts", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/reward-date" title="Reward date detergent">Reward date detergent</a>
+          <span>price 2,000 JPY</span>
+          <span>points valid through 2026-06-20</span>
+          <span>coupon expires 2026-06-20</span>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      price: 2000,
+      effectivePriceQuote: {
+        listPrice: 2000,
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 2000,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(candidates[0]?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(candidates[0]?.evidence).not.toEqual(
+      expect.arrayContaining(["point value inferred: 2026 JPY", "coupon value inferred: 2026 JPY"]),
+    );
+  });
+
   it("does not use marketplace point reward amounts as item prices", () => {
     const candidates = extractSearchCandidatesFromHtml(
       `

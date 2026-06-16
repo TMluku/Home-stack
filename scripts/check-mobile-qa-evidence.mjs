@@ -13,6 +13,7 @@ const expectedAssertions = [
   "effective price proof details are visible",
   "condition price quick-read remains visible",
   "condition guardrails show verification target and fallback price",
+  "condition action note explains seller-page checks",
   "condition evidence remains readable on mobile width",
   "condition fallback recompare price is visible",
   "condition decision rows show confirm and reject guidance",
@@ -109,6 +110,10 @@ for (const file of jsonFiles) {
   }
   if (!guardrailText.includes("根拠") || !guardrailText.includes("未成立時")) {
     failures.push(`${file}: missing condition guardrail evidence or fallback labels`);
+  }
+  const actionNoteText = String(summary.actionNoteText ?? "");
+  if (!actionNoteText.includes("販売ページ") || !actionNoteText.includes("条件なし価格で再比較")) {
+    failures.push(`${file}: missing condition action note`);
   }
   if (!Array.isArray(summary.breakdownItems) || summary.breakdownItems.length !== 5) {
     failures.push(`${file}: expected five price-breakdown rows`);

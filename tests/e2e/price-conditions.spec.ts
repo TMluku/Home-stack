@@ -82,6 +82,9 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(conditionalProof.locator(".effective-proof__quick-read")).toContainText("要確認");
   await expect(conditionalProof.locator(".effective-proof__guardrails")).toHaveAttribute("aria-label", "価格条件の確認先");
   await expect(conditionalProof.locator(".effective-proof__guardrails div")).toHaveCount(3);
+  await expect(conditionalProof.locator(".effective-proof__action-note")).toHaveAttribute("aria-label", "条件確認メモ");
+  await expect(conditionalProof.locator(".effective-proof__action-note")).toContainText("販売ページ");
+  await expect(conditionalProof.locator(".effective-proof__action-note")).toContainText("条件なし価格で再比較");
   await expect(conditionalProof.locator(".effective-proof__guardrails")).toContainText("確認先");
   await expect(conditionalProof.locator(".effective-proof__guardrails")).toContainText("販売ページ");
   await expect(conditionalProof.locator(".effective-proof__guardrails")).toContainText("根拠");
@@ -246,6 +249,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
         guardrailItems: [...proof.querySelectorAll(".effective-proof__guardrails div")]
           .map((item) => item.textContent?.trim())
           .filter(Boolean),
+        actionNoteText: proof.querySelector(".effective-proof__action-note")?.textContent?.trim() ?? null,
         breakdownItems: [...proof.querySelectorAll(".effective-proof__breakdown-item")]
           .map((item) => item.textContent?.trim())
           .filter(Boolean),
@@ -299,6 +303,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
             "effective price proof details are visible",
             "condition price quick-read remains visible",
             "condition guardrails show verification target and fallback price",
+            "condition action note explains seller-page checks",
             "condition evidence remains readable on mobile width",
             "condition fallback recompare price is visible",
             "condition decision rows show confirm and reject guidance",

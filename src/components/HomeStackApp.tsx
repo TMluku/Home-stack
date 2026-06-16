@@ -1558,6 +1558,11 @@ function EffectivePriceProof({
           ))}
         </dl>
       ) : null}
+      {quote.conditionRequired ? (
+        <div className="effective-proof__action-note" role="note" aria-label="条件確認メモ">
+          販売ページで対象者・期間・併用可否・送料を確認。外れた条件は控除せず、条件なし価格で再比較します。
+        </div>
+      ) : null}
       {conditionSummaryItems.length > 0 ? (
         <dl className="effective-proof__summary" aria-label="価格成立条件の要約">
           {conditionSummaryItems.map((item) => (

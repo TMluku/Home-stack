@@ -1195,6 +1195,19 @@ h3 {
   overflow-wrap: anywhere;
 }
 
+.effective-proof__action-note {
+  background: #eef6f3;
+  border: 1px solid #cfe3da;
+  border-radius: 0.45rem;
+  color: #245347;
+  font-size: 0.74rem;
+  font-weight: 900;
+  grid-column: 1 / -1;
+  line-height: 1.45;
+  padding: 0.45rem 0.5rem;
+  overflow-wrap: anywhere;
+}
+
 .effective-proof p,
 .effective-proof small {
   grid-column: 1 / -1;

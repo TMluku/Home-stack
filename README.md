@@ -159,6 +159,7 @@ Price-condition operation notes:
 - Do not treat ambiguous copy such as "最大", "up to", "eligible only", login-only rewards, app-only coupons, point multipliers, threshold coupons, free-shipping thresholds, first-order discounts, subscription offers, or pack component prices as guaranteed discounts without preserving a condition label.
 - Structured, official API, or marketplace HTML reward fields that contain date-like strings such as `valid through 2026-06-20` or `expires 2026-06-20` should become condition evidence, not `2026円` point/coupon deductions.
 - Official API reward fields with percentage strings such as `10%` should be treated as reward rates, not `10円` amounts.
+- Official API shipping fields with strings such as `550円` or `送料無料` should normalize to shipping fee amounts, unless threshold or region-condition copy is present.
 - Text price extraction should skip unit prices, tax-excluded prices, reference/list prices, unavailable or sold-out prices, and pack component prices such as `80円 x 12本` when a total price is present.
 - Direct URL text extraction should skip coupon-code or promo-code applied prices as the base item price, then expose `クーポン条件あり` so the seller page can confirm code entry, eligibility, and stackability.
 - Official API reward amounts that are implausibly large versus the item price, such as points over 35% of price or coupons over 60% of price, should become condition evidence instead of guaranteed deductions.

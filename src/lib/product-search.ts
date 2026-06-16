@@ -593,13 +593,32 @@ function appendConditionLabels<T extends { conditionLabels: string[]; conditionR
 }
 
 function extractOfficialShippingFee(record: OfficialApiRecord, source: MarketplaceSearchSource) {
-  const explicit = readNumberPath(record, ["shippingFee", "postage", "postageAmount", "deliveryFee", "shipping.amount", "shipping.fee"]);
+  const explicit = readShippingFeePath(record, [
+    "shippingFee",
+    "postage",
+    "postageAmount",
+    "deliveryFee",
+    "shipping.amount",
+    "shipping.fee",
+  ]);
   if (typeof explicit === "number") return explicit;
   if (source === "rakuten" && readNumberPath(record, ["postageFlag"]) === 0) return 0;
   if (source === "yahoo-shopping" && readNumberPath(record, ["shipping.code"]) === 1) return 0;
   const shippingName = readStringPath(record, ["shipping.name", "shippingLabel", "postageLabel"]);
   if (shippingName && hasConditionalShippingCopy(shippingName)) return undefined;
   return shippingName && /送料無料|free shipping/i.test(shippingName) ? 0 : undefined;
+}
+
+function readShippingFeePath(record: OfficialApiRecord, paths: string[]) {
+  for (const path of paths) {
+    const value = readPath(record, path);
+    if (typeof value === "number") return value;
+    if (typeof value !== "string" || !value.trim() || hasConditionalShippingCopy(value)) continue;
+    if (hasCertainFreeShippingCopy(value) || /無料|free/i.test(value)) return 0;
+    const numeric = parseSearchAmount(value) ?? parseSearchAmountFromText(value);
+    if (typeof numeric === "number") return numeric;
+  }
+  return undefined;
 }
 
 function readNumberPath(record: OfficialApiRecord, paths: string[]) {
@@ -1073,6 +1092,15 @@ function inferPointValueFromRate(price?: number, rate?: number) {
 function parseSearchAmount(value?: string) {
   if (!value) return undefined;
   const amount = Number(toHalfWidth(value).replace(/[,，]/g, ""));
+  return Number.isFinite(amount) && amount > 0 ? amount : undefined;
+}
+
+function parseSearchAmountFromText(value?: string) {
+  if (!value) return undefined;
+  const numeric = toHalfWidth(value)
+    .replace(/[,，]/g, "")
+    .match(/[0-9]+(?:\.[0-9]+)?/)?.[0];
+  const amount = numeric ? Number(numeric) : NaN;
   return Number.isFinite(amount) && amount > 0 ? amount : undefined;
 }
 

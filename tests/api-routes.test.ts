@@ -534,6 +534,69 @@ describe("API route contracts", () => {
     }
   });
 
+  it("normalizes official string shipping fees and free labels", async () => {
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "String shipping Rakuten item",
+                  itemPrice: 1000,
+                  itemUrl: "https://rakuten.example.test/string-shipping",
+                  postageAmount: "550円",
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          hits: [
+            {
+              name: "String shipping Yahoo item",
+              url: "https://shopping.example.test/string-shipping",
+              price: 1200,
+              shipping: { fee: "送料無料" },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+
+    const response = await searchProducts(
+      new Request("http://localhost/api/product-search", {
+        method: "POST",
+        body: JSON.stringify({ query: "string official shipping" }),
+      }),
+    );
+    const payload = await response.json();
+    const rakutenCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "rakuten");
+    const yahooCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "yahoo-shopping");
+
+    expect(response.status).toBe(200);
+    expect(rakutenCandidate.effectivePriceQuote).toMatchObject({
+      listPrice: 1000,
+      shippingFee: 550,
+      effectivePrice: 1550,
+    });
+    expect(rakutenCandidate.evidence).toEqual(expect.arrayContaining(["official shipping fee: 550 JPY"]));
+    expect(yahooCandidate.effectivePriceQuote).toMatchObject({
+      listPrice: 1200,
+      shippingFee: 0,
+      effectivePrice: 1200,
+    });
+    expect(yahooCandidate.evidence).toEqual(expect.arrayContaining(["official shipping: free"]));
+  });
+
   it("keeps official ambiguous reward strings as conditions instead of discounts", async () => {
     process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
     process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";

@@ -261,6 +261,7 @@ function extractAttributePrice(html: string) {
     if (hasSampleTrialProductCopy(decodedTag)) continue;
     if (hasPurchaseConditionCopy(decodedTag)) continue;
     if (hasRestrictedPriceCopy(decodedTag)) continue;
+    if (hasCartOnlyPriceCopy(decodedTag)) continue;
     if (hasConditionalDiscountPriceCopy(decodedTag)) continue;
     if (hasPaymentFeeCopy(decodedTag)) continue;
     if (hasConditionalShippingCopy(decodedTag)) continue;
@@ -320,6 +321,7 @@ function isAmazonSuppressedPriceContext(html: string, index: number, length: num
     hasPurchaseConditionCopy(context) ||
     hasConditionalDiscountPriceCopy(context) ||
     hasUsedConditionCopy(context) ||
+    hasCartOnlyPriceCopy(context) ||
     hasRestrictedAmazonOfferPriceCopy(context) ||
     hasUnavailableConditionCopy(context) ||
     isUnavailablePriceContext(context, Math.min(900, context.length), 0)
@@ -343,6 +345,7 @@ function extractTextPrice(html: string) {
     if (isAdditionalItemPriceContext(text, match.index ?? 0, priceText.length)) continue;
     if (isRangeLowerBoundPriceContext(text, match.index ?? 0, priceText.length)) continue;
     if (isEffectivePriceContext(text, match.index ?? 0, priceText.length)) continue;
+    if (isCartOnlyPriceContext(text, match.index ?? 0, priceText.length)) continue;
     if (isInstallmentAmountContext(text, match.index ?? 0, priceText.length)) continue;
     if (isNonProductFeeAmountContext(text, match.index ?? 0, priceText.length)) continue;
     if (isRewardAmountContext(text, match.index ?? 0, priceText.length)) continue;
@@ -784,7 +787,7 @@ function extractMetaReward(html: string, keys: string[]): RewardSignal {
 function inferPriceAdjustments(html: string, listPrice: number): PriceAdjustments {
   const text = extractPlainText(html);
   const shippingConditionRequired = hasConditionalShippingCopy(text);
-  const purchaseConditionRequired = hasPurchaseConditionCopy(text);
+  const purchaseConditionRequired = hasPurchaseConditionCopy(text) || hasCartOnlyPriceCopy(text);
   const shippingFee = extractShippingFeeFromText(text);
   const pointValue = extractPointValue(text, listPrice);
   const couponValue = extractCouponValue(text, listPrice);
@@ -982,6 +985,12 @@ function hasRestrictedAmazonOfferPriceCopy(text: string) {
   const normalized = text.replace(/\s+/g, " ");
   if (!hasRestrictedPriceCopy(normalized)) return false;
   return !/(?:free shipping|shipping|postage|delivery)\s+(?:with|for)?\s*(?:prime|member|membership)/i.test(normalized);
+}
+
+function hasCartOnlyPriceCopy(text: string) {
+  return /(?:add\s+to\s+cart\s+to\s+see\s+(?:the\s+)?price|see\s+(?:the\s+)?price\s+in\s+(?:cart|basket)|price\s+(?:shown|revealed|available)\s+in\s+(?:cart|basket)|(?:cart|basket)[-\s]?only\s+(?:price|deal|discount)|(?:cart|basket)\s+price|checkout\s+price|price\s+(?:shown|revealed|available)\s+at\s+checkout|final\s+price\s+at\s+checkout|log\s+in\s+or\s+add\s+to\s+cart)/i.test(
+    text,
+  );
 }
 
 function hasAmbiguousRewardCopy(text: string, labels: string[]) {
@@ -1307,6 +1316,13 @@ function isInstallmentAmountContext(text: string, index: number, length: number)
   const labelAfter =
     /^\s*(?:\/\s*(?:月|mo|month)|ずつ|から|の分割|分割|月額|毎月|per month|per mo\.?|monthly|installments?|payment plan|financing)/i;
   return labelBefore.test(before) || labelAfter.test(after);
+}
+
+function isCartOnlyPriceContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 54), index);
+  const after = text.slice(index + length, index + length + 42);
+  const context = `${before} ${text.slice(index, index + length)} ${after}`;
+  return hasCartOnlyPriceCopy(context);
 }
 
 function isNonProductFeeAmountContext(text: string, index: number, length: number) {

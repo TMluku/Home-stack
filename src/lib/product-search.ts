@@ -407,6 +407,7 @@ function extractPrice(snippet: string) {
     if (isSubscriptionPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isRangeLowerBoundPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isEffectivePriceContext(text, match.index ?? 0, match[0].length)) continue;
+    if (isCartOnlyPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isInstallmentAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isNonProductFeeAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isRewardAmountContext(text, match.index ?? 0, match[0].length)) continue;
@@ -431,7 +432,7 @@ function extractPrice(snippet: string) {
 function inferPriceAdjustments(snippet: string, listPrice: number) {
   const text = cleanText(snippet) ?? "";
   const shippingConditionRequired = hasConditionalShippingCopy(text);
-  const purchaseConditionRequired = hasPurchaseConditionCopy(text);
+  const purchaseConditionRequired = hasPurchaseConditionCopy(text) || hasCartOnlyPriceCopy(text);
   const shippingFee = extractShippingFeeFromText(text);
   const pointRewardLooksConditional = hasDateLikeRewardCopy(text, ["point", "points"]);
   const couponRewardLooksConditional =
@@ -883,6 +884,12 @@ function hasPurchaseConditionCopy(text: string) {
   return purchaseWords.some((word) => new RegExp(escapeRegExp(word), "i").test(text));
 }
 
+function hasCartOnlyPriceCopy(text: string) {
+  return /(?:add\s+to\s+cart\s+to\s+see\s+(?:the\s+)?price|see\s+(?:the\s+)?price\s+in\s+(?:cart|basket)|price\s+(?:shown|revealed|available)\s+in\s+(?:cart|basket)|(?:cart|basket)[-\s]?only\s+(?:price|deal|discount)|(?:cart|basket)\s+price|checkout\s+price|price\s+(?:shown|revealed|available)\s+at\s+checkout|final\s+price\s+at\s+checkout|log\s+in\s+or\s+add\s+to\s+cart)/i.test(
+    text,
+  );
+}
+
 function hasAmbiguousRewardCopy(text: string, labels: string[]) {
   const ambiguousWords = [
     "最大",
@@ -1257,6 +1264,13 @@ function isInstallmentAmountContext(text: string, index: number, length: number)
   const labelAfter =
     /^\s*(?:\/\s*(?:月|mo|month)|ずつ|から|の分割|分割|月額|毎月|per month|per mo\.?|monthly|installments?|payment plan|financing)/i;
   return labelBefore.test(before) || labelAfter.test(after);
+}
+
+function isCartOnlyPriceContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 54), index);
+  const after = text.slice(index + length, index + length + 42);
+  const context = `${before} ${text.slice(index, index + length)} ${after}`;
+  return hasCartOnlyPriceCopy(context);
 }
 
 function isNonProductFeeAmountContext(text: string, index: number, length: number) {

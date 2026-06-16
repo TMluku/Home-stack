@@ -1513,6 +1513,30 @@ describe("replenishment domain logic", () => {
     );
   });
 
+  it("skips cart-only direct prices and keeps seller confirmation required", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Cart-only detergent</title></head>
+        <body>
+          <span>Add to cart to see price 1,180 JPY</span>
+          <span>${".".repeat(80)}</span>
+          <strong>Item price 1,580 JPY</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1580,
+      source: "html-text",
+      effectivePriceQuote: {
+        listPrice: 1580,
+        effectivePrice: 1580,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["purchase condition requires retailer confirmation"]));
+  });
+
   it("does not use point reward amounts as direct product prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -2697,6 +2721,40 @@ describe("replenishment domain logic", () => {
       source: "html-text",
     });
     expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["price from Amazon a-offscreen"]));
+  });
+
+  it("skips Amazon cart-only prices before one-time prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Amazon cart detergent</title></head>
+        <body>
+          <section>
+            <span>Add to cart to see price</span>
+            <span class="a-price">
+              <span class="a-offscreen">・･1,180</span>
+            </span>
+          </section>
+          <section>${".".repeat(260)}
+            <span>One-time purchase price</span>
+            <span class="a-price">
+              <span class="a-offscreen">・･1,580</span>
+            </span>
+          </section>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      title: "Amazon cart detergent",
+      price: 1580,
+      source: "html-text",
+      effectivePriceQuote: {
+        listPrice: 1580,
+        effectivePrice: 1580,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["purchase condition requires retailer confirmation"]));
   });
 
   it("skips Amazon used offer prices before new split prices", () => {
@@ -4169,6 +4227,32 @@ describe("replenishment domain logic", () => {
     });
     expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["送料条件あり"]));
     expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["shipping condition requires retailer confirmation"]));
+  });
+
+  it("skips marketplace cart-only prices before regular prices", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/cart-price" title="Regular detergent">Regular detergent</a>
+          <span>Add to cart to see price 1,080 JPY</span>
+          <span>${".".repeat(80)}</span>
+          <strong>Item price 1,480 JPY</strong>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      price: 1480,
+      effectivePriceQuote: {
+        listPrice: 1480,
+        effectivePrice: 1480,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["購入条件あり"]));
+    expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["purchase condition requires retailer confirmation"]));
   });
 
   it("filters unavailable official API machine states before price ranking", async () => {

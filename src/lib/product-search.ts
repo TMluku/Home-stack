@@ -342,7 +342,10 @@ function rankCandidates(candidates: RawCandidate[], query: string, searchedAt: s
     .sort(
       (a, b) =>
         (a.effectivePriceQuote?.effectivePrice ?? a.price ?? Number.MAX_SAFE_INTEGER) -
-          (b.effectivePriceQuote?.effectivePrice ?? b.price ?? Number.MAX_SAFE_INTEGER) || b.matchScore - a.matchScore,
+          (b.effectivePriceQuote?.effectivePrice ?? b.price ?? Number.MAX_SAFE_INTEGER) ||
+        (a.price ?? a.effectivePriceQuote?.listPrice ?? Number.MAX_SAFE_INTEGER) -
+          (b.price ?? b.effectivePriceQuote?.listPrice ?? Number.MAX_SAFE_INTEGER) ||
+        b.matchScore - a.matchScore,
     );
 }
 

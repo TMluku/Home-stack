@@ -301,6 +301,61 @@ describe("API route contracts", () => {
     expect(urls).not.toEqual(expect.arrayContaining(["https://rakuten.example.test/outlet", "https://shopping.example.test/used"]));
   });
 
+  it("sorts equal effective-price candidates by raw display price before match score", async () => {
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "Detergent refill exact query high display price",
+                  itemPrice: 1000,
+                  itemUrl: "https://rakuten.example.test/high-display",
+                  couponAmount: 200,
+                },
+              },
+              {
+                Item: {
+                  itemName: "Refill lower display price",
+                  itemPrice: 900,
+                  itemUrl: "https://rakuten.example.test/lower-display",
+                  couponAmount: 100,
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(JSON.stringify({ hits: [] }), { status: 200 });
+    });
+
+    const response = await searchProducts(
+      new Request("http://localhost/api/product-search", {
+        method: "POST",
+        body: JSON.stringify({ query: "detergent refill exact query" }),
+      }),
+    );
+    const payload = await response.json();
+    const pricedCandidates = payload.candidates.filter((candidate: { source: string }) => candidate.source === "rakuten");
+
+    expect(response.status).toBe(200);
+    expect(pricedCandidates.map((candidate: { url: string }) => candidate.url)).toEqual([
+      "https://rakuten.example.test/lower-display",
+      "https://rakuten.example.test/high-display",
+    ]);
+    expect(
+      pricedCandidates.map(
+        (candidate: { effectivePriceQuote: { effectivePrice: number } }) => candidate.effectivePriceQuote.effectivePrice,
+      ),
+    ).toEqual([800, 800]);
+  });
+
   it("does not treat official conditional shipping labels as guaranteed free shipping", async () => {
     process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
     process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";

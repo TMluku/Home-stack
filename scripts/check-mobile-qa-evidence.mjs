@@ -11,6 +11,7 @@ const expectedAssertions = [
   "public Pages QR renders on mobile",
   "real-device QA checklist is present on the hero",
   "effective price proof details are visible",
+  "condition price quick-read remains visible",
   "condition evidence remains readable on mobile width",
   "condition fallback recompare price is visible",
   "condition decision rows show confirm and reject guidance",
@@ -88,6 +89,16 @@ for (const file of jsonFiles) {
   if (!isHttpUrl(candidateConditionSummary.sellerLink)) failures.push(`${file}: missing candidate seller/search link`);
 
   if (!Array.isArray(summary.badges) || summary.badges.length === 0) failures.push(`${file}: missing condition badges`);
+  if (!Array.isArray(summary.quickReadItems) || summary.quickReadItems.length !== 4) {
+    failures.push(`${file}: expected four condition-price quick-read items`);
+  }
+  const quickReadText = Array.isArray(summary.quickReadItems) ? summary.quickReadItems.join(" ") : "";
+  if (!quickReadText.includes("条件価格") || !quickReadText.includes("条件なし")) {
+    failures.push(`${file}: missing condition-price quick-read comparison labels`);
+  }
+  if (!quickReadText.includes("控除合計") || !quickReadText.includes("要確認")) {
+    failures.push(`${file}: missing condition-price quick-read deduction or decision labels`);
+  }
   if (!Array.isArray(summary.breakdownItems) || summary.breakdownItems.length !== 5) {
     failures.push(`${file}: expected five price-breakdown rows`);
   }

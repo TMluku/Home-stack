@@ -17,6 +17,7 @@ const expectedAssertions = [
   "condition confirmation checklist states when deductions may apply",
   "condition evidence remains readable on mobile width",
   "condition fallback recompare price is visible",
+  "comparison card fallback recompare price is visible",
   "condition decision rows show confirm and reject guidance",
   "static URL scan condition banner jumps to proof details",
 ];
@@ -143,6 +144,19 @@ for (const file of jsonFiles) {
     failures.push(`${file}: missing actionable condition summary text`);
   if (!String(summary.recompareText ?? "").includes("条件不成立時") || !String(summary.recompareText ?? "").includes("再比較")) {
     failures.push(`${file}: missing condition fallback recompare price`);
+  }
+  const comparisonSummary = payload.comparisonSummary ?? {};
+  if (
+    !String(comparisonSummary.recompareText ?? "").includes("条件外なら") ||
+    !String(comparisonSummary.recompareText ?? "").includes("再比較")
+  ) {
+    failures.push(`${file}: missing comparison-card fallback recompare price`);
+  }
+  if (!String(comparisonSummary.recompareLabel ?? "").includes("条件不成立時価格")) {
+    failures.push(`${file}: missing comparison-card fallback aria label`);
+  }
+  if (!Array.isArray(comparisonSummary.conditionSummaryItems) || comparisonSummary.conditionSummaryItems.length === 0) {
+    failures.push(`${file}: missing comparison-card compact condition summary`);
   }
   if (!Array.isArray(summary.decisionRows) || summary.decisionRows.length === 0) {
     failures.push(`${file}: missing condition decision rows`);

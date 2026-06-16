@@ -272,6 +272,18 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
         detailsOpen: proof.querySelector(".effective-proof__details")?.hasAttribute("open") ?? false,
         sellerLink: proof.querySelector(".effective-proof__details a")?.getAttribute("href") ?? null,
       }));
+    await page.getByRole("link", { name: "価格順リストを見る" }).click();
+    const comparisonSummary = await page
+      .locator(".comparison-card")
+      .filter({ has: page.locator(".comparison-recompare") })
+      .first()
+      .evaluate((card) => ({
+        recompareText: card.querySelector(".comparison-recompare")?.textContent?.trim() ?? null,
+        recompareLabel: card.querySelector(".comparison-recompare")?.getAttribute("aria-label") ?? null,
+        conditionSummaryItems: [...card.querySelectorAll(".condition-summary--compact div")]
+          .map((item) => item.textContent?.trim())
+          .filter(Boolean),
+      }));
     await page.getByLabel("商品ページURL").fill("https://example.com/demo-condition-item");
     await page.getByRole("button", { name: "ライブ価格を取得" }).click();
     const liveConditionBanner = page.locator(".live-price-card .condition-banner").first();
@@ -304,6 +316,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
           qaTemplateSummary,
           candidateConditionSummary,
           conditionSummary,
+          comparisonSummary,
           liveScanSummary,
           assertions: [
             "document width fits viewport",
@@ -318,6 +331,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
             "condition confirmation checklist states when deductions may apply",
             "condition evidence remains readable on mobile width",
             "condition fallback recompare price is visible",
+            "comparison card fallback recompare price is visible",
             "condition decision rows show confirm and reject guidance",
             "static URL scan condition banner jumps to proof details",
           ],

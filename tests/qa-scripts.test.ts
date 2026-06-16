@@ -115,6 +115,26 @@ describe("real-device QA gate", () => {
     );
   });
 
+  it("prints row-level missing evidence diagnostics", async () => {
+    await withQaFile(
+      [
+        "| Date | Device | Browser | Network | Result | Notes |",
+        "|---|---|---|---|---|---|",
+        "| 2026-06-16 | Pixel 8 | Chrome | 5G | Fail | checked locally only |",
+      ].join("\n"),
+      (filePath) => {
+        const result = spawnSync(process.execPath, [scriptPath, filePath], { encoding: "utf8" });
+        expect(result.status).toBe(1);
+        expect(result.stderr).toContain("Checked dated rows");
+        expect(result.stderr).toContain("Pixel 8 Chrome 5G Fail");
+        expect(result.stderr).toContain("Result `Pass`");
+        expect(result.stderr).toContain("tested published Pages URL");
+        expect(result.stderr).toContain("Browser E2E workflow or run URL");
+        expect(result.stderr).toContain("mobile-price-condition-proof.png and mobile-price-condition-proof.json");
+      },
+    );
+  });
+
   it("rejects real-device rows without the condition action note check", async () => {
     await withQaFile(
       [

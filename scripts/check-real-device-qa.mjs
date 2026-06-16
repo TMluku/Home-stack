@@ -16,7 +16,8 @@ const rows = markdown
   );
 
 const qaRows = rows.filter((cells) => cells.length === 6 && /^\d{4}-\d{2}-\d{2}$/.test(cells[0]));
-const passes = qaRows.filter(([date, device, browser, network, result, notes]) => {
+const evaluations = qaRows.map(([date, device, browser, network, result, notes]) => {
+  const issues = [];
   const hasPlaceholders = [device, browser, network, result, notes].some((cell) =>
     /端末名|ブラウザ名|Wi-Fi \/ 5G|Pass \/ Fail|placeholder|記入|YYYY/i.test(cell),
   );
@@ -30,24 +31,33 @@ const passes = qaRows.filter(([date, device, browser, network, result, notes]) =
     /(?:phone|real[- ]?device|実機|スマホ|端末).{0,40}(?:screenshot|screen shot|スクリーンショット|画面)|(?:screenshot|screen shot|スクリーンショット|画面).{0,40}(?:phone|real[- ]?device|実機|スマホ|端末)/i.test(
       notes,
     );
-  return (
-    Boolean(date) &&
-    !hasPlaceholders &&
-    hasPass &&
-    hasPublishedUrl &&
-    hasBrowserE2eEvidenceUrl &&
-    hasAutomatedEvidence &&
-    hasEvidenceFiles &&
-    hasConditionActionNote &&
-    hasRealDeviceScreenshot
-  );
+  if (!date) issues.push("dated QA row");
+  if (hasPlaceholders) issues.push("replace placeholder device/browser/network/result/notes");
+  if (!hasPass) issues.push("Result `Pass`");
+  if (!hasPublishedUrl) issues.push("tested published Pages URL");
+  if (!hasBrowserE2eEvidenceUrl) issues.push("Browser E2E workflow or run URL");
+  if (!hasAutomatedEvidence) issues.push("mobile-qa-evidence note");
+  if (!hasEvidenceFiles) issues.push("mobile-price-condition-proof.png and mobile-price-condition-proof.json");
+  if (!hasConditionActionNote) issues.push("譚｡莉ｶ遒ｺ隱阪Γ繝｢ / condition action note");
+  if (!hasRealDeviceScreenshot) issues.push("real-phone screenshot note");
+
+  return { cells: [date, device, browser, network, result, notes], issues };
 });
+const passes = evaluations.filter(({ issues }) => issues.length === 0);
 
 if (passes.length === 0) {
+  const rowDiagnostics = evaluations
+    .slice(-5)
+    .map(({ cells, issues }) => {
+      const [date, device, browser, network, result] = cells;
+      return `- ${date} ${device} ${browser} ${network} ${result}: missing ${issues.join("; ")}`;
+    })
+    .join("\n");
   console.error(
     [
       `FAIL ${qaFile}: no real-device GitHub Pages QA pass is recorded.`,
       "Add a non-placeholder matrix row with Result `Pass`, the tested published URL, Browser E2E workflow or run URL, `mobile-qa-evidence` notes, mobile evidence filenames, `条件確認メモ`, and a real-phone screenshot note.",
+      rowDiagnostics ? `Checked dated rows:\n${rowDiagnostics}` : "No dated QA rows were found in the matrix.",
     ].join("\n"),
   );
   process.exit(1);

@@ -320,6 +320,22 @@ describe("API route contracts", () => {
               },
               {
                 Item: {
+                  itemName: "Official detergent refill backorder cheap",
+                  itemPrice: 710,
+                  itemUrl: "https://rakuten.example.test/backorder",
+                  availability: "https://schema.org/BackOrder",
+                },
+              },
+              {
+                Item: {
+                  itemName: "Official detergent refill zero stock cheap",
+                  itemPrice: 720,
+                  itemUrl: "https://rakuten.example.test/zero-stock",
+                  stockQuantity: "0 units",
+                },
+              },
+              {
+                Item: {
                   itemName: "Official detergent refill current",
                   itemPrice: 1400,
                   itemUrl: "https://rakuten.example.test/current",
@@ -341,6 +357,18 @@ describe("API route contracts", () => {
               price: 750,
               availability: "unavailable",
               stock: "out_of_stock",
+            },
+            {
+              name: "Official detergent refill preorder cheap",
+              url: "https://shopping.example.test/preorder",
+              price: 760,
+              availabilityStatus: "PreOrder",
+            },
+            {
+              name: "Official detergent refill string unavailable cheap",
+              url: "https://shopping.example.test/string-unavailable",
+              price: 770,
+              isAvailable: "false",
             },
             {
               name: "Official detergent refill Yahoo current",
@@ -367,9 +395,16 @@ describe("API route contracts", () => {
     expect(response.status).toBe(200);
     expect(urls).toEqual(expect.arrayContaining(["https://rakuten.example.test/current", "https://shopping.example.test/current"]));
     expect(urls).not.toEqual(
-      expect.arrayContaining(["https://rakuten.example.test/out-of-stock", "https://shopping.example.test/sold-out"]),
+      expect.arrayContaining([
+        "https://rakuten.example.test/out-of-stock",
+        "https://rakuten.example.test/backorder",
+        "https://rakuten.example.test/zero-stock",
+        "https://shopping.example.test/sold-out",
+        "https://shopping.example.test/preorder",
+        "https://shopping.example.test/string-unavailable",
+      ]),
     );
-    expect(prices).not.toEqual(expect.arrayContaining([700, 750]));
+    expect(prices).not.toEqual(expect.arrayContaining([700, 710, 720, 750, 760, 770]));
   });
 
   it("sorts equal effective-price candidates by raw display price before match score", async () => {

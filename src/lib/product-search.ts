@@ -704,17 +704,20 @@ function hasUnavailableMachineState(record: OfficialApiRecord) {
     "status",
   ]);
   if (textState && hasUnavailableOfferCopy(textState)) return true;
+  if (textState && /(?:back\s*order|backorder|back[_-]order|preorder|pre[_-]order)/i.test(textState)) return true;
 
   const booleanPaths = ["available", "isAvailable", "inStock", "isInStock", "stock.available", "inventory.available"];
   for (const path of booleanPaths) {
     const value = readPath(record, path);
     if (value === false) return true;
+    if (typeof value === "string" && /^(?:false|no|0)$/i.test(value.trim())) return true;
   }
 
   const numericPaths = ["availability", "stock", "stockQuantity", "inventory", "inventoryCount", "inventory.quantity"];
   for (const path of numericPaths) {
     const value = readPath(record, path);
     if (value === 0 || value === "0") return true;
+    if (typeof value === "string" && isZeroStockText(value)) return true;
   }
 
   return false;
@@ -1111,6 +1114,14 @@ function parseRewardRate(value?: string) {
     .match(/[0-9]+(?:\.[0-9]+)?/)?.[0];
   const rate = numeric ? Number(numeric) : NaN;
   return Number.isFinite(rate) && rate > 0 ? rate : undefined;
+}
+
+function isZeroStockText(value: string) {
+  const numeric = toHalfWidth(value)
+    .replaceAll(",", "")
+    .replaceAll("，", "")
+    .match(/[0-9]+(?:\.[0-9]+)?/)?.[0];
+  return numeric === "0";
 }
 
 function isUnitPriceContext(text: string, index: number, length: number) {

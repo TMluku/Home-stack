@@ -393,6 +393,7 @@ function extractPrice(snippet: string) {
   for (const match of text.matchAll(pricePattern)) {
     if (isUnitPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isPackComponentPriceContext(text, match.index ?? 0, match[0].length)) continue;
+    if (isAdditionalItemPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isRangeLowerBoundPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isEffectivePriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isInstallmentAmountContext(text, match.index ?? 0, match[0].length)) continue;
@@ -953,6 +954,25 @@ function isPackComponentPriceContext(text: string, index: number, length: number
     /(?:単品|1\s*(?:個|枚|本|袋|箱)|一\s*(?:個|枚|本|袋|箱))\s*$/i.test(before) ||
     /^\s*(?:x|×|✕|\*)\s*[0-9０-９]+\s*(?:個|枚|本|袋|箱|ケース|セット|pack|packs|pcs|pieces|count)/i.test(after) ||
     /^\s*(?:for|each in)\s*[0-9０-９]+\s*(?:pack|packs|pcs|pieces|count)/i.test(after)
+  );
+}
+
+function isAdditionalItemPriceContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 36), index);
+  const after = text.slice(index + length, index + length + 40);
+  const ordinalItem = /(?:[2２二]\s*(?:点|個|枚|本|袋|箱|品)\s*目|second\s+item|2nd\s+item|additional\s+item|extra\s+item)/i;
+  const conditionalPriceWords = /(?:半額|無料|割引|値引|特価|価格|off|discount|deal|price)/i;
+  const beforeTail = before.slice(-28);
+  const ordinalMatch = beforeTail.match(ordinalItem);
+  const afterOrdinal = ordinalMatch ? beforeTail.slice((ordinalMatch.index ?? 0) + ordinalMatch[0].length) : "";
+  const hasInterveningPrice = /(?:¥|￥)\s*[0-9０-９]|[0-9０-９][0-9０-９,，]*\s*(?:円|JPY)/i.test(afterOrdinal);
+  return (
+    (Boolean(ordinalMatch) &&
+      !hasInterveningPrice &&
+      (conditionalPriceWords.test(beforeTail) || /^\s*(?:円|JPY)?\s*(?:なら|で|only|each)/i.test(after))) ||
+    /^\s*(?:なら|で|for|as)\s*(?:the\s*)?(?:second\s+item|2nd\s+item|additional\s+item|extra\s+item|[2２二]\s*(?:点|個|枚|本|袋|箱|品)\s*目)/i.test(
+      after,
+    )
   );
 }
 

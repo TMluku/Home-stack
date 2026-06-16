@@ -29,7 +29,7 @@ Before manual QA, confirm these gates are green:
 The `Browser E2E` GitHub Actions workflow uploads a `mobile-qa-evidence` artifact for each run. It includes:
 
 - `mobile-price-condition-proof.png`: full-page mobile Chromium screenshot
-- `mobile-price-condition-proof.json`: captured URL, expected published Pages URL, Browser E2E workflow link, viewport, overflow metrics, hero visual/QR metrics, QA checklist count, condition badges, condition quick-read rows, condition guardrails, condition action note, deduction confirmation checklist, condition memo copy action, condition-summary rows, price-breakdown rows, price-verification lanes, condition fallback recompare price, comparison-card fallback recompare price, seller link, and the assertions covered by the automated pass
+- `mobile-price-condition-proof.json`: captured URL, expected published Pages URL, Browser E2E workflow link, viewport, overflow metrics, hero visual/QR metrics, QA checklist count, condition badges, condition quick-read rows, condition guardrails, condition action note, deduction confirmation checklist, condition memo copy action, condition-banner anchor resolution, condition-summary rows, price-breakdown rows, price-verification lanes, condition fallback recompare price, comparison-card fallback recompare price, seller link, and the assertions covered by the automated pass
 - Playwright report files, when generated
 
 Use that artifact as automated display evidence before running the real-device checklist below.

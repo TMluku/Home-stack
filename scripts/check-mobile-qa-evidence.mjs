@@ -21,6 +21,7 @@ const expectedAssertions = [
   "comparison card fallback recompare price is visible",
   "condition decision rows show confirm and reject guidance",
   "static URL scan condition banner jumps to proof details",
+  "all condition banners resolve to open proof details",
 ];
 
 const files = await listFiles(root).catch(() => []);
@@ -179,6 +180,17 @@ for (const file of jsonFiles) {
     failures.push(`${file}: missing live scan condition badges`);
   if (liveScanSummary.detailsOpen !== true) failures.push(`${file}: live scan condition details were not open`);
   if (!isHttpUrl(liveScanSummary.sellerLink)) failures.push(`${file}: missing live scan seller/search link`);
+
+  const conditionAnchors = payload.conditionAnchorSummary;
+  if (!Array.isArray(conditionAnchors) || conditionAnchors.length < 2) {
+    failures.push(`${file}: missing condition banner anchor summary`);
+  } else {
+    for (const [index, anchor] of conditionAnchors.entries()) {
+      if (!String(anchor.href ?? "").startsWith("#")) failures.push(`${file}: condition anchor ${index} is not an in-page link`);
+      if (anchor.targetExists !== true) failures.push(`${file}: condition anchor ${index} target is missing`);
+      if (anchor.targetDetailsOpen !== true) failures.push(`${file}: condition anchor ${index} details are not open`);
+    }
+  }
 
   for (const assertion of expectedAssertions) {
     if (!payload.assertions?.includes(assertion)) failures.push(`${file}: missing assertion "${assertion}"`);

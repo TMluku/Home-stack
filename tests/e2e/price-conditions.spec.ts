@@ -310,6 +310,26 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
           sellerLink: proof?.querySelector(".effective-proof__details a")?.getAttribute("href") ?? null,
         };
       });
+    const conditionAnchorSummary = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLAnchorElement>(".condition-banner")]
+        .filter((banner) => (banner.getAttribute("href") ?? "").startsWith("#"))
+        .map((banner) => {
+          const href = banner.getAttribute("href") ?? "";
+          const targetId = href.slice(1);
+          const target = targetId ? document.getElementById(targetId) : null;
+          const details = target?.querySelector("details");
+          return {
+            text: banner.textContent?.trim() ?? "",
+            href,
+            targetExists: Boolean(target),
+            targetDetailsOpen: target ? (details ? details.hasAttribute("open") : true) : false,
+          };
+        }),
+    );
+    expect(conditionAnchorSummary.length).toBeGreaterThanOrEqual(2);
+    expect(conditionAnchorSummary.every((anchor) => anchor.href.startsWith("#"))).toBe(true);
+    expect(conditionAnchorSummary.every((anchor) => anchor.targetExists)).toBe(true);
+    expect(conditionAnchorSummary.every((anchor) => anchor.targetDetailsOpen)).toBe(true);
     await writeFile(
       testInfo.outputPath("mobile-price-condition-proof.json"),
       JSON.stringify(
@@ -325,6 +345,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
           conditionSummary,
           comparisonSummary,
           liveScanSummary,
+          conditionAnchorSummary,
           assertions: [
             "document width fits viewport",
             "no mobile horizontal overflow candidates",
@@ -342,6 +363,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
             "comparison card fallback recompare price is visible",
             "condition decision rows show confirm and reject guidance",
             "static URL scan condition banner jumps to proof details",
+            "all condition banners resolve to open proof details",
           ],
         },
         null,

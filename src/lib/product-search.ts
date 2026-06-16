@@ -3,6 +3,32 @@ import type { ProductSearchCandidate, ProductSearchResult } from "./types";
 
 const MAX_HTML_BYTES = 1_500_000;
 const USER_AGENT = "HomeStackPriceRadar/0.1 (+https://github.com/TMluku/Home-stack)";
+const SEARCH_TRACKING_QUERY_KEYS = new Set([
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_term",
+  "utm_content",
+  "utm_id",
+  "utm_source_platform",
+  "utm_creative_format",
+  "utm_marketing_tactic",
+  "utm_adgroup",
+  "utm_keyword",
+  "utm_placement",
+  "utm_device",
+  "utm_network",
+  "utm_referrer",
+  "gclid",
+  "fbclid",
+  "msclkid",
+  "referrer",
+  "ref",
+  "sc_iid",
+  "sc_ref",
+  "sc_site",
+]);
+const SEARCH_TRACKING_QUERY_PREFIXES = ["sp_","tag_","_ga","_ga_"];
 
 type SearchSourceReport = ProductSearchResult["sources"][number];
 type RawCandidate = Omit<ProductSearchCandidate, "id" | "matchScore" | "confidence" | "fetchedAt">;
@@ -61,6 +87,25 @@ function buildLiveMarketplaceLinkCandidates(query: string): RawCandidate[] {
     }));
 }
 
+function normalizeSearchResultUrl(value: string) {
+  try {
+    const parsed = new URL(value);
+    parsed.hash = "";
+    const params = [...parsed.searchParams.entries()];
+    for (const [key] of params) {
+      const lowerKey = key.toLowerCase();
+      if (SEARCH_TRACKING_QUERY_KEYS.has(lowerKey) || SEARCH_TRACKING_QUERY_PREFIXES.some((prefix) => lowerKey.startsWith(prefix))) {
+        parsed.searchParams.delete(key);
+      }
+    }
+    parsed.searchParams.sort();
+    const normalized = parsed.toString();
+    return normalized;
+  } catch {
+    return value;
+  }
+}
+
 export function extractSearchCandidatesFromHtml(html: string, source: MarketplaceSearchSource, baseUrl: string): RawCandidate[] {
   const decoded = decodeEntities(html);
   const snippets = splitIntoProductSnippets(decoded);
@@ -79,7 +124,7 @@ export function extractSearchCandidatesFromHtml(html: string, source: Marketplac
       source,
       sourceLabel: SOURCE_LABELS[source],
       title,
-      url,
+      url: normalizeSearchResultUrl(url),
       price,
       effectivePriceQuote: appendConditionLabels(
         buildEffectivePriceQuote({
@@ -160,7 +205,7 @@ async function searchRakutenApi(query: string): Promise<{ candidates: RawCandida
             source: "rakuten",
             sourceLabel: SOURCE_LABELS.rakuten,
             title: item.itemName ?? "",
-            url: item.itemUrl ?? "",
+            url: normalizeSearchResultUrl(item.itemUrl ?? ""),
             price: item.itemPrice,
             effectivePriceQuote: appendConditionLabels(
               buildEffectivePriceQuote({
@@ -247,7 +292,7 @@ async function searchYahooShoppingApi(
             source: "yahoo-shopping",
             sourceLabel: SOURCE_LABELS["yahoo-shopping"],
             title: item.name ?? "",
-            url: item.url ?? "",
+            url: normalizeSearchResultUrl(item.url ?? ""),
             price: item.price,
             effectivePriceQuote: appendConditionLabels(
               buildEffectivePriceQuote({

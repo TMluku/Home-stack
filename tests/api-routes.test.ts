@@ -503,6 +503,53 @@ describe("API route contracts", () => {
     ).toEqual([800, 800]);
   });
 
+  it("deduplicates marketplace search candidates by canonicalized URL", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("search.rakuten.co.jp")) {
+        return new Response(
+          `
+            <html>
+              <body>
+                <a href="https://search.example.test/items/abc?utm_source=google">Detergent refill from Rakuten</a>
+                <span>item price ¥1,280</span>
+                <a href="https://search.example.test/items/abc?utm_medium=mail">Detergent refill duplicate URL</a>
+                <span>item price ¥1,150</span>
+                <a href="https://search.example.test/items/xyz?color=blue">Detergent refill variant</a>
+                <span>item price ¥1,420</span>
+              </body>
+            </html>
+          `,
+          { status: 200 },
+        );
+      }
+
+      if (requestUrl.includes("shopping.yahoo.co.jp")) {
+        return new Response("<html><body><span>No matching candidates</span></body></html>", { status: 200 });
+      }
+
+      return new Response("<html><body><span>not expected</span></body></html>", { status: 200 });
+    });
+
+    const response = await searchProducts(
+      new Request("http://localhost/api/product-search", {
+        method: "POST",
+        body: JSON.stringify({ query: "detergent refill canonical" }),
+      }),
+    );
+    const payload = await response.json();
+    const rakutenCandidates = payload.candidates.filter((candidate: { source: string }) => candidate.source === "rakuten");
+    const urls = rakutenCandidates.map((candidate: { url: string }) => candidate.url);
+
+    expect(response.status).toBe(200);
+    expect(rakutenCandidates).toHaveLength(2);
+    expect(urls).toContain("https://search.example.test/items/abc");
+    expect(urls).toContain("https://search.example.test/items/xyz?color=blue");
+    expect(urls).not.toContain("https://search.example.test/items/abc?utm_source=google");
+    expect(urls).not.toContain("https://search.example.test/items/abc?utm_medium=mail");
+    expect(rakutenCandidates.every((candidate: { url: string }) => !/[?#](?:utm_)/i.test(candidate.url))).toBe(true);
+  });
+
   it("does not treat official conditional shipping labels as guaranteed free shipping", async () => {
     process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
     process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";

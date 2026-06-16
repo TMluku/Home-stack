@@ -77,6 +77,11 @@ for (const file of jsonFiles) {
     failures.push(`${file}: expected five price-breakdown rows`);
   }
   if (!summary.breakdownItems?.some((item) => String(item).includes("実質価格"))) failures.push(`${file}: missing effective-price row`);
+  if (!Array.isArray(summary.laneItems) || summary.laneItems.length !== 3)
+    failures.push(`${file}: expected three price-verification lanes`);
+  if (!summary.laneItems?.some((item) => String(item).includes("採用価格"))) failures.push(`${file}: missing adopted-price lane`);
+  if (!summary.laneItems?.some((item) => String(item).includes("控除"))) failures.push(`${file}: missing deduction lane`);
+  if (!summary.laneItems?.some((item) => String(item).includes("戻し価格"))) failures.push(`${file}: missing fallback-price lane`);
   if (!Array.isArray(summary.summaryItems) || summary.summaryItems.length === 0) {
     failures.push(`${file}: missing condition summary items`);
   }

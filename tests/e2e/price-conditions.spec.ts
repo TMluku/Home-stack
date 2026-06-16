@@ -77,6 +77,11 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(conditionalProof.locator(".effective-proof__breakdown-item")).toHaveCount(5);
   await expect(conditionalProof.locator(".effective-proof__breakdown-item--total")).toContainText("実質価格");
   await expect(conditionalProof.locator(".effective-proof__formula")).toContainText(/表示.*送料.*ポイント.*クーポン.*実質/);
+  await expect(conditionalProof.locator(".effective-proof__lanes")).toHaveAttribute("aria-label", "価格判定レーン");
+  await expect(conditionalProof.locator(".effective-proof__lanes div")).toHaveCount(3);
+  await expect(conditionalProof.locator(".effective-proof__lanes")).toContainText("採用価格");
+  await expect(conditionalProof.locator(".effective-proof__lanes")).toContainText("控除");
+  await expect(conditionalProof.locator(".effective-proof__lanes")).toContainText("戻し価格");
   await expect(conditionalProof.locator(".effective-proof__recompare")).toHaveAttribute("aria-label", "条件不成立時の再比較価格");
   await expect(conditionalProof.locator(".effective-proof__recompare")).toContainText("条件不成立時");
   await expect(conditionalProof.locator(".effective-proof__recompare")).toContainText("再比較");
@@ -211,6 +216,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
         breakdownItems: [...proof.querySelectorAll(".effective-proof__breakdown-item")]
           .map((item) => item.textContent?.trim())
           .filter(Boolean),
+        laneItems: [...proof.querySelectorAll(".effective-proof__lanes div")].map((item) => item.textContent?.trim()).filter(Boolean),
         summaryItems: [...proof.querySelectorAll(".effective-proof__summary div")].map((item) => item.textContent?.trim()).filter(Boolean),
         recompareText: proof.querySelector(".effective-proof__recompare")?.textContent?.trim() ?? null,
         decisionRows: [...proof.querySelectorAll(".effective-proof__decision div")].map((item) => item.textContent?.trim()).filter(Boolean),

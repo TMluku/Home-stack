@@ -1495,6 +1495,14 @@ function EffectivePriceProof({
     quote.pointValue ?? 0,
   )} - クーポン ${yenFormatter.format(quote.couponValue ?? 0)} = 実質 ${yenFormatter.format(quote.effectivePrice)}`;
   const recomparePrice = quote.listPrice + (quote.shippingFee ?? 0);
+  const verificationLanes = [
+    { label: "採用価格", detail: `表示価格 ${yenFormatter.format(quote.listPrice)} を比較の土台にする` },
+    {
+      label: "控除",
+      detail: `ポイント ${yenFormatter.format(quote.pointValue ?? 0)} / クーポン ${yenFormatter.format(quote.couponValue ?? 0)} を条件成立時だけ反映`,
+    },
+    { label: "戻し価格", detail: `条件外なら ${yenFormatter.format(recomparePrice)} で再比較` },
+  ];
 
   return (
     <fieldset className="effective-proof" id={proofId}>
@@ -1529,6 +1537,14 @@ function EffectivePriceProof({
         </dl>
       ) : null}
       <p className="effective-proof__formula">{priceFormula}</p>
+      <dl className="effective-proof__lanes" aria-label="価格判定レーン">
+        {verificationLanes.map((lane) => (
+          <div key={lane.label}>
+            <dt>{lane.label}</dt>
+            <dd>{lane.detail}</dd>
+          </div>
+        ))}
+      </dl>
       {quote.conditionRequired ? (
         <div className="effective-proof__recompare" role="note" aria-label="条件不成立時の再比較価格">
           条件不成立時は {yenFormatter.format(recomparePrice)} で再比較。送料条件が未確定なら販売ページの送料を優先します。

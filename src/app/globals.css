@@ -1123,6 +1123,39 @@ h3 {
   overflow-wrap: anywhere;
 }
 
+.effective-proof__lanes {
+  display: grid;
+  gap: 0.35rem;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(auto-fit, minmax(8.8rem, 1fr));
+  margin: 0;
+}
+
+.effective-proof__lanes div {
+  background: #f7fbff;
+  border: 1px solid #d4e7f7;
+  border-radius: 0.45rem;
+  display: grid;
+  gap: 0.16rem;
+  min-width: 0;
+  padding: 0.44rem 0.5rem;
+}
+
+.effective-proof__lanes dt {
+  color: #20506d;
+  font-size: 0.68rem;
+  font-weight: 950;
+}
+
+.effective-proof__lanes dd {
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.35;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .effective-proof__recompare {
   background: #fffaf0;
   border: 1px solid #efd6a8;

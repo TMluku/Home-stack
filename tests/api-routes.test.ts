@@ -881,20 +881,22 @@ describe("API route contracts", () => {
       pointValue: 0,
       couponValue: 0,
       effectivePrice: 2200,
-      conditionRequired: false,
+      conditionRequired: true,
     });
-    expect(rakutenCandidate.effectivePriceQuote.conditionLabels).toEqual(expect.not.arrayContaining(["繝昴う繝ｳ繝域擅莉ｶ縺ゅｊ", "繧ｯ繝ｼ繝昴Φ譚｡莉ｶ縺ゅｊ"]));
-    expect(rakutenCandidate.evidence).not.toEqual(expect.arrayContaining(["official point value", "official coupon value"]));
+    expect(rakutenCandidate.effectivePriceQuote.conditionLabels).toEqual(expect.arrayContaining(["繝昴う繝ｳ繝域擅莉ｶ縺ゅｊ", "繧ｯ繝ｼ繝昴Φ譚｡莉ｶ縺ゅｊ"]));
+    expect(rakutenCandidate.evidence).toEqual(expect.arrayContaining(["official point condition requires retailer confirmation", "official coupon condition requires retailer confirmation"]));
 
     expect(yahooCandidate.effectivePriceQuote).toMatchObject({
       listPrice: 2500,
       pointValue: 0,
       couponValue: 0,
       effectivePrice: 2500,
-      conditionRequired: false,
+      conditionRequired: true,
     });
-    expect(yahooCandidate.effectivePriceQuote.conditionLabels).toEqual(expect.not.arrayContaining(["繝昴う繝ｳ繝域擅莉ｶ縺ゅｊ", "繧ｯ繝ｼ繝昴Φ譚｡莉ｶ縺ゅｊ"]));
-    expect(yahooCandidate.evidence).not.toEqual(expect.arrayContaining(["official point value", "official coupon value"]));
+    expect(yahooCandidate.effectivePriceQuote.conditionLabels).toEqual(expect.arrayContaining(["繝昴う繝ｳ繝域擅莉ｶ縺ゅｊ", "繧ｯ繝ｼ繝昴Φ譚｡莉ｶ縺ゅｊ"]));
+    expect(yahooCandidate.evidence).toEqual(
+      expect.arrayContaining(["official point condition requires retailer confirmation", "official coupon condition requires retailer confirmation"]),
+    );
   });
 
   it("keeps official reward date strings as conditions instead of discounts", async () => {

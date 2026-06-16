@@ -506,6 +506,10 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
     hasConditionalDiscountPriceCopy(officialText);
   const pointAmountPaths = ["point.amount", "pointValue", "pointAmount", "points", "rewardPoint"];
   const pointRatePaths = ["pointRate", "point.rate", "pointRateValue"];
+  const pointAmountRateOutOfRange = hasOutOfRangeRewardRate(record, pointAmountPaths, ["point", "points", "ポイント"], {
+    stringsMustContainPercent: true,
+  });
+  const pointRateOutOfRange = hasOutOfRangeRewardRate(record, pointRatePaths, ["point", "points", "ポイント"]);
   const rawPointValue =
     readRewardAmountPath(record, pointAmountPaths, ["point", "points", "ポイント"]) ??
     inferPointValueFromRate(
@@ -536,6 +540,13 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
     "discount.amount",
   ];
   const couponRatePaths = ["coupon.rate", "couponRate", "discountRate"];
+  const couponAmountRateOutOfRange = hasOutOfRangeRewardRate(
+    record,
+    couponAmountPaths,
+    ["coupon", "discount", "off", "クーポン"],
+    { stringsMustContainPercent: true },
+  );
+  const couponRateOutOfRange = hasOutOfRangeRewardRate(record, couponRatePaths, ["coupon", "discount", "off", "クーポン"]);
   const rawCouponValue =
     readRewardAmountPath(record, couponAmountPaths, ["coupon", "discount", "off", "クーポン"]) ??
     inferPointValueFromRate(
@@ -553,9 +564,16 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   const pointWindowRequired = Boolean(pointValue && (pointStart || pointEnd)) || pointWindowExpired || pointWindowFuture;
   const couponWindowRequired = Boolean(couponValue && (couponStart || couponEnd)) || couponWindowExpired || couponWindowFuture;
   const pointConditionRequired =
-    !pointValue && (pointHasConditionalText || pointWindowExpired || pointWindowFuture || pointRewardAmountTooLarge);
+    !pointValue &&
+    (pointHasConditionalText || pointWindowExpired || pointWindowFuture || pointRewardAmountTooLarge || pointAmountRateOutOfRange || pointRateOutOfRange);
   const couponConditionRequired =
-    !couponValue && (couponHasConditionalText || couponWindowExpired || couponWindowFuture || couponRewardAmountTooLarge);
+    !couponValue &&
+    (couponHasConditionalText ||
+      couponWindowExpired ||
+      couponWindowFuture ||
+      couponRewardAmountTooLarge ||
+      couponAmountRateOutOfRange ||
+      couponRateOutOfRange);
   const evidence = [
     typeof shippingFee === "number" ? (shippingFee === 0 ? "official shipping: free" : `official shipping fee: ${shippingFee} JPY`) : "",
     shippingConditionRequired ? "official shipping condition requires retailer confirmation" : "",
@@ -650,6 +668,26 @@ function readRewardAmountPath(record: OfficialApiRecord, paths: string[], labels
     if (typeof numeric === "number") return numeric;
   }
   return undefined;
+}
+
+function hasOutOfRangeRewardRate(
+  record: OfficialApiRecord,
+  paths: string[],
+  labels: string[],
+  options: { stringsMustContainPercent?: boolean } = {},
+) {
+  for (const path of paths) {
+    const value = readPath(record, path);
+    if (typeof value === "number") {
+      if (value > 100 || value <= 0) return true;
+      continue;
+    }
+    if (typeof value !== "string" || hasAmbiguousRewardCopy(`${path} ${value}`, labels) || isDateLikeRewardText(value)) continue;
+    if (options.stringsMustContainPercent && !isPercentRewardText(value)) continue;
+    const numeric = parseRewardRate(value);
+    if (typeof numeric === "number" && (numeric > 100 || numeric <= 0)) return true;
+  }
+  return false;
 }
 
 function readRewardRatePath(

@@ -477,10 +477,12 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   const pointHasConditionalText =
     hasAmbiguousRewardCopy(officialText, ["point", "points", "ポイント"]) ||
     hasRewardMultiplierCopy(officialText, ["point", "points", "ポイント"]) ||
-    hasRewardThresholdCopy(officialText, ["point", "points", "ポイント"]);
+    hasRewardThresholdCopy(officialText, ["point", "points", "ポイント"]) ||
+    hasDateLikeRewardCopy(officialText, ["point", "points", "ポイント"]);
   const couponHasConditionalText =
     hasAmbiguousRewardCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
     hasRewardThresholdCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
+    hasDateLikeRewardCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
     hasCouponCodeConditionCopy(officialText);
   const rawPointValue =
     readRewardNumberPath(record, ["point.amount", "pointValue", "pointAmount", "points", "rewardPoint"], ["point", "points", "ポイント"]) ??
@@ -516,19 +518,8 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   const couponValue = couponHasConditionalText || couponWindowExpired || couponWindowFuture ? undefined : rawCouponValue;
   const pointWindowRequired = Boolean(pointValue && (pointStart || pointEnd)) || pointWindowExpired || pointWindowFuture;
   const couponWindowRequired = Boolean(couponValue && (couponStart || couponEnd)) || couponWindowExpired || couponWindowFuture;
-  const pointConditionRequired =
-    !pointValue &&
-    (hasAmbiguousRewardCopy(officialText, ["point", "points", "ポイント"]) ||
-      hasRewardMultiplierCopy(officialText, ["point", "points", "ポイント"]) ||
-      hasRewardThresholdCopy(officialText, ["point", "points", "ポイント"]) ||
-      pointWindowExpired ||
-      pointWindowFuture);
-  const couponConditionRequired =
-    !couponValue &&
-    (hasAmbiguousRewardCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
-      hasRewardThresholdCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
-      couponWindowExpired ||
-      couponWindowFuture);
+  const pointConditionRequired = !pointValue && (pointHasConditionalText || pointWindowExpired || pointWindowFuture);
+  const couponConditionRequired = !couponValue && (couponHasConditionalText || couponWindowExpired || couponWindowFuture);
   const evidence = [
     typeof shippingFee === "number" ? (shippingFee === 0 ? "official shipping: free" : `official shipping fee: ${shippingFee} JPY`) : "",
     shippingConditionRequired ? "official shipping condition requires retailer confirmation" : "",
@@ -595,7 +586,7 @@ function readRewardNumberPath(record: OfficialApiRecord, paths: string[], labels
   for (const path of paths) {
     const value = readPath(record, path);
     if (typeof value === "number") return value;
-    if (typeof value !== "string" || hasAmbiguousRewardCopy(`${path} ${value}`, labels)) continue;
+    if (typeof value !== "string" || hasAmbiguousRewardCopy(`${path} ${value}`, labels) || isDateLikeRewardText(value)) continue;
     const numeric = parseSearchAmount(value);
     if (typeof numeric === "number") return numeric;
   }
@@ -916,6 +907,22 @@ function hasRewardThresholdCopy(text: string, labels: string[]) {
         new RegExp(`${escapedWord}.{0,40}${escapedLabel}`, "i").test(text)
       );
     }),
+  );
+}
+
+function hasDateLikeRewardCopy(text: string, labels: string[]) {
+  return labels.some((label) => {
+    const escapedLabel = escapeRegExp(label);
+    return new RegExp(
+      `${escapedLabel}.{0,80}(?:valid|expires?|through|until|期限|有効|終了|開始|期間).{0,24}[12][0-9]{3}[-/年][0-9]{1,2}[-/月][0-9]{1,2}`,
+      "i",
+    ).test(toHalfWidth(text));
+  });
+}
+
+function isDateLikeRewardText(value: string) {
+  return /(?:valid|expires?|through|until|期限|有効|終了|開始|期間).{0,24}[12][0-9]{3}[-/年][0-9]{1,2}[-/月][0-9]{1,2}|[12][0-9]{3}[-/年][0-9]{1,2}[-/月][0-9]{1,2}.{0,24}(?:valid|expires?|through|until|期限|有効|終了|開始|期間)/i.test(
+    toHalfWidth(value),
   );
 }
 

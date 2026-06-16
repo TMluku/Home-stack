@@ -2,6 +2,8 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const root = process.argv[2] ?? "test-results";
+const expectedPagesUrl = "https://tmluku.github.io/Home-stack/";
+const expectedBrowserE2eWorkflowUrl = "https://github.com/TMluku/Home-stack/actions/workflows/e2e.yml";
 const expectedAssertions = [
   "document width fits viewport",
   "no mobile horizontal overflow candidates",
@@ -31,6 +33,10 @@ for (const file of jsonFiles) {
   }
 
   if (!payload.url || typeof payload.url !== "string") failures.push(`${file}: missing captured url`);
+  if (payload.expectedPagesUrl !== expectedPagesUrl) failures.push(`${file}: missing expected published Pages URL`);
+  if (!String(payload.url ?? "").startsWith(expectedPagesUrl) && !String(payload.url ?? "").startsWith("http://127.0.0.1:")) {
+    failures.push(`${file}: captured url is not the published Pages URL or local static preview`);
+  }
   if (!payload.viewport || payload.viewport.width < 360 || payload.viewport.height < 600) {
     failures.push(`${file}: viewport is missing or too small`);
   }
@@ -55,6 +61,15 @@ for (const file of jsonFiles) {
   if (qr.naturalWidth < 120 || qr.naturalHeight < 120) failures.push(`${file}: public Pages QR natural dimensions are too small`);
   if (qr.renderedWidth < 80 || qr.renderedHeight < 80) failures.push(`${file}: rendered public Pages QR is too small`);
   if (heroAssets.qaPointCount !== 3) failures.push(`${file}: expected three real-device QA checklist points`);
+
+  const qaTemplate = payload.qaTemplateSummary ?? {};
+  const qaTemplateText = String(qaTemplate.text ?? "");
+  if (qaTemplate.browserE2eHref !== expectedBrowserE2eWorkflowUrl) failures.push(`${file}: missing Browser E2E workflow link`);
+  if (!qaTemplateText.includes(expectedPagesUrl)) failures.push(`${file}: QA template does not include published Pages URL`);
+  if (!qaTemplateText.includes("mobile-qa-evidence")) failures.push(`${file}: QA template does not mention mobile-qa-evidence`);
+  if (!qaTemplateText.includes("mobile-price-condition-proof.png") || !qaTemplateText.includes("mobile-price-condition-proof.json")) {
+    failures.push(`${file}: QA template does not mention expected mobile evidence files`);
+  }
 
   const summary = payload.conditionSummary ?? {};
   if (!Array.isArray(summary.badges) || summary.badges.length === 0) failures.push(`${file}: missing condition badges`);

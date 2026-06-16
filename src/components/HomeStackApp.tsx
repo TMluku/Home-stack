@@ -912,6 +912,10 @@ export function HomeStackApp() {
                 </a>
                 の `mobile-qa-evidence` から確認します。
               </p>
+              <p>
+                公開URLは <code>{publicPagesUrl}</code>、証跡ファイルは <code>mobile-price-condition-proof.png</code> と{" "}
+                <code>mobile-price-condition-proof.json</code> を確認します。
+              </p>
             </details>
             <dl className="radar-strip">
               <div>

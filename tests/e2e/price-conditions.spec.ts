@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 
 test("shows ranked price candidates with condition evidence and visual asset", async ({ page }) => {
   await page.goto("/");
+  const expectedPagesUrl = "https://tmluku.github.io/Home-stack/";
 
   const priceVisual = page.locator(".price-insight-visual img");
   await expect(priceVisual).toHaveAttribute("src", /price-insight-visual\.png/);
@@ -35,6 +36,7 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   );
   await expect(page.locator(".hero__qa-template")).toContainText("実機QAで記録する項目");
   await expect(page.locator(".hero__qa-template")).toContainText("mobile-qa-evidence");
+  await expect(page.locator(".hero__qa-template")).toContainText(expectedPagesUrl);
   await page.locator(".hero__qa-template summary").click();
   await expect(page.locator(".hero__qa-template").getByRole("link", { name: "Browser E2E" })).toHaveAttribute(
     "href",
@@ -157,6 +159,7 @@ test("links live scan condition banners to proof details on the static Pages bui
 
 test("keeps the price condition proof usable on mobile width", async ({ page }, testInfo) => {
   await page.goto("/");
+  const expectedPagesUrl = "https://tmluku.github.io/Home-stack/";
   const heroAssetSummary = await page.evaluate(() => {
     const visual = document.querySelector(".price-insight-visual img");
     const qr = document.querySelector('img[alt="Home Stack GitHub Pages 公開URLのQRコード"]');
@@ -179,6 +182,10 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
       qaPointCount: document.querySelectorAll('[aria-label="実機スマホQA確認ポイント"] li').length,
     };
   });
+  const qaTemplateSummary = await page.locator(".hero__qa-template").evaluate((template) => ({
+    text: template.textContent?.trim() ?? "",
+    browserE2eHref: template.querySelector('a[href*="actions/workflows/e2e.yml"]')?.getAttribute("href") ?? null,
+  }));
 
   await page.locator(".inventory-search-chips .chip").first().click();
 
@@ -237,8 +244,10 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
           capturedAt: new Date().toISOString(),
           url: page.url(),
           viewport: page.viewportSize(),
+          expectedPagesUrl,
           metrics,
           heroAssetSummary,
+          qaTemplateSummary,
           conditionSummary,
           liveScanSummary,
           assertions: [

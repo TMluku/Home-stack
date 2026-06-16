@@ -716,6 +716,27 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips cash-on-delivery fee amounts before direct product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>COD fee product</title></head>
+        <body>
+          <span>330 JPY cash on delivery fee</span>
+          <strong>item price 1,980 JPY</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1980,
+      effectivePriceQuote: {
+        listPrice: 1980,
+        effectivePrice: 1980,
+      },
+      source: "html-text",
+    });
+  });
+
   it("skips deposit and future-credit amounts before direct product prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -2518,6 +2539,30 @@ describe("replenishment domain logic", () => {
         effectivePrice: 1980,
       },
     });
+  });
+
+  it("skips marketplace cash-on-delivery fee amounts before item prices", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/cod-fee" title="COD fee detergent">COD fee detergent</a>
+          <span>330 JPY cash on delivery fee</span>
+          <strong>item price 1,980 JPY</strong>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/detergent/",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "COD fee detergent",
+      price: 1980,
+      effectivePriceQuote: {
+        listPrice: 1980,
+        effectivePrice: 1980,
+      },
+    });
+    expect(candidates.map((candidate) => candidate.price)).not.toEqual(expect.arrayContaining([330]));
   });
 
   it("skips marketplace deposit and future-credit amounts before item prices", () => {

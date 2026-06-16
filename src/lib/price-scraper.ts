@@ -837,7 +837,14 @@ function hasOversizedRewardAmount(text: string, labels: string[], listPrice: num
 function extractShippingFeeFromText(text: string) {
   if (hasCertainFreeShippingCopy(text)) return 0;
   if (hasConditionalShippingCopy(text)) return undefined;
+  if (hasPaymentFeeCopy(text)) return undefined;
   return extractAmountAroundLabel(text, ["送料", "配送料", "配送", "shipping", "postage", "delivery"]);
+}
+
+function hasPaymentFeeCopy(text: string) {
+  return /(?:cod|cash on delivery).{0,32}(?:fee|fees|charge|payment)|(?:fee|fees|charge|payment).{0,32}(?:cod|cash on delivery)/i.test(
+    text,
+  );
 }
 
 function hasCertainFreeShippingCopy(text: string) {
@@ -1206,7 +1213,8 @@ function isNonProductFeeAmountContext(text: string, index: number, length: numbe
   const feeWords =
     /(?:代引|決済|支払|支払い|事務|取扱|取扱い|手数料|保証金|預り金|預かり金|デポジット|deposit|security deposit|fee|fees|handling|processing|payment|cod|cash on delivery)\s*$/i;
   const feeAfter = /^\s*(?:の)?\s*(?:手数料|保証金|預り金|預かり金|デポジット|deposit|security deposit|fee|fees|handling|processing)/i;
-  return feeWords.test(before) || feeAfter.test(after);
+  const paymentFeeAfter = /^\s*(?:payment|cod|cash on delivery)/i.test(after);
+  return feeWords.test(before) || feeAfter.test(after) || paymentFeeAfter;
 }
 
 function isDiscountAmountContext(text: string, index: number, length: number) {

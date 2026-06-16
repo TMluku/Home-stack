@@ -163,6 +163,7 @@ Price-condition operation notes:
 - Official marketplace API records with machine-readable unavailable states such as `availability: 0`, `inStock: false`, `OutOfStock`, `out_of_stock`, `soldOut`, `unavailable`, preorder, or discontinued should be excluded before price ranking so stale cheap offers do not become the displayed best price.
 - Direct URL scans should prefer structured JSON-LD, meta tags, embedded JSON, data attributes, Amazon price spans, then broad page text.
 - Direct URL and Amazon-style price scans should ignore unavailable machine states such as `out_of_stock`, `soldout`, preorder, or discontinued before falling back to the next current offer price.
+- Direct URL scans and marketplace HTML parsing should skip payment/COD/cash-on-delivery fee amounts as item prices, even when the fee label appears after the amount.
 - Amazon-style price scans and marketplace HTML parsing should skip `coupon applied`, `discount after clip`, clipped-coupon, promo, or discount-applied price blocks as the base item price, then preserve coupon-condition evidence for seller-page confirmation.
 
 ## Optional Marketplace API Keys

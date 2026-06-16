@@ -2743,8 +2743,8 @@ describe("replenishment domain logic", () => {
         <article>
           <a href="/item/reward-date" title="Reward date detergent">Reward date detergent</a>
           <span>price 2,000 JPY</span>
-          <span>points valid through 2026-06-20</span>
-          <span>coupon expires 2026-06-20</span>
+          <span>points 120 JPY valid through 2026-06-20</span>
+          <span>coupon 300 JPY expires 2026-06-20</span>
         </article>
       `,
       "yahoo-shopping",
@@ -2766,7 +2766,12 @@ describe("replenishment domain logic", () => {
       expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
     );
     expect(candidates[0]?.evidence).not.toEqual(
-      expect.arrayContaining(["point value inferred: 2026 JPY", "coupon value inferred: 2026 JPY"]),
+      expect.arrayContaining([
+        "point value inferred: 120 JPY",
+        "point value inferred: 2026 JPY",
+        "coupon value inferred: 300 JPY",
+        "coupon value inferred: 2026 JPY",
+      ]),
     );
   });
 

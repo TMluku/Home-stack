@@ -427,8 +427,10 @@ function inferPriceAdjustments(snippet: string, listPrice: number) {
   const shippingConditionRequired = hasConditionalShippingCopy(text);
   const purchaseConditionRequired = hasPurchaseConditionCopy(text);
   const shippingFee = extractShippingFeeFromText(text);
-  const pointValue = extractPointValue(text, listPrice);
-  const couponValue = extractCouponValue(text, listPrice);
+  const pointRewardLooksConditional = hasDateLikeRewardCopy(text, ["point", "points"]);
+  const couponRewardLooksConditional = hasDateLikeRewardCopy(text, ["coupon", "discount", "off"]) || hasCouponCodeConditionCopy(text);
+  const pointValue = pointRewardLooksConditional ? undefined : extractPointValue(text, listPrice);
+  const couponValue = couponRewardLooksConditional ? undefined : extractCouponValue(text, listPrice);
   const pointConditionRequired =
     !pointValue &&
     (hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"]) ||

@@ -1753,7 +1753,9 @@ function buildConditionCopyMemo(quote: EffectivePriceQuote, proofEvidence: strin
 
 function hasPriceConditionEvidence(labels: string[]) {
   return labels.some((label) =>
-    /(?:購入条件あり|送料条件あり|ポイント条件あり|クーポン条件あり|ポイント期間あり|クーポン期間あり|条件あり|条件|期間)/.test(label),
+    /(?:購入条件あり|送料条件あり|ポイント条件あり|クーポン条件あり|ポイント期間あり|クーポン期間あり|広告掲載あり|条件あり|条件|期間|広告)/.test(
+      label,
+    ),
   );
 }
 

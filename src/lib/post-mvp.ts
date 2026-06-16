@@ -207,14 +207,17 @@ export function buildStaticProductSearchResult(query: string, offers: Offer[], s
     .slice(0, 6);
 
   const offerCandidates: ProductSearchCandidate[] = matchingOffers.map((offer, index) => {
-    const quote = withOfferConditionEvidence(
-      buildEffectivePriceQuote({
-        listPrice: offer.listPrice,
-        shippingFee: 0,
-        pointValue: Math.max(0, offer.listPrice - offer.effectivePrice),
-        couponValue: 0,
-      }),
-      offer,
+    const quote = withStaticDemoPlacementEvidence(
+      withOfferConditionEvidence(
+        buildEffectivePriceQuote({
+          listPrice: offer.listPrice,
+          shippingFee: 0,
+          pointValue: Math.max(0, offer.listPrice - offer.effectivePrice),
+          couponValue: 0,
+        }),
+        offer,
+      ),
+      index,
     );
     return {
       id: `demo-${offer.id}`,
@@ -258,6 +261,17 @@ export function buildStaticProductSearchResult(query: string, offers: Offer[], s
       { source: "demo-catalog", label: "デモ価格台帳", ok: offerCandidates.length > 0, count: offerCandidates.length },
       { source: "marketplace-link", label: "外部検索リンク", ok: linkCandidates.length > 0, count: linkCandidates.length },
     ],
+  };
+}
+
+function withStaticDemoPlacementEvidence(quote: EffectivePriceQuote, index: number): EffectivePriceQuote {
+  if (index !== 0) return quote;
+  const conditionLabels = [...new Set([...quote.conditionLabels, "広告掲載あり"])];
+  return {
+    ...quote,
+    conditionLabels,
+    conditionRequired: conditionLabels.length > 0,
+    evidence: [...new Set([...quote.evidence, "sponsored placement requires retailer confirmation"])],
   };
 }
 

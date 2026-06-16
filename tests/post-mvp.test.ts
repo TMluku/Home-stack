@@ -85,6 +85,12 @@ describe("post-MVP static helpers", () => {
       conditionRequired: true,
       effectivePrice: 2260,
     });
+    expect(result.candidates.find((candidate) => candidate.source === "demo-catalog")?.effectivePriceQuote?.conditionLabels).toEqual(
+      expect.arrayContaining(["広告掲載あり"]),
+    );
+    expect(result.candidates.find((candidate) => candidate.source === "demo-catalog")?.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining(["sponsored placement requires retailer confirmation"]),
+    );
     expect(result.candidates.some((candidate) => candidate.source === "marketplace-link")).toBe(true);
   });
 

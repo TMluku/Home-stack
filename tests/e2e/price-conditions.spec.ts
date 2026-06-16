@@ -209,6 +209,20 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
   await expect(page.locator(".effective-proof__details").first()).toBeVisible();
 
   if (testInfo.project.name === "mobile-chrome") {
+    const candidateConditionSummary = await page
+      .locator(".market-card")
+      .filter({ has: page.locator(".condition-banner") })
+      .first()
+      .evaluate((card) => {
+        const proof = card.querySelector(".effective-proof");
+        return {
+          bannerText: card.querySelector(".condition-banner")?.textContent?.trim() ?? null,
+          bannerHref: card.querySelector(".condition-banner")?.getAttribute("href") ?? null,
+          badges: [...card.querySelectorAll(".effective-proof__badge")].map((badge) => badge.textContent?.trim()).filter(Boolean),
+          detailsOpen: proof?.querySelector(".effective-proof__details")?.hasAttribute("open") ?? false,
+          sellerLink: proof?.querySelector(".effective-proof__details a")?.getAttribute("href") ?? null,
+        };
+      });
     const conditionSummary = await page
       .locator(".effective-proof")
       .first()
@@ -255,6 +269,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
           metrics,
           heroAssetSummary,
           qaTemplateSummary,
+          candidateConditionSummary,
           conditionSummary,
           liveScanSummary,
           assertions: [

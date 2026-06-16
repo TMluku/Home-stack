@@ -77,7 +77,7 @@ pnpm.cmd run check:real-device-qa
 
 `test:e2e` checks the published GitHub Pages URL and the visual asset used by the price-search UI by default. Override it with `HOME_STACK_PAGES_URL` when validating another deployment.
 
-`test:e2e:browser` builds the static Pages export, serves it locally, and verifies the price-search flow in mobile and desktop Chromium. `check:mobile-qa-evidence` validates the generated screenshot and metrics JSON, including the hero visual, public QR, published Pages URL, Browser E2E workflow link, QA checklist, mobile overflow metrics, price-verification lanes, and price-condition proof details before those files are used for manual QA. Install the browser once with:
+`test:e2e:browser` builds the static Pages export, serves it locally, and verifies the price-search flow in mobile and desktop Chromium. `check:mobile-qa-evidence` validates the generated screenshot and metrics JSON, including the hero visual, public QR, published Pages URL, Browser E2E workflow link, QA checklist, mobile overflow metrics, candidate condition-banner anchors, price-verification lanes, and price-condition proof details before those files are used for manual QA. Install the browser once with:
 
 ```powershell
 pnpm.cmd exec playwright install chromium
@@ -137,7 +137,7 @@ Use this checklist when changing price extraction, condition labels, static Page
 
 2. Publish through `main`; `.github/workflows/pages-branch.yml` updates `gh-pages` automatically.
 3. Confirm GitHub Actions are green: `CI`, `Browser E2E`, `Publish GitHub Pages Branch`, and `pages-build-deployment`.
-4. Download the `mobile-qa-evidence` artifact from the latest `Browser E2E` run and inspect `mobile-price-condition-proof.png` plus `mobile-price-condition-proof.json`; the JSON should include the published Pages URL, Browser E2E workflow link, hero visual/QR metrics, mobile overflow metrics, price-verification lanes, condition summaries, and condition-proof rows.
+4. Download the `mobile-qa-evidence` artifact from the latest `Browser E2E` run and inspect `mobile-price-condition-proof.png` plus `mobile-price-condition-proof.json`; the JSON should include the published Pages URL, Browser E2E workflow link, hero visual/QR metrics, mobile overflow metrics, candidate condition-banner anchors, price-verification lanes, condition summaries, and condition-proof rows.
 5. Confirm the public app responds at `https://tmluku.github.io/Home-stack/`.
 6. For UI or price-condition changes, complete the real-device checklist in `docs/mobile-qa.md`; use the hero `QA記録をコピー` button to seed the matrix row, then replace the device/browser/result placeholders.
 7. Run the manual real-device gate after recording the phone pass:

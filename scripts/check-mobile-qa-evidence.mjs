@@ -74,6 +74,19 @@ for (const file of jsonFiles) {
   }
 
   const summary = payload.conditionSummary ?? {};
+  const candidateConditionSummary = payload.candidateConditionSummary ?? {};
+  if (!String(candidateConditionSummary.bannerText ?? "").includes("条件あり")) {
+    failures.push(`${file}: missing candidate condition banner`);
+  }
+  if (!String(candidateConditionSummary.bannerHref ?? "").startsWith("#candidate-conditions-")) {
+    failures.push(`${file}: missing candidate condition proof anchor`);
+  }
+  if (!Array.isArray(candidateConditionSummary.badges) || candidateConditionSummary.badges.length === 0) {
+    failures.push(`${file}: missing candidate condition badges`);
+  }
+  if (candidateConditionSummary.detailsOpen !== true) failures.push(`${file}: candidate condition details were not open`);
+  if (!isHttpUrl(candidateConditionSummary.sellerLink)) failures.push(`${file}: missing candidate seller/search link`);
+
   if (!Array.isArray(summary.badges) || summary.badges.length === 0) failures.push(`${file}: missing condition badges`);
   if (!Array.isArray(summary.breakdownItems) || summary.breakdownItems.length !== 5) {
     failures.push(`${file}: expected five price-breakdown rows`);

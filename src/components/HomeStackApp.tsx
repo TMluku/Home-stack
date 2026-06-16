@@ -1495,6 +1495,13 @@ function EffectivePriceProof({
     quote.pointValue ?? 0,
   )} - クーポン ${yenFormatter.format(quote.couponValue ?? 0)} = 実質 ${yenFormatter.format(quote.effectivePrice)}`;
   const recomparePrice = quote.listPrice + (quote.shippingFee ?? 0);
+  const deductionTotal = (quote.pointValue ?? 0) + (quote.couponValue ?? 0);
+  const quickReadItems = [
+    { label: "条件価格", value: yenFormatter.format(quote.effectivePrice), tone: "primary" },
+    { label: "条件なし", value: yenFormatter.format(recomparePrice), tone: "plain" },
+    { label: "控除合計", value: `-${yenFormatter.format(deductionTotal)}`, tone: deductionTotal > 0 ? "subtract" : "plain" },
+    { label: "判定", value: quote.conditionRequired ? "要確認" : "条件なし", tone: quote.conditionRequired ? "warning" : "plain" },
+  ];
   const verificationLanes = [
     { label: "採用価格", detail: `表示価格 ${yenFormatter.format(quote.listPrice)} を比較の土台にする` },
     {
@@ -1505,8 +1512,16 @@ function EffectivePriceProof({
   ];
 
   return (
-    <fieldset className="effective-proof" id={proofId}>
+    <fieldset className={quote.conditionRequired ? "effective-proof effective-proof--conditional" : "effective-proof"} id={proofId}>
       <legend className="visually-hidden">実質価格の内訳</legend>
+      <dl className="effective-proof__quick-read" aria-label="条件価格の要点">
+        {quickReadItems.map((item) => (
+          <div className={`effective-proof__quick-read-item effective-proof__quick-read-item--${item.tone}`} key={item.label}>
+            <dt>{item.label}</dt>
+            <dd>{item.value}</dd>
+          </div>
+        ))}
+      </dl>
       <ul className="effective-proof__breakdown" aria-label="実質価格の計算内訳">
         {breakdownItems.map((item) => (
           <li className={`effective-proof__breakdown-item effective-proof__breakdown-item--${item.type}`} key={item.label}>

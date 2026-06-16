@@ -40,6 +40,17 @@ describe("replenishment domain logic", () => {
     expect(getRecommendedOffers(state, baseOffers).every((offer) => offer.conditions.length === 0)).toBe(true);
   });
 
+  it("falls back to non-conditional offers when conditions-only filter cannot be satisfied", () => {
+    const state = createDefaultState();
+    state.household.includeConditionalOffers = false;
+    state.activeFilter = "conditions";
+
+    const offers = getRecommendedOffers(state, baseOffers);
+
+    expect(offers.length).toBeGreaterThan(0);
+    expect(offers.every((offer) => offer.conditions.length === 0)).toBe(true);
+  });
+
   it("sorts recommended offers by effective price including conditions", () => {
     const state = createDefaultState();
     state.activeFilter = "all";

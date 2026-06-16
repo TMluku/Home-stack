@@ -64,6 +64,21 @@ describe("real-device QA gate", () => {
     );
   });
 
+  it("accepts a real-device pass with a concrete Browser E2E run URL", async () => {
+    await withQaFile(
+      [
+        "| Date | Device | Browser | Network | Result | Notes |",
+        "|---|---|---|---|---|---|",
+        "| 2026-06-16 | iPhone 15 | Safari | Wi-Fi | Pass | https://tmluku.github.io/Home-stack/ / Browser E2E: https://github.com/TMluku/Home-stack/actions/runs/27592318017 / mobile-qa-evidence / mobile-price-condition-proof.png / mobile-price-condition-proof.json / real-device screenshot: iphone-price-proof.png |",
+      ].join("\n"),
+      (filePath) => {
+        const result = spawnSync(process.execPath, [scriptPath, filePath], { encoding: "utf8" });
+        expect(result.status).toBe(0);
+        expect(result.stdout).toContain("PASS");
+      },
+    );
+  });
+
   it("rejects real-device rows without Browser E2E and mobile evidence filenames", async () => {
     await withQaFile(
       [
@@ -74,7 +89,7 @@ describe("real-device QA gate", () => {
       (filePath) => {
         const result = spawnSync(process.execPath, [scriptPath, filePath], { encoding: "utf8" });
         expect(result.status).toBe(1);
-        expect(result.stderr).toContain("Browser E2E workflow URL");
+        expect(result.stderr).toContain("Browser E2E workflow or run URL");
       },
     );
   });

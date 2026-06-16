@@ -403,6 +403,7 @@ function extractPrice(snippet: string) {
     if (isRewardAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isConditionThresholdAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isDiscountAmountContext(text, match.index ?? 0, match[0].length)) continue;
+    if (isCouponAppliedPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isFreeShippingProgressAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isShippingConditionAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isTaxExcludedContext(text, match.index ?? 0, match[0].length)) continue;
@@ -433,7 +434,8 @@ function inferPriceAdjustments(snippet: string, listPrice: number) {
   const couponConditionRequired =
     !couponValue &&
     (hasAmbiguousRewardCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
-      hasRewardThresholdCopy(text, ["coupon", "discount", "off", "クーポン"]));
+      hasRewardThresholdCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
+      hasCouponCodeConditionCopy(text));
   const evidence = [
     typeof shippingFee === "number" ? `shipping fee inferred: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
     shippingConditionRequired ? "shipping condition requires retailer confirmation" : "",
@@ -475,7 +477,8 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
     hasRewardThresholdCopy(officialText, ["point", "points", "ポイント"]);
   const couponHasConditionalText =
     hasAmbiguousRewardCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
-    hasRewardThresholdCopy(officialText, ["coupon", "discount", "off", "クーポン"]);
+    hasRewardThresholdCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
+    hasCouponCodeConditionCopy(officialText);
   const rawPointValue =
     readRewardNumberPath(record, ["point.amount", "pointValue", "pointAmount", "points", "rewardPoint"], ["point", "points", "ポイント"]) ??
     inferPointValueFromRate(
@@ -913,6 +916,12 @@ function hasRewardThresholdCopy(text: string, labels: string[]) {
   );
 }
 
+function hasCouponCodeConditionCopy(text: string) {
+  return /(?:クーポン(?:コード)?|プロモ(?:コード)?|割引コード|coupon\s+code|promo\s+code|promotion\s+code|discount\s+code).{0,40}(?:適用|入力|利用|取得|対象|条件|required|apply|applied|enter|with)|(?:適用|入力|利用|取得|対象|条件|required|apply|applied|enter|with).{0,40}(?:クーポン(?:コード)?|プロモ(?:コード)?|割引コード|coupon\s+code|promo\s+code|promotion\s+code|discount\s+code)/i.test(
+    text,
+  );
+}
+
 function extractAmountAroundLabel(text: string, labels: string[]) {
   for (const label of labels) {
     const escaped = escapeRegExp(label);
@@ -1062,6 +1071,17 @@ function isDiscountAmountContext(text: string, index: number, length: number) {
     /^\s*(?:OFF|off|引き|値引き|値引|割引|割引額|discount|cashback)(?:\b|$)/i.test(after) ||
     (/円\s*$/i.test(matchedText) && /^\s*クーポン/.test(after))
   );
+}
+
+function isCouponAppliedPriceContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 42), index);
+  const after = text.slice(index + length, index + length + 36);
+  const beforeTail = before.slice(-36);
+  const couponAppliedBefore =
+    /(?:クーポン(?:コード)?|プロモ(?:コード)?|割引コード|coupon(?:\s+code)?|promo(?:\s+code)?|promotion code|discount code).{0,20}(?:適用後|適用|入力後|利用後|after|applied|with)\s*(?:価格|price|deal)?\s*$/i;
+  const couponAppliedAfter =
+    /^\s*(?:の)?\s*(?:クーポン(?:コード)?|プロモ(?:コード)?|割引コード|coupon(?:\s+code)?|promo(?:\s+code)?|promotion code|discount code).{0,20}(?:適用後|適用|入力後|利用後|after|applied|with)\s*(?:価格|price|deal)?/i;
+  return couponAppliedBefore.test(beforeTail) || couponAppliedAfter.test(after);
 }
 
 function isRewardAmountContext(text: string, index: number, length: number) {

@@ -762,8 +762,22 @@ describe("API route contracts", () => {
     expect(response.status).toBe(200);
     expect(payload.candidates).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ url: "https://rakuten.example.test/member-price", price: 1980 }),
-        expect.objectContaining({ url: "https://shopping.example.test/app-only-price", price: 2080 }),
+        expect.objectContaining({
+          url: "https://rakuten.example.test/member-price",
+          price: 1980,
+          effectivePriceQuote: expect.objectContaining({
+            conditionLabels: expect.arrayContaining(["購入条件あり"]),
+            conditionRequired: true,
+          }),
+        }),
+        expect.objectContaining({
+          url: "https://shopping.example.test/app-only-price",
+          price: 2080,
+          effectivePriceQuote: expect.objectContaining({
+            conditionLabels: expect.arrayContaining(["購入条件あり"]),
+            conditionRequired: true,
+          }),
+        }),
       ]),
     );
     expect(payload.candidates.map((candidate: { price?: number }) => candidate.price)).not.toEqual(expect.arrayContaining([1680, 1700]));

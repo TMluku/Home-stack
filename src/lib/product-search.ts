@@ -729,6 +729,13 @@ function hasPurchaseConditionCopy(text: string) {
     "箱買い",
     "ケース",
     "ケース価格",
+    "会員限定",
+    "メンバー限定",
+    "アプリ限定",
+    "LINE限定",
+    "ログイン限定",
+    "プレミアム会員",
+    "カード会員",
     "first order",
     "first purchase",
     "first-time",
@@ -741,6 +748,13 @@ function hasPurchaseConditionCopy(text: string) {
     "pack of",
     "set of",
     "case",
+    "member-only",
+    "members only",
+    "app-only",
+    "app only",
+    "login required",
+    "premium member",
+    "card member",
   ];
   return purchaseWords.some((word) => new RegExp(escapeRegExp(word), "i").test(text));
 }

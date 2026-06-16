@@ -597,6 +597,7 @@ function appendConditionLabels<T extends { conditionLabels: string[]; conditionR
 }
 
 function extractOfficialShippingFee(record: OfficialApiRecord, source: MarketplaceSearchSource) {
+  if (hasIncludedShippingCopy(collectRecordText(record))) return 0;
   const explicit = readShippingFeePath(record, [
     "shippingFee",
     "postage",
@@ -609,6 +610,7 @@ function extractOfficialShippingFee(record: OfficialApiRecord, source: Marketpla
   if (source === "rakuten" && readNumberPath(record, ["postageFlag"]) === 0) return 0;
   if (source === "yahoo-shopping" && readNumberPath(record, ["shipping.code"]) === 1) return 0;
   const shippingName = readStringPath(record, ["shipping.name", "shippingLabel", "postageLabel"]);
+  if (shippingName && hasIncludedShippingCopy(shippingName)) return 0;
   if (shippingName && hasConditionalShippingCopy(shippingName)) return undefined;
   return shippingName && /送料無料|free shipping/i.test(shippingName) ? 0 : undefined;
 }
@@ -618,6 +620,7 @@ function readShippingFeePath(record: OfficialApiRecord, paths: string[]) {
     const value = readPath(record, path);
     if (typeof value === "number") return value;
     if (typeof value !== "string" || !value.trim() || hasConditionalShippingCopy(value)) continue;
+    if (hasIncludedShippingCopy(value)) return 0;
     if (hasCertainFreeShippingCopy(value) || /無料|free/i.test(value)) return 0;
     const numeric = parseSearchAmount(value) ?? parseSearchAmountFromText(value);
     if (typeof numeric === "number") return numeric;
@@ -753,6 +756,7 @@ function hasOversizedRewardAmount(text: string, labels: string[], listPrice: num
 }
 
 function extractShippingFeeFromText(text: string) {
+  if (hasIncludedShippingCopy(text)) return 0;
   if (hasCertainFreeShippingCopy(text)) return 0;
   if (hasConditionalShippingCopy(text)) return undefined;
   if (hasPaymentFeeCopy(text)) return undefined;
@@ -767,6 +771,12 @@ function hasPaymentFeeCopy(text: string) {
 
 function hasCertainFreeShippingCopy(text: string) {
   return !hasConditionalShippingCopy(text) && /送料無料|送料\s*0|free shipping/i.test(text);
+}
+
+function hasIncludedShippingCopy(text: string) {
+  return /(?:送料(?:込|込み|こみ)|送料込み価格|送料込価格|shipping\s+included|shipping\s+is\s+included|includes\s+shipping|postage\s+included|delivery\s+included)/i.test(
+    text,
+  );
 }
 
 function hasConditionalShippingCopy(text: string) {

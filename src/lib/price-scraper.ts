@@ -475,6 +475,7 @@ function extractEmbeddedAdjustments(record: Record<string, unknown>): PriceAdjus
 }
 
 function extractJsonLdShippingSignal(value: unknown): RewardSignal {
+  if (hasIncludedShippingCopy(stringifyRewardPayload(value))) return { value: 0 };
   if (hasConditionalShippingCopy(stringifyRewardPayload(value))) return { conditionRequired: true };
   const amount = extractJsonLdAmount(value, ["shippingRate", "price", "value", "amount"]);
   return typeof amount === "number" ? { value: amount } : {};
@@ -580,6 +581,7 @@ function extractFirstShippingForKeys(value: unknown, keys: string[]): RewardSign
   for (const [key, rawValue] of Object.entries(record)) {
     if (keys.some((candidate) => key.toLowerCase() === candidate.toLowerCase())) {
       const descriptor = `${key} ${stringifyRewardPayload(record)}`;
+      if (hasIncludedShippingCopy(descriptor)) return { value: 0 };
       if (hasConditionalShippingCopy(descriptor)) return { conditionRequired: true };
       const amount = parseAmountPayload(rawValue);
       if (amount) return { value: amount };
@@ -857,6 +859,7 @@ function hasOversizedRewardAmount(text: string, labels: string[], listPrice: num
 }
 
 function extractShippingFeeFromText(text: string) {
+  if (hasIncludedShippingCopy(text)) return 0;
   if (hasCertainFreeShippingCopy(text)) return 0;
   if (hasConditionalShippingCopy(text)) return undefined;
   if (hasPaymentFeeCopy(text)) return undefined;
@@ -871,6 +874,12 @@ function hasPaymentFeeCopy(text: string) {
 
 function hasCertainFreeShippingCopy(text: string) {
   return !hasConditionalShippingCopy(text) && /送料無料|送料\s*0|free shipping/i.test(text);
+}
+
+function hasIncludedShippingCopy(text: string) {
+  return /(?:送料(?:込|込み|こみ)|送料込み価格|送料込価格|shipping\s+included|shipping\s+is\s+included|includes\s+shipping|postage\s+included|delivery\s+included)/i.test(
+    text,
+  );
 }
 
 function hasConditionalShippingCopy(text: string) {

@@ -433,6 +433,29 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["shipping fee from page text: 330 JPY"]));
   });
 
+  it("does not double-count shipping-included copy on direct product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Shipping included product</title></head>
+        <body>
+          <span>item price 2,400 JPY</span>
+          <span>shipping included 300 JPY</span>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2400,
+      source: "html-text",
+      effectivePriceQuote: {
+        listPrice: 2400,
+        shippingFee: 0,
+        effectivePrice: 2400,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(expect.arrayContaining(["shipping fee from page text: 300 JPY"]));
+  });
+
   it("keeps conditional JSON-LD shipping fees out of effective prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -473,6 +496,43 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.evidence).not.toEqual(expect.arrayContaining(["shipping fee from JSON-LD: 550 JPY"]));
   });
 
+  it("does not double-count shipping-included JSON-LD shipping rates", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Shipping included JSON-LD product</title>
+          <script type="application/ld+json">
+            {
+              "@type": "Product",
+              "name": "Shipping included JSON-LD product",
+              "offers": {
+                "@type": "Offer",
+                "price": "2,400",
+                "priceCurrency": "JPY",
+                "shippingDetails": {
+                  "@type": "OfferShippingDetails",
+                  "shippingRate": { "@type": "MonetaryAmount", "value": 330, "currency": "JPY" },
+                  "description": "shipping included in item price"
+                }
+              }
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2400,
+      source: "json-ld",
+      effectivePriceQuote: {
+        listPrice: 2400,
+        shippingFee: 0,
+        effectivePrice: 2400,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(expect.arrayContaining(["shipping fee from JSON-LD: 330 JPY"]));
+  });
+
   it("keeps conditional embedded JSON shipping fees out of effective prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -510,6 +570,42 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["送料条件あり"]));
     expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["shipping condition requires retailer confirmation"]));
     expect(extracted.effectivePriceQuote?.evidence).not.toEqual(expect.arrayContaining(["shipping fee from embedded JSON: 660 JPY"]));
+  });
+
+  it("does not double-count shipping-included embedded JSON shipping fees", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Shipping included embedded product</title>
+          <script id="__NEXT_DATA__" type="application/json">
+            {
+              "props": {
+                "pageProps": {
+                  "product": {
+                    "productName": "Shipping included embedded product",
+                    "currentPrice": "2,400",
+                    "currency": "JPY",
+                    "shippingFee": 330,
+                    "shippingNote": "shipping included in item price"
+                  }
+                }
+              }
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2400,
+      source: "embedded-json",
+      effectivePriceQuote: {
+        listPrice: 2400,
+        shippingFee: 0,
+        effectivePrice: 2400,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(expect.arrayContaining(["shipping fee from embedded JSON: 330 JPY"]));
   });
 
   it("skips unit prices before product totals on direct product pages", () => {
@@ -3359,6 +3455,31 @@ describe("replenishment domain logic", () => {
     expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["shipping fee inferred: 330 JPY"]));
   });
 
+  it("does not double-count shipping-included copy in marketplace HTML", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/shipping-included" title="Shipping included detergent">Shipping included detergent</a>
+          <span>item price 2,400 JPY</span>
+          <span>shipping included 300 JPY</span>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Shipping included detergent",
+      price: 2400,
+      effectivePriceQuote: {
+        listPrice: 2400,
+        shippingFee: 0,
+        effectivePrice: 2400,
+      },
+    });
+    expect(candidates[0]?.evidence).not.toEqual(expect.arrayContaining(["shipping fee inferred: 300 JPY"]));
+  });
+
   it("keeps marketplace HTML effective price conservative for ambiguous reward claims", () => {
     const candidates = extractSearchCandidatesFromHtml(
       `
@@ -4012,6 +4133,83 @@ describe("replenishment domain logic", () => {
         url: "https://example.com/yahoo-available",
         price: 1280,
       });
+    } finally {
+      if (previousRakutenId === undefined) delete process.env.RAKUTEN_APPLICATION_ID;
+      else process.env.RAKUTEN_APPLICATION_ID = previousRakutenId;
+      if (previousYahooId === undefined) delete process.env.YAHOO_SHOPPING_APP_ID;
+      else process.env.YAHOO_SHOPPING_APP_ID = previousYahooId;
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("does not double-count shipping-included official API shipping fields", async () => {
+    const previousRakutenId = process.env.RAKUTEN_APPLICATION_ID;
+    const previousYahooId = process.env.YAHOO_SHOPPING_APP_ID;
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "Shipping included Rakuten detergent",
+                  itemPrice: 2400,
+                  itemUrl: "https://example.com/rakuten-shipping-included",
+                  shippingFee: 330,
+                  postageLabel: "shipping included in item price",
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (requestUrl.includes("shopping.yahooapis.jp")) {
+        return new Response(
+          JSON.stringify({
+            hits: [
+              {
+                name: "Shipping included Yahoo detergent",
+                price: 2600,
+                url: "https://example.com/yahoo-shipping-included",
+                shippingFee: 330,
+                shipping: { name: "shipping included in item price" },
+              },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response("not found", { status: 404 });
+    });
+
+    try {
+      const result = await searchProductPrices("shipping included detergent");
+      const rakuten = result.candidates.find((candidate) => candidate.url === "https://example.com/rakuten-shipping-included");
+      const yahoo = result.candidates.find((candidate) => candidate.url === "https://example.com/yahoo-shipping-included");
+
+      expect(rakuten).toMatchObject({
+        price: 2400,
+        effectivePriceQuote: {
+          listPrice: 2400,
+          shippingFee: 0,
+          effectivePrice: 2400,
+        },
+      });
+      expect(yahoo).toMatchObject({
+        price: 2600,
+        effectivePriceQuote: {
+          listPrice: 2600,
+          shippingFee: 0,
+          effectivePrice: 2600,
+        },
+      });
+      expect(rakuten?.evidence).not.toEqual(expect.arrayContaining(["official shipping fee: 330 JPY"]));
+      expect(yahoo?.evidence).not.toEqual(expect.arrayContaining(["official shipping fee: 330 JPY"]));
     } finally {
       if (previousRakutenId === undefined) delete process.env.RAKUTEN_APPLICATION_ID;
       else process.env.RAKUTEN_APPLICATION_ID = previousRakutenId;

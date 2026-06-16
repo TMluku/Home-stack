@@ -495,7 +495,8 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
     hasAmbiguousRewardCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
     hasRewardThresholdCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
     hasDateLikeRewardCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
-    hasCouponCodeConditionCopy(officialText);
+    hasCouponCodeConditionCopy(officialText) ||
+    hasConditionalDiscountPriceCopy(officialText);
   const rawPointValue =
     readRewardNumberPath(record, ["point.amount", "pointValue", "pointAmount", "points", "rewardPoint"], ["point", "points", "ポイント"]) ??
     inferPointValueFromRate(
@@ -990,6 +991,13 @@ function hasCouponCodeConditionCopy(text: string) {
 }
 
 function hasConditionalDiscountPriceCopy(text: string) {
+  if (
+    /(?:coupon|promo|promotion|discount).{0,80}(?:after|applied|clipped|clip|with|required)|(?:after|applied|clipped|clip|with|required).{0,80}(?:coupon|promo|promotion|discount)/i.test(
+      text,
+    )
+  ) {
+    return true;
+  }
   return /(?:繧ｯ繝ｼ繝昴Φ|繝励Ο繝｢|蜑ｲ蠑怖coupon|promo|promotion|discount).{0,80}(?:驕ｩ逕ｨ蠕芸驕ｩ逕ｨ|蛻ｩ逕ｨ蠕芸蜿門ｾ怜ｾ芸蟇ｾ雎｡|譚｡莉ｶ|after|applied|clipped|clip|with|required)|(?:驕ｩ逕ｨ蠕芸驕ｩ逕ｨ|蛻ｩ逕ｨ蠕芸蜿門ｾ怜ｾ芸蟇ｾ雎｡|譚｡莉ｶ|after|applied|clipped|clip|with|required).{0,80}(?:繧ｯ繝ｼ繝昴Φ|繝励Ο繝｢|蜑ｲ蠑怖coupon|promo|promotion|discount)/i.test(
     text,
   );

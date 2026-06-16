@@ -886,6 +886,74 @@ describe("API route contracts", () => {
     );
   });
 
+  it("keeps official clipped-coupon amounts conditional instead of guaranteed discounts", async () => {
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "Official clipped coupon detergent",
+                  itemPrice: 2400,
+                  itemUrl: "https://rakuten.example.test/official-clipped-coupon",
+                  couponAmount: 300,
+                  couponNote: "coupon clipped after claim",
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          hits: [
+            {
+              name: "Official Yahoo clipped coupon detergent",
+              url: "https://shopping.example.test/official-clipped-coupon",
+              price: 2300,
+              coupon: { amount: 250, note: "discount after clip required" },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+
+    const response = await searchProducts(
+      new Request("http://localhost/api/product-search", {
+        method: "POST",
+        body: JSON.stringify({ query: "official clipped coupon detergent" }),
+      }),
+    );
+    const payload = await response.json();
+    const rakutenCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "rakuten");
+    const yahooCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "yahoo-shopping");
+
+    expect(response.status).toBe(200);
+    expect(rakutenCandidate.effectivePriceQuote).toMatchObject({
+      listPrice: 2400,
+      couponValue: 0,
+      effectivePrice: 2400,
+      conditionRequired: true,
+    });
+    expect(rakutenCandidate.evidence).toEqual(expect.arrayContaining(["official coupon condition requires retailer confirmation"]));
+    expect(rakutenCandidate.evidence).not.toEqual(expect.arrayContaining(["official coupon value: 300 JPY"]));
+    expect(yahooCandidate.effectivePriceQuote).toMatchObject({
+      listPrice: 2300,
+      couponValue: 0,
+      effectivePrice: 2300,
+      conditionRequired: true,
+    });
+    expect(yahooCandidate.evidence).toEqual(expect.arrayContaining(["official coupon condition requires retailer confirmation"]));
+    expect(yahooCandidate.evidence).not.toEqual(expect.arrayContaining(["official coupon value: 250 JPY"]));
+  });
+
   it("ignores second-item deal prices when parsing marketplace HTML results", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
       const requestUrl = String(url);

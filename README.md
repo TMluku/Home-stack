@@ -166,6 +166,7 @@ Price-condition operation notes:
 - Direct URL and Amazon-style price scans should ignore unavailable machine states such as `out_of_stock`, `soldout`, preorder, or discontinued before falling back to the next current offer price.
 - Direct URL scans and marketplace HTML parsing should skip payment/COD/cash-on-delivery fee amounts as item prices, even when the fee label appears after the amount.
 - Amazon-style price scans and marketplace HTML parsing should skip `coupon applied`, `discount after clip`, clipped-coupon, promo, or discount-applied price blocks as the base item price, then preserve coupon-condition evidence for seller-page confirmation.
+- Official marketplace API reward records with `coupon applied`, clipped-coupon, promo, or discount-applied copy should keep coupon amounts as conditions instead of guaranteed deductions.
 
 ## Optional Marketplace API Keys
 

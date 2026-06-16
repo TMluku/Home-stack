@@ -1888,6 +1888,11 @@ function PriceComparisonPanel({
                 {competitor.shipping} / {competitor.points}
               </small>
               <ComparisonPriceBreakdown competitor={competitor} />
+              {competitor.conditions.length > 0 ? (
+                <div className="comparison-recompare" role="note" aria-label={`${competitor.retailer}の条件不成立時価格`}>
+                  条件外なら {yenFormatter.format(competitor.listPrice)} で再比較
+                </div>
+              ) : null}
               {conditionSummaryItems.length > 0 ? <ConditionSummaryList items={conditionSummaryItems} compact /> : null}
               {competitor.conditions.length > 0 ? (
                 <a className="condition-banner" href={`#conditions-${offer.id}`}>

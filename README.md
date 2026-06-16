@@ -94,7 +94,7 @@ Manual smartphone QA for Pages:
 - Confirm the price-search visual loads.
 - Tap an inventory chip and confirm candidates appear in price order.
 - Confirm condition-required cards show `条件価格の要点`, `価格条件の確認先`, `条件確認メモ`, `控除してよい条件`, `価格成立条件の要約`, concrete condition badges such as `購入条件あり` or `クーポン条件あり`, the fallback recompare price when conditions do not apply, the condition decision rows for what to confirm/reject on the seller page, evidence rows, and a link to the seller page without horizontal scrolling.
-- Open `価格順リストを見る` and confirm comparison cards show a compact condition summary before the detailed condition rows.
+- Open `価格順リストを見る` and confirm comparison cards show a compact condition summary and condition-fallback recompare price before the detailed condition rows.
 - Paste `https://example.com/demo-condition-item` into `商品ページURL`, tap `ライブ価格を取得`, then confirm the URL-scan `条件あり` banner jumps to the same style of price-condition proof.
 
 Record real-device passes in `docs/mobile-qa.md`.

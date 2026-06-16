@@ -135,6 +135,9 @@ test("keeps offer cards sorted by effective price while filtering by conditions"
   await expect(page.locator(".comparison-breakdown").first()).toContainText("実質");
   await expect(page.locator(".comparison-breakdown__adjustment--subtract").first()).toBeVisible();
   const conditionalComparisonCard = page.locator(".comparison-card").filter({ hasText: "条件あり" }).first();
+  await expect(conditionalComparisonCard.locator(".comparison-recompare")).toHaveAttribute("aria-label", /条件不成立時価格/);
+  await expect(conditionalComparisonCard.locator(".comparison-recompare")).toContainText("条件外なら");
+  await expect(conditionalComparisonCard.locator(".comparison-recompare")).toContainText("再比較");
   await expect(conditionalComparisonCard.locator(".condition-summary--compact")).toHaveAttribute("aria-label", "価格成立条件の要約");
   await expect(conditionalComparisonCard.locator(".condition-summary--compact")).toContainText(/購入|送料|ポイント|クーポン/);
   await page.locator(".comparison-card .condition-banner").first().click();

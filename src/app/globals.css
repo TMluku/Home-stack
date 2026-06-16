@@ -1688,6 +1688,19 @@ h3 {
   color: var(--muted);
 }
 
+.comparison-recompare {
+  background: #fffaf0;
+  border: 1px solid #efd6a8;
+  border-radius: 0.45rem;
+  color: #62430b;
+  font-size: 0.74rem;
+  font-weight: 900;
+  line-height: 1.35;
+  min-width: 0;
+  padding: 0.42rem 0.5rem;
+  overflow-wrap: anywhere;
+}
+
 .condition-summary {
   display: grid;
   gap: 0.4rem;

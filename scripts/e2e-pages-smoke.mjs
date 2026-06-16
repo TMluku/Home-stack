@@ -24,6 +24,11 @@ const checks = [
   ["serves the public Pages QR SVG", qrResponse.ok && qrContentType.includes("image/")],
   ["serves a structured public Pages QR SVG", qrSvg.includes("<svg") && qrSvg.includes('id="qr-path"')],
   ["serves the expected public Pages QR dimensions", qrSvg.includes('width="33mm"') && qrSvg.includes('height="33mm"')],
+  [
+    "renders the real-device QA evidence instructions",
+    html.includes("mobile-qa-evidence") && html.includes("mobile-price-condition-proof.json"),
+  ],
+  ["renders the condition audit grid QA cue", html.includes("condition audit grid")],
 ];
 
 const failures = checks.filter(([, passed]) => !passed);

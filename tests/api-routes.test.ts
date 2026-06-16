@@ -783,6 +783,60 @@ describe("API route contracts", () => {
     expect(payload.candidates.map((candidate: { price?: number }) => candidate.price)).not.toEqual(expect.arrayContaining([1680, 1700]));
   });
 
+  it("prefers tax-included prices over tax-excluded amounts in marketplace HTML results", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("search.rakuten.co.jp")) {
+        return new Response(
+          `
+            <html>
+              <body>
+                <li>
+                  <a href="https://rakuten.example.test/tax-included">Detergent refill tax display</a>
+                  <span>本体価格 1,800円</span>
+                  <strong>税込価格 1,980円</strong>
+                </li>
+              </body>
+            </html>
+          `,
+          { status: 200 },
+        );
+      }
+
+      return new Response(
+        `
+          <html>
+            <body>
+              <article>
+                <a href="https://shopping.example.test/tax-included">Detergent refill tax display Yahoo</a>
+                <span>tax excluded ¥1,900</span>
+                <strong>tax included price ¥2,090</strong>
+              </article>
+            </body>
+          </html>
+        `,
+        { status: 200 },
+      );
+    });
+
+    const response = await searchProducts(
+      new Request("http://localhost/api/product-search", {
+        method: "POST",
+        body: JSON.stringify({ query: "detergent refill tax display" }),
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.candidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ url: "https://rakuten.example.test/tax-included", price: 1980 }),
+        expect.objectContaining({ url: "https://shopping.example.test/tax-included", price: 2090 }),
+      ]),
+    );
+    expect(payload.candidates.map((candidate: { price?: number }) => candidate.price)).not.toEqual(expect.arrayContaining([1800, 1900]));
+  });
+
   it("normalizes external photo detection responses into inventory candidates", async () => {
     process.env.HOME_STACK_IMAGE_RECOGNITION_URL = "https://vision.example.test/detect";
     process.env.HOME_STACK_IMAGE_RECOGNITION_TOKEN = "vision-token";

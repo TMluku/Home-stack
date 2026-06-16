@@ -825,6 +825,78 @@ describe("API route contracts", () => {
     expect(yahooCandidate.evidence).not.toEqual(expect.arrayContaining(["official point value: 5 JPY", "official coupon value: 20 JPY"]));
   });
 
+  it("ignores out-of-range official reward rates as guaranteed discounts", async () => {
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "Out-of-range rate official Rakuten item",
+                  itemPrice: 2200,
+                  itemUrl: "https://rakuten.example.test/out-of-range-rate",
+                  pointRate: 250,
+                  couponRate: 220,
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          hits: [
+            {
+              name: "Out-of-range rate official Yahoo item",
+              url: "https://shopping.example.test/out-of-range-rate",
+              price: 2500,
+              point: { rate: 250 },
+              coupon: { rate: 220 },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+
+    const response = await searchProducts(
+      new Request("http://localhost/api/product-search", {
+        method: "POST",
+        body: JSON.stringify({ query: "out of range official reward" }),
+      }),
+    );
+    const payload = await response.json();
+    const rakutenCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "rakuten");
+    const yahooCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "yahoo-shopping");
+
+    expect(response.status).toBe(200);
+    expect(rakutenCandidate.effectivePriceQuote).toMatchObject({
+      listPrice: 2200,
+      pointValue: 0,
+      couponValue: 0,
+      effectivePrice: 2200,
+      conditionRequired: false,
+    });
+    expect(rakutenCandidate.effectivePriceQuote.conditionLabels).toEqual(expect.not.arrayContaining(["繝昴う繝ｳ繝域擅莉ｶ縺ゅｊ", "繧ｯ繝ｼ繝昴Φ譚｡莉ｶ縺ゅｊ"]));
+    expect(rakutenCandidate.evidence).not.toEqual(expect.arrayContaining(["official point value", "official coupon value"]));
+
+    expect(yahooCandidate.effectivePriceQuote).toMatchObject({
+      listPrice: 2500,
+      pointValue: 0,
+      couponValue: 0,
+      effectivePrice: 2500,
+      conditionRequired: false,
+    });
+    expect(yahooCandidate.effectivePriceQuote.conditionLabels).toEqual(expect.not.arrayContaining(["繝昴う繝ｳ繝域擅莉ｶ縺ゅｊ", "繧ｯ繝ｼ繝昴Φ譚｡莉ｶ縺ゅｊ"]));
+    expect(yahooCandidate.evidence).not.toEqual(expect.arrayContaining(["official point value", "official coupon value"]));
+  });
+
   it("keeps official reward date strings as conditions instead of discounts", async () => {
     process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
     process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";

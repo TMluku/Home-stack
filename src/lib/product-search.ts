@@ -660,7 +660,7 @@ function readRewardRatePath(
 ) {
   for (const path of paths) {
     const value = readPath(record, path);
-    if (typeof value === "number") return value;
+    if (typeof value === "number" && value > 0 && value <= 100) return value;
     if (typeof value !== "string" || hasAmbiguousRewardCopy(`${path} ${value}`, labels) || isDateLikeRewardText(value)) continue;
     if (options.stringsMustContainPercent && !isPercentRewardText(value)) continue;
     const numeric = parseRewardRate(value);
@@ -1157,7 +1157,7 @@ function parseRewardRate(value?: string) {
     .replace(/[,，]/g, "")
     .match(/[0-9]+(?:\.[0-9]+)?/)?.[0];
   const rate = numeric ? Number(numeric) : NaN;
-  return Number.isFinite(rate) && rate > 0 ? rate : undefined;
+  return Number.isFinite(rate) && rate > 0 && rate <= 100 ? rate : undefined;
 }
 
 function isZeroStockText(value: string) {

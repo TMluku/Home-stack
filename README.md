@@ -167,6 +167,7 @@ Price-condition operation notes:
 - Direct URL scans should prefer structured JSON-LD, meta tags, embedded JSON, data attributes, Amazon price spans, then broad page text.
 - Direct URL JSON-LD extraction should use exact `price` values; `AggregateOffer` range fields such as `lowPrice` or `highPrice` should not become the direct product price unless another exact source confirms the price.
 - Direct URL meta price extraction should ignore reward, coupon, shipping, gift-card, or store-credit amounts in meta tags such as `twitter:data1`, then fall back to the next product-price source.
+- Direct URL data-attribute price extraction should skip used, app-only, subscription, purchase-condition, coupon-applied, shipping-condition, or payment-fee contexts before accepting an attribute price.
 - Direct URL and Amazon-style price scans should ignore unavailable machine states such as `out_of_stock`, `soldout`, preorder, or discontinued before falling back to the next current offer price.
 - Direct URL scans and marketplace HTML parsing should skip payment/COD/cash-on-delivery fee amounts as item prices, even when the fee label appears after the amount.
 - Amazon-style price scans and marketplace HTML parsing should skip `coupon applied`, `discount after clip`, clipped-coupon, promo, or discount-applied price blocks as the base item price, then preserve coupon-condition evidence for seller-page confirmation.

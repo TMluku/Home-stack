@@ -256,6 +256,11 @@ function extractAttributePrice(html: string) {
   for (const tag of tags) {
     const decodedTag = decodeEntities(tag);
     if (hasUsedConditionCopy(decodedTag)) continue;
+    if (hasPurchaseConditionCopy(decodedTag)) continue;
+    if (hasRestrictedPriceCopy(decodedTag)) continue;
+    if (hasConditionalDiscountPriceCopy(decodedTag)) continue;
+    if (hasPaymentFeeCopy(decodedTag)) continue;
+    if (hasConditionalShippingCopy(decodedTag)) continue;
     const price = parsePrice(matchContent(tag, priceAttributePattern));
     if (price) return { price, currency: inferCurrency(tag) };
   }
@@ -947,6 +952,12 @@ function hasPurchaseConditionCopy(text: string) {
     "case",
   ];
   return purchaseWords.some((word) => new RegExp(escapeRegExp(word), "i").test(text));
+}
+
+function hasRestrictedPriceCopy(text: string) {
+  return /(?:会員(?:限定)?|メンバー(?:限定)?|アプリ(?:限定)?|LINE(?:限定)?|ログイン(?:限定)?|プレミアム(?:会員)?|カード会員|prime|member|members only|member-only|app only|app-only|login required|premium member|card member|eligible only)\s*(?:価格|特価|限定価格|割引価格|price|deal)?|(?:価格|特価|限定価格|割引価格|price|deal)\s*(?:会員(?:限定)?|メンバー(?:限定)?|アプリ(?:限定)?|LINE(?:限定)?|ログイン(?:限定)?|プレミアム(?:会員)?|カード会員|prime|member|members only|member-only|app only|app-only|login required|premium member|card member|eligible only)/i.test(
+    text,
+  );
 }
 
 function hasAmbiguousRewardCopy(text: string, labels: string[]) {

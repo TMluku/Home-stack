@@ -682,6 +682,23 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips app-only data-attribute prices before regular attribute prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Attribute app-only product</title></head>
+        <body>
+          <button data-current-price="1,700" data-label="app-only price">Buy in app</button>
+          <button data-current-price="2,080" data-label="regular item price">Buy now</button>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2080,
+      source: "data-attribute",
+    });
+  });
+
   it("skips range lower-bound prices before exact direct product prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>

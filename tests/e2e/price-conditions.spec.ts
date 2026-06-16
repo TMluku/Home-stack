@@ -77,6 +77,13 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await conditionBanner.click();
   await expect(page).toHaveURL(/#candidate-conditions-/);
   await expect(conditionalProof).toBeInViewport();
+
+  const offerConditionBanner = page.locator(".offer-card .condition-banner").first();
+  await expect(offerConditionBanner).toContainText("条件あり");
+  await expect(offerConditionBanner).toHaveAttribute("href", /#conditions-/);
+  await expect(offerConditionBanner).toHaveAttribute("aria-label", /条件情報を開く/);
+  await offerConditionBanner.click();
+  await expect(page.locator(".condition-details").first()).toBeInViewport();
   await expect(conditionalProof.locator(".effective-proof__badge").first()).toBeVisible();
   await expect(conditionalProof.locator(".effective-proof__badges")).toContainText("購入条件あり");
   await expect(conditionalProof.locator(".effective-proof__badges")).toContainText("クーポン条件あり");

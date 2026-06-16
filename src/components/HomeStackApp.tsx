@@ -1157,12 +1157,12 @@ export function HomeStackApp() {
                 </button>
                 {offer.conditions.length > 0 ? (
                   <a
-                    className="condition-link"
+                    className="condition-banner"
                     href={`#conditions-${offer.id}`}
-                    aria-label={`${offer.title}の条件詳細`}
+                    aria-label={`${offer.title}の条件情報を開く`}
                     onClick={(event) => openOfferConditionDetails(event, offer.id)}
                   >
-                    条件を見る
+                    条件あり
                   </a>
                 ) : null}
               </article>

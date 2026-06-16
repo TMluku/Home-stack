@@ -340,6 +340,7 @@ function extractTextPrice(html: string) {
     if (isUnitPriceContext(text, match.index ?? 0, priceText.length)) continue;
     if (isPackComponentPriceContext(text, match.index ?? 0, priceText.length)) continue;
     if (isSampleTrialPriceContext(text, match.index ?? 0, priceText.length)) continue;
+    if (isAdditionalItemPriceContext(text, match.index ?? 0, priceText.length)) continue;
     if (isRangeLowerBoundPriceContext(text, match.index ?? 0, priceText.length)) continue;
     if (isEffectivePriceContext(text, match.index ?? 0, priceText.length)) continue;
     if (isInstallmentAmountContext(text, match.index ?? 0, priceText.length)) continue;
@@ -1255,6 +1256,27 @@ function isSampleTrialPriceContext(text: string, index: number, length: number) 
   const sampleWords = /(?:sample|trial|tester|mini\s*size|travel\s*size|sample[-\s]?size|trial[-\s]?size)\s*(?:price|deal)?\s*$/i;
   const sampleAfter = /^\s*(?:sample|trial|tester|mini\s*size|travel\s*size|sample[-\s]?size|trial[-\s]?size)(?:\s*(?:price|deal))?/i;
   return sampleWords.test(before) || sampleAfter.test(after);
+}
+
+function isAdditionalItemPriceContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 36), index);
+  const after = text.slice(index + length, index + length + 40);
+  const matchedText = text.slice(index, index + length);
+  const ordinalItem = /(?:[2２二]\s*(?:点|個|枚|本|袋|箱|品)\s*目|second\s+item|2nd\s+item|additional\s+item|extra\s+item)/i;
+  const conditionalPriceWords = /(?:半額|無料|割引|値引|特価|価格|off|discount|deal|price)/i;
+  const beforeTail = before.slice(-28);
+  const ordinalMatch = beforeTail.match(ordinalItem);
+  const afterOrdinal = ordinalMatch ? beforeTail.slice((ordinalMatch.index ?? 0) + ordinalMatch[0].length) : "";
+  const hasInterveningPrice = /(?:¥|￥)\s*[0-9０-９]|[0-9０-９][0-9０-９,，]*\s*(?:円|JPY)/i.test(afterOrdinal);
+  return (
+    (Boolean(ordinalMatch) &&
+      !hasInterveningPrice &&
+      (conditionalPriceWords.test(beforeTail) || conditionalPriceWords.test(afterOrdinal) || conditionalPriceWords.test(matchedText))) ||
+    (Boolean(ordinalMatch) && !hasInterveningPrice && /^\s*(?:円|JPY)?\s*(?:なら|で|only|each)/i.test(after)) ||
+    /^\s*(?:なら|で|for|as)\s*(?:the\s*)?(?:second\s+item|2nd\s+item|additional\s+item|extra\s+item|[2２二]\s*(?:点|個|枚|本|袋|箱|品)\s*目)/i.test(
+      after,
+    )
+  );
 }
 
 function isRangeLowerBoundPriceContext(text: string, index: number, length: number) {

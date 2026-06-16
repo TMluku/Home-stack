@@ -670,6 +670,28 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips second-item promo prices before direct product totals", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Second item promo product</title></head>
+        <body>
+          <span>2点目価格 680円</span>
+          <span>additional item only 780 JPY</span>
+          <strong>販売価格 1,580円</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1580,
+      source: "html-text",
+      effectivePriceQuote: {
+        listPrice: 1580,
+        effectivePrice: 1580,
+      },
+    });
+  });
+
   it("skips discount amounts before product totals on direct product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>

@@ -231,4 +231,79 @@ describe("mobile QA evidence gate", () => {
       },
     );
   });
+
+  it("rejects condition proof JSON without condition-banner anchor evidence", async () => {
+    await withEvidenceDir(
+      {
+        "mobile-price-condition-proof.png": minimalPng(390, 1200),
+        "mobile-price-condition-proof.json": JSON.stringify({
+          url: "http://127.0.0.1:4173/Home-stack/#live-conditions-0",
+          expectedPagesUrl: "https://tmluku.github.io/Home-stack/",
+          viewport: { width: 390, height: 844 },
+          metrics: { bodyWidth: 390, viewportWidth: 390, overflowCount: 0 },
+          heroAssetSummary: {
+            visual: {
+              src: "/Home-stack/price-insight-visual.png",
+              complete: true,
+              naturalWidth: 1693,
+              naturalHeight: 929,
+              renderedWidth: 320,
+              renderedHeight: 176,
+            },
+            qr: {
+              src: "/Home-stack/pages-qr.svg",
+              complete: true,
+              naturalWidth: 128,
+              naturalHeight: 128,
+              renderedWidth: 96,
+              renderedHeight: 96,
+            },
+            qaPointCount: 3,
+          },
+          qaTemplateSummary: {
+            text: "https://tmluku.github.io/Home-stack/ mobile-qa-evidence mobile-price-condition-proof.png mobile-price-condition-proof.json real-device screenshot",
+            browserE2eHref: browserE2eWorkflowUrl,
+          },
+          candidateConditionSummary: {
+            bannerText: "condition banner",
+            bannerHref: "#candidate-conditions-demo",
+            badges: ["condition"],
+            detailsOpen: true,
+            sellerLink: "https://example.com/item",
+          },
+          liveScanSummary: {
+            bannerText: "condition banner",
+            bannerHref: "#live-conditions-0",
+            badges: ["condition"],
+            detailsOpen: true,
+            sellerLink: "https://example.com/live",
+          },
+          assertions: [
+            "document width fits viewport",
+            "no mobile horizontal overflow candidates",
+            "price-search visual asset renders on mobile",
+            "public Pages QR renders on mobile",
+            "real-device QA checklist is present on the hero",
+            "effective price proof details are visible",
+            "condition price quick-read remains visible",
+            "condition guardrails show verification target and fallback price",
+            "condition action note explains seller-page checks",
+            "condition confirmation checklist states when deductions may apply",
+            "condition evidence remains readable on mobile width",
+            "condition fallback recompare price is visible",
+            "condition memo copy action is visible on mobile",
+            "comparison card fallback recompare price is visible",
+            "condition decision rows show confirm and reject guidance",
+            "static URL scan condition banner jumps to proof details",
+            "all condition banners resolve to open proof details",
+          ],
+        }),
+      },
+      (dirPath) => {
+        const result = spawnSync(process.execPath, [mobileEvidenceScriptPath, dirPath], { encoding: "utf8" });
+        expect(result.status).toBe(1);
+        expect(result.stderr).toContain("missing condition banner anchor summary");
+      },
+    );
+  });
 });

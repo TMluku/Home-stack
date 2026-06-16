@@ -1509,6 +1509,9 @@ function EffectivePriceProof({
         { label: "未成立時", value: yenFormatter.format(recomparePrice) },
       ]
     : [];
+  const confirmationItems = quote.conditionRequired
+    ? ["販売ページの金額・送料と一致", "対象者・期間・併用可否を満たす", "満たさない控除は戻し価格で再比較"]
+    : [];
   const verificationLanes = [
     { label: "採用価格", detail: `表示価格 ${yenFormatter.format(quote.listPrice)} を比較の土台にする` },
     {
@@ -1562,6 +1565,13 @@ function EffectivePriceProof({
         <div className="effective-proof__action-note" role="note" aria-label="条件確認メモ">
           販売ページで対象者・期間・併用可否・送料を確認。外れた条件は控除せず、条件なし価格で再比較します。
         </div>
+      ) : null}
+      {confirmationItems.length > 0 ? (
+        <ul className="effective-proof__confirmation" aria-label="控除してよい条件">
+          {confirmationItems.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
       ) : null}
       {conditionSummaryItems.length > 0 ? (
         <dl className="effective-proof__summary" aria-label="価格成立条件の要約">

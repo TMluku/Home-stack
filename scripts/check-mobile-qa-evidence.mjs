@@ -14,6 +14,7 @@ const expectedAssertions = [
   "condition price quick-read remains visible",
   "condition guardrails show verification target and fallback price",
   "condition action note explains seller-page checks",
+  "condition confirmation checklist states when deductions may apply",
   "condition evidence remains readable on mobile width",
   "condition fallback recompare price is visible",
   "condition decision rows show confirm and reject guidance",
@@ -114,6 +115,17 @@ for (const file of jsonFiles) {
   const actionNoteText = String(summary.actionNoteText ?? "");
   if (!actionNoteText.includes("販売ページ") || !actionNoteText.includes("条件なし価格で再比較")) {
     failures.push(`${file}: missing condition action note`);
+  }
+  if (!Array.isArray(summary.confirmationItems) || summary.confirmationItems.length !== 3) {
+    failures.push(`${file}: expected three condition confirmation items`);
+  }
+  const confirmationText = Array.isArray(summary.confirmationItems) ? summary.confirmationItems.join(" ") : "";
+  if (
+    !confirmationText.includes("金額・送料と一致") ||
+    !confirmationText.includes("対象者・期間・併用可否") ||
+    !confirmationText.includes("戻し価格で再比較")
+  ) {
+    failures.push(`${file}: missing condition confirmation checklist text`);
   }
   if (!Array.isArray(summary.breakdownItems) || summary.breakdownItems.length !== 5) {
     failures.push(`${file}: expected five price-breakdown rows`);

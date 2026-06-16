@@ -299,6 +299,7 @@ function isAmazonSuppressedPriceContext(html: string, index: number, length: num
   return (
     hasPurchaseConditionCopy(context) ||
     hasUsedConditionCopy(context) ||
+    hasUnavailableConditionCopy(context) ||
     isUnavailablePriceContext(context, Math.min(900, context.length), 0)
   );
 }
@@ -1263,15 +1264,19 @@ function hasUsedConditionCopy(text: string) {
   );
 }
 
+function hasUnavailableConditionCopy(text: string) {
+  return /(?:在庫なし|売り切れ|売切れ|完売|販売終了|品切れ|入荷待ち|入荷予定|予約販売|予約受付|発売前|販売前|sold\s*out|soldout|out\s*of\s*stock|outofstock|out[_-]of[_-]stock|unavailable|discontinued|pre-?order|coming soon|not yet available)/i.test(
+    text,
+  );
+}
+
 function isUnavailablePriceContext(text: string, index: number, length: number) {
   const before = text.slice(Math.max(0, index - 44), index);
   const after = text.slice(index + length, index + length + 24);
   const labelPrefix = `${before.replace(/^.*[0-9０-９][^0-9０-９]*/, "")}${text.slice(index, index + length).replace(/[0-9０-９].*$/, "")}`;
-  const words =
-    /(?:在庫なし|売り切れ|売切れ|販売終了|入荷待ち|入荷予定|品切れ|予約価格|予約販売|予約受付|発売前|販売前|sold out|out of stock|unavailable|discontinued|pre-?order|coming soon|not yet available)/i;
   const wordsBefore =
-    /(?:在庫なし|売り切れ|売切れ|販売終了|入荷待ち|入荷予定|品切れ|予約価格|予約販売|予約受付|発売前|販売前|sold out|out of stock|unavailable|discontinued|pre-?order|coming soon|not yet available)\s*$/i;
-  return words.test(labelPrefix) || wordsBefore.test(before) || words.test(after);
+    /(?:在庫なし|売り切れ|売切れ|販売終了|入荷待ち|入荷予定|品切れ|予約価格|予約販売|予約受付|発売前|販売前|sold\s*out|soldout|out\s*of\s*stock|outofstock|out[_-]of[_-]stock|unavailable|discontinued|pre-?order|coming soon|not yet available)\s*$/i;
+  return hasUnavailableConditionCopy(labelPrefix) || wordsBefore.test(before) || hasUnavailableConditionCopy(after);
 }
 
 function inferCurrency(value?: string) {

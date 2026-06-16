@@ -160,6 +160,7 @@ Price-condition operation notes:
 - Text price extraction should skip unit prices, tax-excluded prices, reference/list prices, unavailable or sold-out prices, and pack component prices such as `80円 x 12本` when a total price is present.
 - Official marketplace API records with machine-readable unavailable states such as `OutOfStock`, `out_of_stock`, `soldOut`, `unavailable`, preorder, or discontinued should be excluded before price ranking so stale cheap offers do not become the displayed best price.
 - Direct URL scans should prefer structured JSON-LD, meta tags, embedded JSON, data attributes, Amazon price spans, then broad page text.
+- Direct URL and Amazon-style price scans should ignore unavailable machine states such as `out_of_stock`, `soldout`, preorder, or discontinued before falling back to the next current offer price.
 
 ## Optional Marketplace API Keys
 

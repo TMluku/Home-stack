@@ -1814,6 +1814,36 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["price from Amazon split whole/fraction"]));
   });
 
+  it("skips Amazon unavailable machine-state prices before current offers", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Amazon current detergent</title></head>
+        <body>
+          <section>
+            <span>availability: out_of_stock</span>
+            <span class="a-price">
+              <span class="a-offscreen">￥780</span>
+            </span>
+          </section>
+          <section>${".".repeat(260)}
+            <span>availability: in_stock</span>
+            <span>One-time purchase price</span>
+            <span class="a-price">
+              <span class="a-offscreen">￥1,580</span>
+            </span>
+          </section>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      title: "Amazon current detergent",
+      price: 1580,
+      source: "html-text",
+    });
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["price from Amazon a-offscreen"]));
+  });
+
   it("extracts Amazon split whole and fraction prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>

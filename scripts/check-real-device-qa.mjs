@@ -29,6 +29,7 @@ const evaluations = qaRows.map(([date, device, browser, network, result, notes])
   const hasConditionAuditGrid = /条件成立チェック|condition audit grid/i.test(notes);
   const hasConditionActionNote = /条件確認メモ|condition action note/i.test(notes);
   const hasConditionImpactRows = /条件別の戻し額|condition impact|per-condition fallback/i.test(notes);
+  const hasSponsoredPlacementEvidence = /広告掲載あり|広告掲載|PR枠|sponsored placement/i.test(notes);
   const hasRealDeviceScreenshot =
     /(?:phone|real[- ]?device|実機|スマホ|端末).{0,40}(?:screenshot|screen shot|スクリーンショット|画面)|(?:screenshot|screen shot|スクリーンショット|画面).{0,40}(?:phone|real[- ]?device|実機|スマホ|端末)/i.test(
       notes,
@@ -43,6 +44,7 @@ const evaluations = qaRows.map(([date, device, browser, network, result, notes])
   if (!hasConditionAuditGrid) issues.push("condition audit grid");
   if (!hasConditionActionNote) issues.push("譚｡莉ｶ遒ｺ隱阪Γ繝｢ / condition action note");
   if (!hasConditionImpactRows) issues.push("条件別の戻し額 / condition impact rows");
+  if (!hasSponsoredPlacementEvidence) issues.push("広告掲載あり / sponsored placement evidence");
   if (!hasRealDeviceScreenshot) issues.push("real-phone screenshot note");
 
   return { cells: [date, device, browser, network, result, notes], issues };
@@ -60,8 +62,8 @@ if (passes.length === 0) {
   console.error(
     [
       `FAIL ${qaFile}: no real-device GitHub Pages QA pass is recorded.`,
-      "Add a non-placeholder matrix row with Result `Pass`, the tested published URL, Browser E2E workflow or run URL, `mobile-qa-evidence` notes, mobile evidence filenames, `条件確認メモ`, and a real-phone screenshot note.",
-      "The row notes must also mention `condition audit grid` and `条件別の戻し額` after checking the condition成立 audit grid and per-condition fallback rows on the phone.",
+      "Add a non-placeholder matrix row with Result `Pass`, the tested published URL, Browser E2E workflow or run URL, `mobile-qa-evidence` notes, mobile evidence filenames, `条件確認メモ`, `広告掲載あり`, and a real-phone screenshot note.",
+      "The row notes must also mention `condition audit grid` and `条件別の戻し額` after checking the condition成立 audit grid, sponsored placement condition, and per-condition fallback rows on the phone.",
       rowDiagnostics ? `Checked dated rows:\n${rowDiagnostics}` : "No dated QA rows were found in the matrix.",
     ].join("\n"),
   );

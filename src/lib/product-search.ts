@@ -1225,8 +1225,9 @@ function isNonProductFeeAmountContext(text: string, index: number, length: numbe
   const before = text.slice(Math.max(0, index - 30), index);
   const after = text.slice(index + length, index + length + 26);
   const feeWords =
-    /(?:代引|決済|支払|支払い|事務|取扱|取扱い|手数料|保証金|預り金|預かり金|デポジット|deposit|security deposit|fee|fees|handling|processing|payment|cod|cash on delivery)\s*$/i;
-  const feeAfter = /^\s*(?:の)?\s*(?:手数料|保証金|預り金|預かり金|デポジット|deposit|security deposit|fee|fees|handling|processing)/i;
+    /(?:代引|決済|支払|支払い|事務|取扱|取扱い|手数料|保証金|預り金|預かり金|デポジット|deposit|security deposit|fee|fees|handling|processing|payment|cod|cash on delivery|warranty|insurance|protection plan|gift wrap|gift wrapping|wrapping)\s*$/i;
+  const feeAfter =
+    /^\s*(?:の)?\s*(?:手数料|保証金|預り金|預かり金|デポジット|deposit|security deposit|fee|fees|handling|processing|warranty|insurance|protection plan|gift wrap|gift wrapping|wrapping)/i;
   const paymentFeeAfter = /^\s*(?:payment|cod|cash on delivery)/i.test(after);
   return feeWords.test(before) || feeAfter.test(after) || paymentFeeAfter;
 }

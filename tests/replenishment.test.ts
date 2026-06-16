@@ -941,6 +941,28 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips warranty and gift-wrap add-on amounts before direct product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Add-on service product</title></head>
+        <body>
+          <span>extended warranty 500 JPY</span>
+          <span>gift wrapping 300 JPY</span>
+          <strong>item price 1,980 JPY</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1980,
+      effectivePriceQuote: {
+        listPrice: 1980,
+        effectivePrice: 1980,
+      },
+      source: "html-text",
+    });
+  });
+
   it("skips unavailable prices before available totals on direct product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -2892,6 +2914,31 @@ describe("replenishment domain logic", () => {
         effectivePrice: 1980,
       },
     });
+  });
+
+  it("skips marketplace warranty and gift-wrap add-on amounts before item prices", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/add-on-service" title="Add-on service detergent">Add-on service detergent</a>
+          <span>extended warranty 500 JPY</span>
+          <span>gift wrap 300 JPY</span>
+          <strong>item price 1,980 JPY</strong>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Add-on service detergent",
+      price: 1980,
+      effectivePriceQuote: {
+        listPrice: 1980,
+        effectivePrice: 1980,
+      },
+    });
+    expect(candidates.map((candidate) => candidate.price)).not.toEqual(expect.arrayContaining([300, 500]));
   });
 
   it("skips unavailable prices before available totals in marketplace HTML", () => {

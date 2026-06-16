@@ -3143,6 +3143,87 @@ describe("replenishment domain logic", () => {
     expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["shipping condition requires retailer confirmation"]));
   });
 
+  it("filters unavailable official API machine states before price ranking", async () => {
+    const previousRakutenId = process.env.RAKUTEN_APPLICATION_ID;
+    const previousYahooId = process.env.YAHOO_SHOPPING_APP_ID;
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "Sold out official detergent",
+                  itemPrice: 780,
+                  itemUrl: "https://example.com/rakuten-sold-out",
+                  availability: 0,
+                },
+              },
+              {
+                Item: {
+                  itemName: "Available official detergent",
+                  itemPrice: 1480,
+                  itemUrl: "https://example.com/rakuten-available",
+                  availability: 1,
+                  postageFlag: 0,
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (requestUrl.includes("shopping.yahooapis.jp")) {
+        return new Response(
+          JSON.stringify({
+            hits: [
+              {
+                name: "Unavailable Yahoo detergent",
+                price: 680,
+                url: "https://example.com/yahoo-unavailable",
+                inStock: false,
+              },
+              {
+                name: "Available Yahoo detergent",
+                price: 1280,
+                url: "https://example.com/yahoo-available",
+                inStock: true,
+                shipping: { code: 1, name: "送料無料" },
+              },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response("not found", { status: 404 });
+    });
+
+    try {
+      const result = await searchProductPrices("official detergent");
+
+      expect(result.candidates.map((candidate) => candidate.url)).not.toEqual(
+        expect.arrayContaining(["https://example.com/rakuten-sold-out", "https://example.com/yahoo-unavailable"]),
+      );
+      expect(result.candidates.map((candidate) => candidate.url)).toEqual(
+        expect.arrayContaining(["https://example.com/rakuten-available", "https://example.com/yahoo-available"]),
+      );
+      expect(result.candidates[0]).toMatchObject({
+        url: "https://example.com/yahoo-available",
+        price: 1280,
+      });
+    } finally {
+      if (previousRakutenId === undefined) delete process.env.RAKUTEN_APPLICATION_ID;
+      else process.env.RAKUTEN_APPLICATION_ID = previousRakutenId;
+      if (previousYahooId === undefined) delete process.env.YAHOO_SHOPPING_APP_ID;
+      else process.env.YAHOO_SHOPPING_APP_ID = previousYahooId;
+      vi.restoreAllMocks();
+    }
+  });
+
   it("does not deduct expired official API campaign rewards", async () => {
     const previousRakutenId = process.env.RAKUTEN_APPLICATION_ID;
     const previousYahooId = process.env.YAHOO_SHOPPING_APP_ID;

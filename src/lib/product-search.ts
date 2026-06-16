@@ -148,6 +148,7 @@ async function searchRakutenApi(query: string): Promise<{ candidates: RawCandida
     const candidates: RawCandidate[] =
       payload.Items?.map((entry) => entry.Item)
         .filter((item): item is NonNullable<typeof item> => Boolean(item))
+        .filter((item) => !hasUnavailableMachineState(item as OfficialApiRecord))
         .filter((item) => !hasUsedConditionCopy(collectRecordText(item)))
         .filter((item) => !hasUnavailableOfferCopy(collectRecordText(item)))
         .map((item): RawCandidate => {
@@ -233,6 +234,7 @@ async function searchYahooShoppingApi(
     };
     const candidates: RawCandidate[] =
       payload.hits
+        ?.filter((item) => !hasUnavailableMachineState(item as OfficialApiRecord))
         ?.filter((item) => !hasUsedConditionCopy(collectRecordText(item)))
         ?.filter((item) => !hasUnavailableOfferCopy(collectRecordText(item)))
         ?.map((item): RawCandidate => {
@@ -634,6 +636,32 @@ function collectRecordText(value: unknown): string {
   return Object.entries(value as Record<string, unknown>)
     .map(([key, nested]) => `${key} ${collectRecordText(nested)}`)
     .join(" ");
+}
+
+function hasUnavailableMachineState(record: OfficialApiRecord) {
+  const textState = readStringPath(record, [
+    "availability",
+    "availabilityStatus",
+    "itemAvailability",
+    "saleStatus",
+    "stockStatus",
+    "status",
+  ]);
+  if (textState && hasUnavailableOfferCopy(textState)) return true;
+
+  const booleanPaths = ["available", "isAvailable", "inStock", "isInStock", "stock.available", "inventory.available"];
+  for (const path of booleanPaths) {
+    const value = readPath(record, path);
+    if (value === false) return true;
+  }
+
+  const numericPaths = ["availability", "stock", "stockQuantity", "inventory", "inventoryCount", "inventory.quantity"];
+  for (const path of numericPaths) {
+    const value = readPath(record, path);
+    if (value === 0 || value === "0") return true;
+  }
+
+  return false;
 }
 
 function extractPointValue(text: string, listPrice: number) {

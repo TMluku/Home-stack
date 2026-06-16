@@ -512,7 +512,9 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   const pointEnd = readStringPath(record, ["point.endTime", "point.end", "pointRateEndTime", "pointEndTime", "campaignEndTime"]);
   const pointWindowExpired = Boolean(rawPointValue && isPastDateTime(pointEnd));
   const pointWindowFuture = Boolean(rawPointValue && isFutureDateTime(pointStart));
-  const pointValue = pointHasConditionalText || pointWindowExpired || pointWindowFuture ? undefined : rawPointValue;
+  const pointRewardAmountTooLarge = Boolean(rawPointValue && listPrice && rawPointValue / listPrice > 0.35);
+  const pointValue =
+    pointHasConditionalText || pointWindowExpired || pointWindowFuture || pointRewardAmountTooLarge ? undefined : rawPointValue;
   const rawCouponValue =
     readRewardNumberPath(
       record,
@@ -527,11 +529,15 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   const couponEnd = readStringPath(record, ["coupon.endTime", "coupon.end", "couponEndTime", "discountEndTime"]);
   const couponWindowExpired = Boolean(rawCouponValue && isPastDateTime(couponEnd));
   const couponWindowFuture = Boolean(rawCouponValue && isFutureDateTime(couponStart));
-  const couponValue = couponHasConditionalText || couponWindowExpired || couponWindowFuture ? undefined : rawCouponValue;
+  const couponRewardAmountTooLarge = Boolean(rawCouponValue && listPrice && rawCouponValue / listPrice > 0.6);
+  const couponValue =
+    couponHasConditionalText || couponWindowExpired || couponWindowFuture || couponRewardAmountTooLarge ? undefined : rawCouponValue;
   const pointWindowRequired = Boolean(pointValue && (pointStart || pointEnd)) || pointWindowExpired || pointWindowFuture;
   const couponWindowRequired = Boolean(couponValue && (couponStart || couponEnd)) || couponWindowExpired || couponWindowFuture;
-  const pointConditionRequired = !pointValue && (pointHasConditionalText || pointWindowExpired || pointWindowFuture);
-  const couponConditionRequired = !couponValue && (couponHasConditionalText || couponWindowExpired || couponWindowFuture);
+  const pointConditionRequired =
+    !pointValue && (pointHasConditionalText || pointWindowExpired || pointWindowFuture || pointRewardAmountTooLarge);
+  const couponConditionRequired =
+    !couponValue && (couponHasConditionalText || couponWindowExpired || couponWindowFuture || couponRewardAmountTooLarge);
   const evidence = [
     typeof shippingFee === "number" ? (shippingFee === 0 ? "official shipping: free" : `official shipping fee: ${shippingFee} JPY`) : "",
     shippingConditionRequired ? "official shipping condition requires retailer confirmation" : "",

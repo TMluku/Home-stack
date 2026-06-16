@@ -801,6 +801,91 @@ describe("API route contracts", () => {
     expect(rakutenCandidate.evidence).not.toEqual(expect.arrayContaining(["official coupon value: 300 JPY"]));
   });
 
+  it("marks oversized official API rewards conditional instead of deducting them", async () => {
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "Oversized official Rakuten reward",
+                  itemPrice: 1000,
+                  itemUrl: "https://rakuten.example.test/oversized-official",
+                  pointAmount: 900,
+                  couponAmount: 900,
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          hits: [
+            {
+              name: "Oversized official Yahoo reward",
+              url: "https://shopping.example.test/oversized-official",
+              price: 1200,
+              point: { amount: 800 },
+              coupon: { amount: 900 },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+
+    const response = await searchProducts(
+      new Request("http://localhost/api/product-search", {
+        method: "POST",
+        body: JSON.stringify({ query: "oversized official rewards" }),
+      }),
+    );
+    const payload = await response.json();
+    const rakutenCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "rakuten");
+    const yahooCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "yahoo-shopping");
+
+    expect(response.status).toBe(200);
+    expect(rakutenCandidate.effectivePriceQuote).toMatchObject({
+      listPrice: 1000,
+      pointValue: 0,
+      couponValue: 0,
+      effectivePrice: 1000,
+      conditionRequired: true,
+    });
+    expect(rakutenCandidate.evidence).toEqual(
+      expect.arrayContaining([
+        "official point condition requires retailer confirmation",
+        "official coupon condition requires retailer confirmation",
+      ]),
+    );
+    expect(rakutenCandidate.evidence).not.toEqual(
+      expect.arrayContaining(["official point value: 900 JPY", "official coupon value: 900 JPY"]),
+    );
+    expect(yahooCandidate.effectivePriceQuote).toMatchObject({
+      listPrice: 1200,
+      pointValue: 0,
+      couponValue: 0,
+      effectivePrice: 1200,
+      conditionRequired: true,
+    });
+    expect(yahooCandidate.evidence).toEqual(
+      expect.arrayContaining([
+        "official point condition requires retailer confirmation",
+        "official coupon condition requires retailer confirmation",
+      ]),
+    );
+    expect(yahooCandidate.evidence).not.toEqual(
+      expect.arrayContaining(["official point value: 800 JPY", "official coupon value: 900 JPY"]),
+    );
+  });
+
   it("ignores second-item deal prices when parsing marketplace HTML results", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
       const requestUrl = String(url);

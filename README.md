@@ -160,6 +160,7 @@ Price-condition operation notes:
 - Structured, official API, or marketplace HTML reward fields that contain date-like strings such as `valid through 2026-06-20` or `expires 2026-06-20` should become condition evidence, not `2026円` point/coupon deductions.
 - Text price extraction should skip unit prices, tax-excluded prices, reference/list prices, unavailable or sold-out prices, and pack component prices such as `80円 x 12本` when a total price is present.
 - Direct URL text extraction should skip coupon-code or promo-code applied prices as the base item price, then expose `クーポン条件あり` so the seller page can confirm code entry, eligibility, and stackability.
+- Official API reward amounts that are implausibly large versus the item price, such as points over 35% of price or coupons over 60% of price, should become condition evidence instead of guaranteed deductions.
 - Official marketplace API records with machine-readable unavailable states such as `availability: 0`, `inStock: false`, `OutOfStock`, `out_of_stock`, `soldOut`, `unavailable`, preorder, or discontinued should be excluded before price ranking so stale cheap offers do not become the displayed best price.
 - Direct URL scans should prefer structured JSON-LD, meta tags, embedded JSON, data attributes, Amazon price spans, then broad page text.
 - Direct URL and Amazon-style price scans should ignore unavailable machine states such as `out_of_stock`, `soldout`, preorder, or discontinued before falling back to the next current offer price.

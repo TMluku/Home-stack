@@ -807,6 +807,27 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips per-month financing amounts before direct product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Financing product</title></head>
+        <body>
+          <span>Payment plan 500 JPY per mo.</span>
+          <strong>Current price 1,980 JPY</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1980,
+      effectivePriceQuote: {
+        listPrice: 1980,
+        effectivePrice: 1980,
+      },
+      source: "html-text",
+    });
+  });
+
   it("skips payment fee amounts before direct product prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -2722,6 +2743,29 @@ describe("replenishment domain logic", () => {
 
     expect(candidates[0]).toMatchObject({
       title: "Installment detergent",
+      price: 1980,
+      effectivePriceQuote: {
+        listPrice: 1980,
+        effectivePrice: 1980,
+      },
+    });
+  });
+
+  it("skips marketplace per-month financing amounts before item prices", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/financing" title="Financing detergent">Financing detergent</a>
+          <span>Payment plan 500 JPY per mo.</span>
+          <strong>Current price 1,980 JPY</strong>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Financing detergent",
       price: 1980,
       effectivePriceQuote: {
         listPrice: 1980,

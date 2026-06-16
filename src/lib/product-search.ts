@@ -1209,8 +1209,10 @@ function isEffectivePriceContext(text: string, index: number, length: number) {
 function isInstallmentAmountContext(text: string, index: number, length: number) {
   const before = text.slice(Math.max(0, index - 32), index);
   const after = text.slice(index + length, index + length + 36);
-  const labelBefore = /(?:月々|月額|毎月|分割|ローン|あと払い|リボ|installments?|installment|monthly|per month)\s*$/i;
-  const labelAfter = /^\s*(?:\/\s*(?:月|mo|month)|ずつ|から|の分割|分割|月額|毎月|per month|monthly|installments?)/i;
+  const labelBefore =
+    /(?:月々|月額|毎月|分割|ローン|あと払い|リボ|installments?|installment|monthly|per month|per mo\.?|payment plan|financing)\s*$/i;
+  const labelAfter =
+    /^\s*(?:\/\s*(?:月|mo|month)|ずつ|から|の分割|分割|月額|毎月|per month|per mo\.?|monthly|installments?|payment plan|financing)/i;
   return labelBefore.test(before) || labelAfter.test(after);
 }
 

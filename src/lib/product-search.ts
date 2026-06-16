@@ -477,7 +477,8 @@ function extractPrice(snippet: string) {
 function inferPriceAdjustments(snippet: string, listPrice: number) {
   const text = cleanText(snippet) ?? "";
   const shippingConditionRequired = hasConditionalShippingCopy(text);
-  const purchaseConditionRequired = hasPurchaseConditionCopy(text) || hasCartOnlyPriceCopy(text);
+  const purchaseConditionRequired =
+    hasPurchaseConditionCopy(text) || hasCartOnlyPriceCopy(text) || hasRestrictedPriceCopy(text);
   const shippingFee = extractShippingFeeFromText(text);
   const pointRewardLooksConditional = hasDateLikeRewardCopy(text, ["point", "points"]);
   const couponRewardLooksConditional =
@@ -535,7 +536,7 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   const officialText = collectRecordText(record);
   const shippingConditionRequired = hasConditionalShippingCopy(officialText);
   const shippingFee = shippingConditionRequired ? undefined : extractOfficialShippingFee(record, source);
-  const purchaseConditionRequired = hasPurchaseConditionCopy(officialText);
+  const purchaseConditionRequired = hasPurchaseConditionCopy(officialText) || hasRestrictedPriceCopy(officialText);
   const pointHasConditionalText =
     purchaseConditionRequired ||
     hasAmbiguousRewardCopy(officialText, ["point", "points", "ポイント"]) ||
@@ -965,6 +966,12 @@ function hasPurchaseConditionCopy(text: string) {
     "card member",
   ];
   return purchaseWords.some((word) => new RegExp(escapeRegExp(word), "i").test(text));
+}
+
+function hasRestrictedPriceCopy(text: string) {
+  return /(?:会員限定|対象者限定|ログイン(?:.*)?必要|ログインが必要|ログイン必須|メンバー|member-only|members only|member only|app only|app-only|login required|app only|app-only|premium member|card member|eligible only|利用対象|アプリ限定|アプリ会員限定)/i.test(
+    text,
+  );
 }
 
 function hasCartOnlyPriceCopy(text: string) {

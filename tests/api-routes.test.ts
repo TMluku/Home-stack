@@ -801,6 +801,65 @@ describe("API route contracts", () => {
     );
   });
 
+  it("marks official API offers with audience-restricted offers as conditional", async () => {
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "会員限定 detergent refill",
+                  itemPrice: 1980,
+                  itemUrl: "https://rakuten.example.test/member-only",
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          hits: [
+            {
+              name: "Yahoo normal detergent refill",
+              url: "https://shopping.example.test/normal",
+              price: 2050,
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+
+    const response = await searchProducts(
+      new Request("http://localhost/api/product-search", {
+        method: "POST",
+        body: JSON.stringify({ query: "detergent refill" }),
+      }),
+    );
+    const payload = await response.json();
+    const rakutenCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "rakuten");
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(rakutenCandidate).toMatchObject({
+      price: 1980,
+      effectivePriceQuote: {
+        listPrice: 1980,
+        effectivePrice: 1980,
+        conditionRequired: true,
+        conditionLabels: expect.arrayContaining(["購入条件あり"]),
+      },
+    });
+    expect(rakutenCandidate?.evidence).toEqual(expect.arrayContaining(["official purchase condition requires retailer confirmation"]));
+  });
+
   it("treats official reward percentage strings as rates instead of yen amounts", async () => {
     process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
     process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";

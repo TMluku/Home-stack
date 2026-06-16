@@ -1540,6 +1540,29 @@ describe("replenishment domain logic", () => {
     );
   });
 
+  it("marks login-required direct prices as conditional", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Login required product</title></head>
+        <body>
+          <span>ログインが必要 1,280 JPY</span>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1280,
+      source: "html-text",
+      effectivePriceQuote: {
+        listPrice: 1280,
+        effectivePrice: 1280,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["購入条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["purchase condition requires retailer confirmation"]));
+  });
+
   it("skips cart-only direct prices and keeps seller confirmation required", () => {
     const extracted = extractPriceFromHtml(`
       <html>

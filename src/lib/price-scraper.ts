@@ -787,7 +787,8 @@ function extractMetaReward(html: string, keys: string[]): RewardSignal {
 function inferPriceAdjustments(html: string, listPrice: number): PriceAdjustments {
   const text = extractPlainText(html);
   const shippingConditionRequired = hasConditionalShippingCopy(text);
-  const purchaseConditionRequired = hasPurchaseConditionCopy(text) || hasCartOnlyPriceCopy(text);
+  const purchaseConditionRequired =
+    hasPurchaseConditionCopy(text) || hasCartOnlyPriceCopy(text) || hasRestrictedPriceCopy(text);
   const shippingFee = extractShippingFeeFromText(text);
   const pointValue = extractPointValue(text, listPrice);
   const couponValue = extractCouponValue(text, listPrice);

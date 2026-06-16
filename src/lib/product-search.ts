@@ -394,6 +394,7 @@ function extractPrice(snippet: string) {
     if (isUnitPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isPackComponentPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isAdditionalItemPriceContext(text, match.index ?? 0, match[0].length)) continue;
+    if (isRestrictedAudiencePriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isRangeLowerBoundPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isEffectivePriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isInstallmentAmountContext(text, match.index ?? 0, match[0].length)) continue;
@@ -974,6 +975,17 @@ function isAdditionalItemPriceContext(text: string, index: number, length: numbe
       after,
     )
   );
+}
+
+function isRestrictedAudiencePriceContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 34), index);
+  const after = text.slice(index + length, index + length + 34);
+  const beforeTail = before.slice(-30);
+  const restrictedBefore =
+    /(?:会員(?:限定)?|メンバー(?:限定)?|アプリ(?:限定)?|LINE(?:限定)?|ログイン(?:限定)?|プレミアム(?:会員)?|カード会員|prime|member|members only|member-only|app only|app-only|login required|premium member|card member)\s*(?:価格|特価|限定価格|割引価格|price|deal)?\s*$/i;
+  const restrictedAfter =
+    /^\s*(?:の)?\s*(?:会員(?:限定)?|メンバー(?:限定)?|アプリ(?:限定)?|LINE(?:限定)?|ログイン(?:限定)?|プレミアム(?:会員)?|カード会員|prime|member|members only|member-only|app only|app-only|login required|premium member|card member)\s*(?:価格|特価|限定価格|割引価格|price|deal)?/i;
+  return restrictedBefore.test(beforeTail) || restrictedAfter.test(after);
 }
 
 function isRangeLowerBoundPriceContext(text: string, index: number, length: number) {

@@ -504,6 +504,30 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["クーポン適用"]));
   });
 
+  it("skips savings amounts before product totals on direct product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Quantity savings product</title></head>
+        <body>
+          <span>Save 300 JPY when buying 2 or more</span>
+          <strong>Current price 1,280 JPY</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      title: "Quantity savings product",
+      price: 1280,
+      source: "html-text",
+      effectivePriceQuote: {
+        listPrice: 1280,
+        effectivePrice: 1280,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["購入条件あり"]));
+  });
+
   it("skips tax-excluded prices before tax-included totals on direct product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -2319,6 +2343,31 @@ describe("replenishment domain logic", () => {
       },
     });
     expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["クーポン適用"]));
+  });
+
+  it("skips savings amounts before product totals in marketplace HTML", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/savings" title="Quantity savings detergent">Quantity savings detergent</a>
+          <span>Save 300 JPY when buying 2 or more</span>
+          <strong>Current price 1,280 JPY</strong>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Quantity savings detergent",
+      price: 1280,
+      effectivePriceQuote: {
+        listPrice: 1280,
+        effectivePrice: 1280,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["購入条件あり"]));
   });
 
   it("skips tax-excluded prices before tax-included totals in marketplace HTML", () => {

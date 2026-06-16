@@ -945,6 +945,8 @@ function hasPurchaseConditionCopy(text: string) {
     "subscribe",
     "subscription",
     "subscribe & save",
+    "buying",
+    "or more",
     "bundle",
     "multi-pack",
     "multipack",
@@ -1253,10 +1255,12 @@ function isDiscountAmountContext(text: string, index: number, length: number) {
   const nearestBeforeToken = before.trimEnd().match(/(?:^|\s)(\S{0,24})$/)?.[1] ?? "";
   const matchedText = text.slice(index, index + length);
   const labelPrefix = `${nearestBeforeToken}${matchedText.replace(/[0-9０-９].*$/, "")}`;
+  const englishSavingsWords = /(?:save|savings)\s*$/i;
   const words = /(?:クーポン|値引き|値引|割引|割引額|off|discount|coupon|cashback)/i;
   return (
+    englishSavingsWords.test(labelPrefix) ||
     words.test(labelPrefix) ||
-    /^\s*(?:OFF|off|引き|値引き|値引|割引|割引額|discount|cashback)(?:\b|$)/i.test(after) ||
+    /^\s*(?:OFF|off|引き|値引き|値引|割引|割引額|discount|cashback|save|savings)(?:\b|$)/i.test(after) ||
     (/円\s*$/i.test(matchedText) && /^\s*クーポン/.test(after))
   );
 }

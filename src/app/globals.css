@@ -1260,6 +1260,50 @@ h3 {
   overflow-wrap: anywhere;
 }
 
+.effective-proof__impact {
+  display: grid;
+  gap: 0.35rem;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  margin: 0;
+}
+
+.effective-proof__impact div {
+  background: #fff7e8;
+  border: 1px solid #ead39f;
+  border-radius: 0.45rem;
+  display: grid;
+  gap: 0.16rem;
+  min-width: 0;
+  padding: 0.44rem 0.5rem;
+}
+
+.effective-proof__impact dt {
+  color: #6f4a09;
+  font-size: 0.68rem;
+  font-weight: 950;
+}
+
+.effective-proof__impact dd {
+  display: grid;
+  gap: 0.12rem;
+  margin: 0;
+  min-width: 0;
+}
+
+.effective-proof__impact dd strong {
+  color: #7a4d08;
+  font-size: 0.82rem;
+}
+
+.effective-proof__impact dd span {
+  color: #5f4b22;
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .effective-proof__summary {
   display: grid;
   gap: 0.35rem;

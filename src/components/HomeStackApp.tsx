@@ -1500,6 +1500,7 @@ function EffectivePriceProof({
   )} - クーポン ${yenFormatter.format(quote.couponValue ?? 0)} = 実質 ${yenFormatter.format(quote.effectivePrice)}`;
   const recomparePrice = quote.listPrice + (quote.shippingFee ?? 0);
   const deductionTotal = (quote.pointValue ?? 0) + (quote.couponValue ?? 0);
+  const conditionImpactItems = buildConditionImpactItems(quote);
   const quickReadItems = [
     { label: "条件価格", value: yenFormatter.format(quote.effectivePrice), tone: "primary" },
     { label: "条件なし", value: yenFormatter.format(recomparePrice), tone: "plain" },
@@ -1593,6 +1594,19 @@ function EffectivePriceProof({
             <div key={item.label}>
               <dt>{item.label}</dt>
               <dd>{item.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      {conditionImpactItems.length > 0 ? (
+        <dl className="effective-proof__impact" aria-label="条件別の戻し額">
+          {conditionImpactItems.map((item) => (
+            <div key={item.label}>
+              <dt>{item.label}</dt>
+              <dd>
+                <strong>{item.amount}</strong>
+                <span>{item.detail}</span>
+              </dd>
             </div>
           ))}
         </dl>
@@ -1712,6 +1726,44 @@ function buildConditionCopyMemo(quote: EffectivePriceQuote, proofEvidence: strin
     "外れた条件は控除せず、条件なし再比較価格で判断する。",
   ];
   return lines.filter(Boolean).join("\n");
+}
+
+function buildConditionImpactItems(quote: EffectivePriceQuote) {
+  if (!quote.conditionRequired) return [];
+
+  const items = [
+    quote.shippingFee
+      ? {
+          label: "送料",
+          amount: `+${yenFormatter.format(quote.shippingFee)}`,
+          detail: `配送先で送料が変わる場合は ${yenFormatter.format(quote.listPrice)} に販売ページの送料を足して再比較`,
+        }
+      : null,
+    quote.pointValue
+      ? {
+          label: "ポイント",
+          amount: `戻す ${yenFormatter.format(quote.pointValue)}`,
+          detail: `付与対象外なら ${yenFormatter.format(quote.effectivePrice + quote.pointValue)} で再比較`,
+        }
+      : null,
+    quote.couponValue
+      ? {
+          label: "クーポン",
+          amount: `戻す ${yenFormatter.format(quote.couponValue)}`,
+          detail: `取得/併用不可なら ${yenFormatter.format(quote.effectivePrice + quote.couponValue)} で再比較`,
+        }
+      : null,
+  ];
+
+  if (items.some(Boolean)) return items.filter((item): item is { label: string; amount: string; detail: string } => Boolean(item));
+
+  return [
+    {
+      label: "条件確認",
+      amount: yenFormatter.format(quote.listPrice + (quote.shippingFee ?? 0)),
+      detail: "金額控除が未確定なら、表示価格と販売ページ送料を基準に再比較",
+    },
+  ];
 }
 
 function prioritizeConditionEvidence(entries: string[]) {

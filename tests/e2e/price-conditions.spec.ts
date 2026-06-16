@@ -95,6 +95,9 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(conditionalProof.locator(".effective-proof__risk-strip")).toContainText("控除候補");
   await expect(conditionalProof.locator(".effective-proof__guardrails")).toHaveAttribute("aria-label", "価格条件の確認先");
   await expect(conditionalProof.locator(".effective-proof__guardrails div")).toHaveCount(3);
+  await expect(conditionalProof.locator(".effective-proof__impact")).toHaveAttribute("aria-label", "条件別の戻し額");
+  await expect(conditionalProof.locator(".effective-proof__impact div")).not.toHaveCount(0);
+  await expect(conditionalProof.locator(".effective-proof__impact")).toContainText(/戻す|再比較/);
   await expect(conditionalProof.locator(".effective-proof__action-note")).toHaveAttribute("aria-label", "条件確認メモ");
   await expect(conditionalProof.locator(".effective-proof__action-note")).toContainText("販売ページ");
   await expect(conditionalProof.locator(".effective-proof__action-note")).toContainText("条件なし価格で再比較");
@@ -288,6 +291,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
         guardrailItems: [...proof.querySelectorAll(".effective-proof__guardrails div")]
           .map((item) => item.textContent?.trim())
           .filter(Boolean),
+        impactItems: [...proof.querySelectorAll(".effective-proof__impact div")].map((item) => item.textContent?.trim()).filter(Boolean),
         actionNoteText: proof.querySelector(".effective-proof__action-note")?.textContent?.trim() ?? null,
         confirmationItems: [...proof.querySelectorAll(".effective-proof__confirmation li")]
           .map((item) => item.textContent?.trim())
@@ -411,6 +415,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
             "condition price quick-read remains visible",
             "condition adoption risk strip is visible",
             "condition guardrails show verification target and fallback price",
+            "condition impact rows show per-condition fallback amounts",
             "condition action note explains seller-page checks",
             "condition confirmation checklist states when deductions may apply",
             "condition audit grid shows amount target deadline stacking and fallback checks",

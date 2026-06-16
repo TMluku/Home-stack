@@ -15,6 +15,7 @@ const expectedAssertions = [
   "condition price quick-read remains visible",
   "condition adoption risk strip is visible",
   "condition guardrails show verification target and fallback price",
+  "condition impact rows show per-condition fallback amounts",
   "condition action note explains seller-page checks",
   "condition confirmation checklist states when deductions may apply",
   "condition audit grid shows amount target deadline stacking and fallback checks",
@@ -138,6 +139,13 @@ for (const file of jsonFiles) {
   }
   if (!guardrailText.includes("根拠") || !guardrailText.includes("未成立時")) {
     failures.push(`${file}: missing condition guardrail evidence or fallback labels`);
+  }
+  if (!Array.isArray(summary.impactItems) || summary.impactItems.length === 0) {
+    failures.push(`${file}: missing condition impact rows`);
+  }
+  const impactText = Array.isArray(summary.impactItems) ? summary.impactItems.join(" ") : "";
+  if (!impactText.includes("戻す") || !impactText.includes("再比較")) {
+    failures.push(`${file}: missing per-condition fallback amount text`);
   }
   const actionNoteText = String(summary.actionNoteText ?? "");
   if (!actionNoteText.includes("販売ページ") || !actionNoteText.includes("条件なし価格で再比較")) {

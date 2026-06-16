@@ -1800,7 +1800,7 @@ function prioritizeConditionEvidence(entries: string[]) {
 }
 
 function isConditionEvidence(entry: string) {
-  return /条件|期間/.test(entry);
+  return /条件|期間|広告掲載/.test(entry);
 }
 
 function buildConditionCheckItems(labels: string[]) {
@@ -1811,6 +1811,7 @@ function buildConditionCheckItems(labels: string[]) {
     /送料/.test(joinedLabels) ? "送料無料ライン・配送条件" : "",
     /ポイント/.test(joinedLabels) ? "付与時期・利用先" : "",
     /クーポン/.test(joinedLabels) ? "対象者・併用可否" : "",
+    /広告|PR|スポンサー/.test(joinedLabels) ? "広告枠・PR表示の確認" : "",
   ];
   return items.filter(Boolean);
 }
@@ -1822,6 +1823,7 @@ function buildConditionSummaryItems(labels: string[]) {
     /送料/.test(joinedLabels) ? { label: "送料", detail: "送料無料ライン・地域送料を見る" } : null,
     /ポイント/.test(joinedLabels) ? { label: "ポイント", detail: "付与時期・上限・対象者を見る" } : null,
     /クーポン/.test(joinedLabels) ? { label: "クーポン", detail: "取得条件・併用可否・対象者を見る" } : null,
+    /広告|PR|スポンサー/.test(joinedLabels) ? { label: "広告", detail: "PR枠でも価格と条件を販売ページで確認する" } : null,
     /期間/.test(joinedLabels) ? { label: "期間", detail: "キャンペーン開始/終了日時を見る" } : null,
   ];
   return items.filter((item): item is { label: string; detail: string } => Boolean(item));
@@ -1841,6 +1843,9 @@ function buildConditionDecisionRows(labels: string[]) {
       : null,
     /クーポン/.test(joinedLabels)
       ? { label: "クーポン", confirm: "取得済みで対象者・併用可否を満たす", reject: "未取得・対象外なら控除しない" }
+      : null,
+    /広告|PR|スポンサー/.test(joinedLabels)
+      ? { label: "広告掲載", confirm: "販売ページの価格・送料・条件がカード表示と一致する", reject: "広告枠だけの表示なら販売ページ価格を優先" }
       : null,
     /期間/.test(joinedLabels) ? { label: "期間", confirm: "取得時点でキャンペーン期間内", reject: "開始前・終了後なら通常価格扱い" } : null,
   ];

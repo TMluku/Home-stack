@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 
 const qaFile = process.argv[2] ?? "docs/mobile-qa.md";
+const expectedBrowserE2eWorkflowUrl = "https://github.com/TMluku/Home-stack/actions/workflows/e2e.yml";
 const markdown = await readFile(qaFile, "utf8");
 const rows = markdown
   .split(/\r?\n/)
@@ -20,19 +21,30 @@ const passes = qaRows.filter(([date, device, browser, network, result, notes]) =
   );
   const hasPass = /^pass$/i.test(result);
   const hasPublishedUrl = /https:\/\/tmluku\.github\.io\/Home-stack\//.test(notes);
+  const hasBrowserE2eWorkflow = notes.includes(expectedBrowserE2eWorkflowUrl);
   const hasAutomatedEvidence = /mobile-qa-evidence|mobile-price-condition-proof/i.test(notes);
+  const hasEvidenceFiles = /mobile-price-condition-proof\.png/i.test(notes) && /mobile-price-condition-proof\.json/i.test(notes);
   const hasRealDeviceScreenshot =
     /(?:phone|real[- ]?device|実機|スマホ|端末).{0,40}(?:screenshot|screen shot|スクリーンショット|画面)|(?:screenshot|screen shot|スクリーンショット|画面).{0,40}(?:phone|real[- ]?device|実機|スマホ|端末)/i.test(
       notes,
     );
-  return Boolean(date) && !hasPlaceholders && hasPass && hasPublishedUrl && hasAutomatedEvidence && hasRealDeviceScreenshot;
+  return (
+    Boolean(date) &&
+    !hasPlaceholders &&
+    hasPass &&
+    hasPublishedUrl &&
+    hasBrowserE2eWorkflow &&
+    hasAutomatedEvidence &&
+    hasEvidenceFiles &&
+    hasRealDeviceScreenshot
+  );
 });
 
 if (passes.length === 0) {
   console.error(
     [
       `FAIL ${qaFile}: no real-device GitHub Pages QA pass is recorded.`,
-      "Add a non-placeholder matrix row with Result `Pass`, the tested published URL, `mobile-qa-evidence` notes, and a real-phone screenshot note.",
+      "Add a non-placeholder matrix row with Result `Pass`, the tested published URL, Browser E2E workflow URL, `mobile-qa-evidence` notes, mobile evidence filenames, and a real-phone screenshot note.",
     ].join("\n"),
   );
   process.exit(1);

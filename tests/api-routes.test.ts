@@ -301,6 +301,77 @@ describe("API route contracts", () => {
     expect(urls).not.toEqual(expect.arrayContaining(["https://rakuten.example.test/outlet", "https://shopping.example.test/used"]));
   });
 
+  it("filters official unavailable marketplace records before price ranking", async () => {
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "Official detergent refill unavailable cheap",
+                  itemPrice: 700,
+                  itemUrl: "https://rakuten.example.test/out-of-stock",
+                  availability: "https://schema.org/OutOfStock",
+                },
+              },
+              {
+                Item: {
+                  itemName: "Official detergent refill current",
+                  itemPrice: 1400,
+                  itemUrl: "https://rakuten.example.test/current",
+                  availability: "https://schema.org/InStock",
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          hits: [
+            {
+              name: "Official detergent refill sold out cheap",
+              url: "https://shopping.example.test/sold-out",
+              price: 750,
+              availability: "unavailable",
+              stock: "out_of_stock",
+            },
+            {
+              name: "Official detergent refill Yahoo current",
+              url: "https://shopping.example.test/current",
+              price: 1500,
+              availability: "in_stock",
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+
+    const response = await searchProducts(
+      new Request("http://localhost/api/product-search", {
+        method: "POST",
+        body: JSON.stringify({ query: "detergent refill" }),
+      }),
+    );
+    const payload = await response.json();
+    const urls = payload.candidates.map((candidate: { url: string }) => candidate.url);
+    const prices = payload.candidates.map((candidate: { price?: number }) => candidate.price).filter(Boolean);
+
+    expect(response.status).toBe(200);
+    expect(urls).toEqual(expect.arrayContaining(["https://rakuten.example.test/current", "https://shopping.example.test/current"]));
+    expect(urls).not.toEqual(
+      expect.arrayContaining(["https://rakuten.example.test/out-of-stock", "https://shopping.example.test/sold-out"]),
+    );
+    expect(prices).not.toEqual(expect.arrayContaining([700, 750]));
+  });
+
   it("sorts equal effective-price candidates by raw display price before match score", async () => {
     process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
     process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";

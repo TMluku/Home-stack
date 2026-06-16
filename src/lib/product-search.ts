@@ -149,6 +149,7 @@ async function searchRakutenApi(query: string): Promise<{ candidates: RawCandida
       payload.Items?.map((entry) => entry.Item)
         .filter((item): item is NonNullable<typeof item> => Boolean(item))
         .filter((item) => !hasUsedConditionCopy(collectRecordText(item)))
+        .filter((item) => !hasUnavailableOfferCopy(collectRecordText(item)))
         .map((item): RawCandidate => {
           const signals = buildOfficialPriceSignals(item as OfficialApiRecord, item.itemPrice ?? 0, "rakuten");
 
@@ -233,6 +234,7 @@ async function searchYahooShoppingApi(
     const candidates: RawCandidate[] =
       payload.hits
         ?.filter((item) => !hasUsedConditionCopy(collectRecordText(item)))
+        ?.filter((item) => !hasUnavailableOfferCopy(collectRecordText(item)))
         ?.map((item): RawCandidate => {
           const signals = buildOfficialPriceSignals(item as OfficialApiRecord, item.price ?? 0, "yahoo-shopping");
 
@@ -1183,12 +1185,11 @@ function hasUsedConditionCopy(text: string) {
 function hasUnavailableOfferCopy(text: string) {
   const cleaned = cleanText(text) ?? text;
   const unavailable =
-    /(?:在庫なし|売り切れ|売切れ|完売|販売終了|品切れ|入荷待ち|入荷予定|予約販売|予約受付|発売前|販売前|sold out|out of stock|unavailable|discontinued|pre-?order|coming soon|not yet available)/i.test(
+    /(?:在庫なし|売り切れ|売切れ|完売|販売終了|品切れ|入荷待ち|入荷予定|予約販売|予約受付|発売前|販売前|sold\s*out|soldout|out\s*of\s*stock|outofstock|out[_-]of[_-]stock|unavailable|discontinued|pre-?order|coming soon|not yet available)/i.test(
       cleaned,
     );
-  const available = /(?:販売中|販売価格|通常販売価格|在庫あり|購入可能|available|in stock|item price|one-time purchase price)/i.test(
-    cleaned,
-  );
+  const available =
+    /(?:販売中|販売価格|通常販売価格|在庫あり|購入可能|\bavailable\b|\bin\s*stock\b|item price|one-time purchase price)/i.test(cleaned);
   return unavailable && !available;
 }
 
@@ -1197,9 +1198,9 @@ function isUnavailablePriceContext(text: string, index: number, length: number) 
   const after = text.slice(index + length, index + length + 24);
   const labelPrefix = `${before.replace(/^.*[0-9０-９][^0-9０-９]*/, "")}${text.slice(index, index + length).replace(/[0-9０-９].*$/, "")}`;
   const words =
-    /(?:在庫なし|売り切れ|売切れ|販売終了|入荷待ち|入荷予定|品切れ|予約価格|予約販売|予約受付|発売前|販売前|sold out|out of stock|unavailable|discontinued|pre-?order|coming soon|not yet available)/i;
+    /(?:在庫なし|売り切れ|売切れ|販売終了|入荷待ち|入荷予定|品切れ|予約価格|予約販売|予約受付|発売前|販売前|sold\s*out|soldout|out\s*of\s*stock|outofstock|out[_-]of[_-]stock|unavailable|discontinued|pre-?order|coming soon|not yet available)/i;
   const wordsBefore =
-    /(?:在庫なし|売り切れ|売切れ|販売終了|入荷待ち|入荷予定|品切れ|予約価格|予約販売|予約受付|発売前|販売前|sold out|out of stock|unavailable|discontinued|pre-?order|coming soon|not yet available)\s*$/i;
+    /(?:在庫なし|売り切れ|売切れ|販売終了|入荷待ち|入荷予定|品切れ|予約価格|予約販売|予約受付|発売前|販売前|sold\s*out|soldout|out\s*of\s*stock|outofstock|out[_-]of[_-]stock|unavailable|discontinued|pre-?order|coming soon|not yet available)\s*$/i;
   return words.test(labelPrefix) || wordsBefore.test(before) || words.test(after);
 }
 

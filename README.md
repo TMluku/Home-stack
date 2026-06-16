@@ -158,6 +158,7 @@ Price-condition operation notes:
 - If points, coupons, free shipping, campaign windows, membership, threshold text, login/app eligibility, first-order pricing, subscription pricing, multipack pricing, or case pricing affect the displayed effective price, the candidate should expose `conditionLabels` and evidence.
 - Do not treat ambiguous copy such as "最大", "up to", "eligible only", login-only rewards, app-only coupons, point multipliers, threshold coupons, free-shipping thresholds, first-order discounts, subscription offers, or pack component prices as guaranteed discounts without preserving a condition label.
 - Text price extraction should skip unit prices, tax-excluded prices, reference/list prices, unavailable or sold-out prices, and pack component prices such as `80円 x 12本` when a total price is present.
+- Official marketplace API records with machine-readable unavailable states such as `OutOfStock`, `out_of_stock`, `soldOut`, `unavailable`, preorder, or discontinued should be excluded before price ranking so stale cheap offers do not become the displayed best price.
 - Direct URL scans should prefer structured JSON-LD, meta tags, embedded JSON, data attributes, Amazon price spans, then broad page text.
 
 ## Optional Marketplace API Keys

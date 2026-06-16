@@ -177,6 +177,7 @@ Price-condition operation notes:
 
 - Product candidates must stay sorted by `effectivePriceQuote.effectivePrice` when available, then raw price.
 - If points, coupons, free shipping, campaign windows, membership, threshold text, login/app eligibility, first-order pricing, subscription pricing, multipack pricing, or case pricing affect the displayed effective price, the candidate should expose `conditionLabels` and evidence.
+- Sponsored, promoted, PR, or advertisement search placements should remain in the same price-ordered candidate list, but expose condition evidence so users can confirm the seller page rather than treating the placement as a separate category.
 - Do not treat ambiguous copy such as "最大", "up to", "eligible only", login-only rewards, app-only coupons, survey rewards, referral coupons, mail-in rebates, claim-required rebates, point multipliers, threshold coupons, `save` / `savings` amounts tied to quantity purchases, free-shipping thresholds, first-order discounts, subscription offers, or pack component prices as guaranteed discounts without preserving a condition label.
 - Structured, official API, or marketplace HTML reward fields that contain date-like strings such as `valid through 2026-06-20` or `expires 2026-06-20` should become condition evidence, not `2026円` point/coupon deductions.
 - Official API reward fields with percentage strings such as `10%` should be treated as reward rates, not `10円` amounts.

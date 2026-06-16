@@ -477,6 +477,7 @@ function extractPrice(snippet: string) {
 function inferPriceAdjustments(snippet: string, listPrice: number) {
   const text = cleanText(snippet) ?? "";
   const shippingConditionRequired = hasConditionalShippingCopy(text);
+  const sponsoredPlacementRequired = hasSponsoredMarketplacePlacementCopy(text);
   const purchaseConditionRequired =
     hasPurchaseConditionCopy(text) || hasCartOnlyPriceCopy(text) || hasRestrictedPriceCopy(text);
   const shippingFee = extractShippingFeeFromText(text);
@@ -509,6 +510,7 @@ function inferPriceAdjustments(snippet: string, listPrice: number) {
   const evidence = [
     typeof shippingFee === "number" ? `shipping fee inferred: ${shippingFee.toLocaleString("ja-JP")} JPY` : "",
     shippingConditionRequired ? "shipping condition requires retailer confirmation" : "",
+    sponsoredPlacementRequired ? "sponsored placement requires retailer confirmation" : "",
     purchaseConditionRequired ? "purchase condition requires retailer confirmation" : "",
     pointValue ? `point value inferred: ${pointValue.toLocaleString("ja-JP")} JPY` : "",
     pointConditionRequired ? "point condition requires retailer confirmation" : "",
@@ -522,6 +524,7 @@ function inferPriceAdjustments(snippet: string, listPrice: number) {
     couponValue,
     conditionLabels: [
       shippingConditionRequired ? "送料条件あり" : "",
+      sponsoredPlacementRequired ? "広告掲載あり" : "",
       purchaseConditionRequired ? "購入条件あり" : "",
       pointConditionRequired ? "ポイント条件あり" : "",
       couponConditionRequired ? "クーポン条件あり" : "",
@@ -534,6 +537,12 @@ function inferPriceAdjustments(snippet: string, listPrice: number) {
           : "送料条件は要確認",
     evidence,
   };
+}
+
+function hasSponsoredMarketplacePlacementCopy(text: string) {
+  return /(?:^|\s|[【\[(])(?:PR|AD|広告|スポンサー|プロモーション|promoted|sponsored|advertisement|ad)(?:\s|[】\])]|$)/i.test(
+    text,
+  );
 }
 
 function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number, source: MarketplaceSearchSource) {

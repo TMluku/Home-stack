@@ -179,6 +179,9 @@ describe("replenishment domain logic", () => {
     expect(formatPriceEvidence("official point window starts after fetch")).toBe("ポイント期間: 取得時点ではキャンペーン開始前");
     expect(formatPriceEvidence("official coupon window expired before fetch")).toBe("クーポン期間: 取得時点でキャンペーン期間が終了済み");
     expect(formatPriceEvidence("official coupon window starts after fetch")).toBe("クーポン期間: 取得時点ではキャンペーン開始前");
+    expect(formatPriceEvidence("sponsored placement requires retailer confirmation")).toBe(
+      "広告掲載: PR/広告枠の表示候補です。価格と条件は販売ページで確認",
+    );
   });
 
   it("records outbound clicks and conditional offer revenue", () => {
@@ -3010,6 +3013,32 @@ describe("replenishment domain logic", () => {
     expect(candidates[0]?.evidence).not.toEqual(
       expect.arrayContaining(["point value inferred: 200 JPY", "coupon value inferred: 300 JPY"]),
     );
+  });
+
+  it("keeps sponsored marketplace HTML candidates in price order with condition evidence", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <span>PR</span>
+          <a href="/item/sponsored" title="Sponsored detergent">Sponsored detergent</a>
+          <strong>1,180 JPY</strong>
+          <span>free shipping</span>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/detergent/",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Sponsored detergent",
+      price: 1180,
+      effectivePriceQuote: {
+        listPrice: 1180,
+        effectivePrice: 1180,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["sponsored placement requires retailer confirmation"]));
   });
 
   it("skips unit prices before product totals in marketplace HTML", () => {

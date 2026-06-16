@@ -21,6 +21,9 @@ export function formatPriceEvidence(entry: string) {
   if (/purchase condition requires retailer confirmation/i.test(entry)) {
     return "購入条件: 初回限定、定期購入、まとめ買い、セット条件を販売ページで確認";
   }
+  if (/sponsored placement requires retailer confirmation/i.test(entry)) {
+    return "広告掲載: PR/広告枠の表示候補です。価格と条件は販売ページで確認";
+  }
 
   const pointValue = entry.match(/^(?:official )?point value(?: inferred| from [^:]+)?: ([\d,]+) JPY$/i);
   if (pointValue) return `ポイント: ${pointValue[1]}円相当を実質価格から控除`;

@@ -33,6 +33,21 @@ describe("real-device QA gate", () => {
     );
   });
 
+  it("rejects copied rows until the screenshot filename placeholder is replaced", async () => {
+    await withQaFile(
+      [
+        "| Date | Device | Browser | Network | Result | Notes |",
+        "|---|---|---|---|---|---|",
+        "| 2026-06-16 | Pixel 8 | Chrome | 5G | Pass | https://tmluku.github.io/Home-stack/ / mobile-qa-evidence / 実機スクリーンショット: 実ファイル名を記入 |",
+      ].join("\n"),
+      (filePath) => {
+        const result = spawnSync(process.execPath, [scriptPath, filePath], { encoding: "utf8" });
+        expect(result.status).toBe(1);
+        expect(result.stderr).toContain("real-phone screenshot");
+      },
+    );
+  });
+
   it("accepts a real-device pass with published URL, automated evidence, and phone screenshot note", async () => {
     await withQaFile(
       [

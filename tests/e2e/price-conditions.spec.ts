@@ -37,6 +37,7 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(page.locator(".hero__qa-template")).toContainText("実機QAで記録する項目");
   await expect(page.locator(".hero__qa-template")).toContainText("mobile-qa-evidence");
   await expect(page.locator(".hero__qa-template")).toContainText(expectedPagesUrl);
+  await expect(page.locator(".hero__qa-template")).toContainText("実機スクリーンショット");
   await page.locator(".hero__qa-template summary").click();
   await expect(page.locator(".hero__qa-template").getByRole("link", { name: "Browser E2E" })).toHaveAttribute(
     "href",

@@ -254,11 +254,11 @@ export function HomeStackApp() {
   async function copyMobileQaTemplate() {
     const today = new Date().toISOString().slice(0, 10);
     const template = [
-      `| ${today} | 端末名を記入 | ブラウザ名を記入 | Wi-Fi / 5G | Pass / Fail | GitHub Pages実機QA: 横スクロール、価格条件、URLスキャン、共有導線を確認 |`,
+      `| ${today} | 端末名を記入 | ブラウザ名を記入 | Wi-Fi / 5G | Pass / Fail | Tested URL: ${publicPagesUrl} / mobile-qa-evidence / 実機スクリーンショット: 実ファイル名を記入 / GitHub Pages実機QA: 横スクロール、価格条件、URLスキャン、共有導線を確認 |`,
       "",
       "- Tested URL: https://tmluku.github.io/Home-stack/",
       "- Browser E2E workflow: https://github.com/TMluku/Home-stack/actions/workflows/e2e.yml",
-      "- Phone screenshot: attach separately",
+      "- Phone screenshot: 実機スクリーンショットのファイル名を記入",
       "- Browser E2E artifact: mobile-qa-evidence",
       "- Automated evidence files: mobile-price-condition-proof.png / mobile-price-condition-proof.json",
     ].join("\n");
@@ -914,7 +914,7 @@ export function HomeStackApp() {
               </p>
               <p>
                 公開URLは <code>{publicPagesUrl}</code>、証跡ファイルは <code>mobile-price-condition-proof.png</code> と{" "}
-                <code>mobile-price-condition-proof.json</code> を確認します。
+                <code>mobile-price-condition-proof.json</code> を確認します。実機スクリーンショットのファイル名も記録します。
               </p>
             </details>
             <dl className="radar-strip">

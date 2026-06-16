@@ -48,7 +48,7 @@ Record each real-device pass here.
 |---|---|---|---|---|---|
 | YYYY-MM-DD | iPhone / Android model | Safari / Chrome | Wi-Fi / 5G | Pass / Fail |  |
 
-The published app hero includes `QA記録をコピー`. Use it on the tested phone to copy a matrix row, paste it here, then replace the device, browser, network, result, and evidence placeholders with the real values. The copied memo includes the published URL, the Browser E2E workflow URL, the `mobile-qa-evidence` artifact name, and the expected `mobile-price-condition-proof.png` / `mobile-price-condition-proof.json` evidence filenames. Add a phone screenshot note such as `実機スクリーンショット: phone-price-proof.png`; automated evidence alone does not satisfy the release gate.
+The published app hero includes `QA記録をコピー`. Use it on the tested phone to copy a matrix row, paste it here, then replace the device, browser, network, result, and evidence placeholders with the real values. The copied memo includes the published URL, the Browser E2E workflow URL, the `mobile-qa-evidence` artifact name, the expected `mobile-price-condition-proof.png` / `mobile-price-condition-proof.json` evidence filenames, and a real-phone screenshot filename placeholder. Replace it with a phone screenshot note such as `実機スクリーンショット: phone-price-proof.png`; automated evidence alone does not satisfy the release gate.
 
 Current status: automated mobile Chromium coverage is available from GitHub Actions, but no physical phone pass is recorded in this file yet.
 

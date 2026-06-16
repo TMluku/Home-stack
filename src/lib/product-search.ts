@@ -497,11 +497,14 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
     hasDateLikeRewardCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
     hasCouponCodeConditionCopy(officialText) ||
     hasConditionalDiscountPriceCopy(officialText);
+  const pointAmountPaths = ["point.amount", "pointValue", "pointAmount", "points", "rewardPoint"];
+  const pointRatePaths = ["pointRate", "point.rate", "pointRateValue"];
   const rawPointValue =
-    readRewardNumberPath(record, ["point.amount", "pointValue", "pointAmount", "points", "rewardPoint"], ["point", "points", "ポイント"]) ??
+    readRewardAmountPath(record, pointAmountPaths, ["point", "points", "ポイント"]) ??
     inferPointValueFromRate(
       listPrice,
-      readRewardNumberPath(record, ["pointRate", "point.rate", "pointRateValue"], ["point", "points", "ポイント"]),
+      readRewardRatePath(record, pointAmountPaths, ["point", "points", "ポイント"], { stringsMustContainPercent: true }) ??
+        readRewardRatePath(record, pointRatePaths, ["point", "points", "ポイント"]),
     );
   const pointStart = readStringPath(record, [
     "point.startTime",
@@ -516,15 +519,22 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   const pointRewardAmountTooLarge = Boolean(rawPointValue && listPrice && rawPointValue / listPrice > 0.35);
   const pointValue =
     pointHasConditionalText || pointWindowExpired || pointWindowFuture || pointRewardAmountTooLarge ? undefined : rawPointValue;
+  const couponAmountPaths = [
+    "coupon.amount",
+    "coupon.value",
+    "couponAmount",
+    "couponValue",
+    "coupon.price",
+    "discountAmount",
+    "discount.amount",
+  ];
+  const couponRatePaths = ["coupon.rate", "couponRate", "discountRate"];
   const rawCouponValue =
-    readRewardNumberPath(
-      record,
-      ["coupon.amount", "coupon.value", "couponAmount", "couponValue", "coupon.price", "discountAmount", "discount.amount"],
-      ["coupon", "discount", "off", "クーポン"],
-    ) ??
+    readRewardAmountPath(record, couponAmountPaths, ["coupon", "discount", "off", "クーポン"]) ??
     inferPointValueFromRate(
       listPrice,
-      readRewardNumberPath(record, ["coupon.rate", "couponRate", "discountRate"], ["coupon", "discount", "off", "クーポン"]),
+      readRewardRatePath(record, couponAmountPaths, ["coupon", "discount", "off", "クーポン"], { stringsMustContainPercent: true }) ??
+        readRewardRatePath(record, couponRatePaths, ["coupon", "discount", "off", "クーポン"]),
     );
   const couponStart = readStringPath(record, ["coupon.startTime", "coupon.start", "couponStartTime", "discountStartTime"]);
   const couponEnd = readStringPath(record, ["coupon.endTime", "coupon.end", "couponEndTime", "discountEndTime"]);
@@ -601,12 +611,30 @@ function readNumberPath(record: OfficialApiRecord, paths: string[]) {
   return undefined;
 }
 
-function readRewardNumberPath(record: OfficialApiRecord, paths: string[], labels: string[]) {
+function readRewardAmountPath(record: OfficialApiRecord, paths: string[], labels: string[]) {
   for (const path of paths) {
     const value = readPath(record, path);
     if (typeof value === "number") return value;
     if (typeof value !== "string" || hasAmbiguousRewardCopy(`${path} ${value}`, labels) || isDateLikeRewardText(value)) continue;
+    if (isPercentRewardText(value)) continue;
     const numeric = parseSearchAmount(value);
+    if (typeof numeric === "number") return numeric;
+  }
+  return undefined;
+}
+
+function readRewardRatePath(
+  record: OfficialApiRecord,
+  paths: string[],
+  labels: string[],
+  options: { stringsMustContainPercent?: boolean } = {},
+) {
+  for (const path of paths) {
+    const value = readPath(record, path);
+    if (typeof value === "number") return value;
+    if (typeof value !== "string" || hasAmbiguousRewardCopy(`${path} ${value}`, labels) || isDateLikeRewardText(value)) continue;
+    if (options.stringsMustContainPercent && !isPercentRewardText(value)) continue;
+    const numeric = parseRewardRate(value);
     if (typeof numeric === "number") return numeric;
   }
   return undefined;
@@ -984,6 +1012,10 @@ function isDateLikeRewardText(value: string) {
   );
 }
 
+function isPercentRewardText(value: string) {
+  return /[%％]/.test(toHalfWidth(value));
+}
+
 function hasCouponCodeConditionCopy(text: string) {
   return /(?:クーポン(?:コード)?|プロモ(?:コード)?|割引コード|coupon\s+code|promo\s+code|promotion\s+code|discount\s+code).{0,40}(?:適用|入力|利用|取得|対象|条件|required|apply|applied|enter|with)|(?:適用|入力|利用|取得|対象|条件|required|apply|applied|enter|with).{0,40}(?:クーポン(?:コード)?|プロモ(?:コード)?|割引コード|coupon\s+code|promo\s+code|promotion\s+code|discount\s+code)/i.test(
     text,
@@ -1042,6 +1074,15 @@ function parseSearchAmount(value?: string) {
   if (!value) return undefined;
   const amount = Number(toHalfWidth(value).replace(/[,，]/g, ""));
   return Number.isFinite(amount) && amount > 0 ? amount : undefined;
+}
+
+function parseRewardRate(value?: string) {
+  if (!value) return undefined;
+  const numeric = toHalfWidth(value)
+    .replace(/[,，]/g, "")
+    .match(/[0-9]+(?:\.[0-9]+)?/)?.[0];
+  const rate = numeric ? Number(numeric) : NaN;
+  return Number.isFinite(rate) && rate > 0 ? rate : undefined;
 }
 
 function isUnitPriceContext(text: string, index: number, length: number) {

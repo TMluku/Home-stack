@@ -615,6 +615,77 @@ describe("API route contracts", () => {
     );
   });
 
+  it("treats official reward percentage strings as rates instead of yen amounts", async () => {
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "Percent official Rakuten item",
+                  itemPrice: 2000,
+                  itemUrl: "https://rakuten.example.test/percent-reward",
+                  pointAmount: "10%",
+                  couponAmount: "15%",
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          hits: [
+            {
+              name: "Percent official Yahoo item",
+              url: "https://shopping.example.test/percent-reward",
+              price: 2400,
+              point: { amount: "5%" },
+              coupon: { amount: "20%" },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+
+    const response = await searchProducts(
+      new Request("http://localhost/api/product-search", {
+        method: "POST",
+        body: JSON.stringify({ query: "percent official reward" }),
+      }),
+    );
+    const payload = await response.json();
+    const rakutenCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "rakuten");
+    const yahooCandidate = payload.candidates.find((candidate: { source: string }) => candidate.source === "yahoo-shopping");
+
+    expect(response.status).toBe(200);
+    expect(rakutenCandidate.effectivePriceQuote).toMatchObject({
+      listPrice: 2000,
+      pointValue: 200,
+      couponValue: 300,
+      effectivePrice: 1500,
+    });
+    expect(rakutenCandidate.evidence).toEqual(expect.arrayContaining(["official point value: 200 JPY", "official coupon value: 300 JPY"]));
+    expect(rakutenCandidate.evidence).not.toEqual(
+      expect.arrayContaining(["official point value: 10 JPY", "official coupon value: 15 JPY"]),
+    );
+    expect(yahooCandidate.effectivePriceQuote).toMatchObject({
+      listPrice: 2400,
+      pointValue: 120,
+      couponValue: 480,
+      effectivePrice: 1800,
+    });
+    expect(yahooCandidate.evidence).toEqual(expect.arrayContaining(["official point value: 120 JPY", "official coupon value: 480 JPY"]));
+    expect(yahooCandidate.evidence).not.toEqual(expect.arrayContaining(["official point value: 5 JPY", "official coupon value: 20 JPY"]));
+  });
+
   it("keeps official reward date strings as conditions instead of discounts", async () => {
     process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
     process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";

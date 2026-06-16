@@ -647,6 +647,27 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips MSRP reference prices before sale totals on direct product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>MSRP reference product</title></head>
+        <body>
+          <span>MSRP: 2,400 JPY</span>
+          <strong>Sale price 1,680 JPY</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1680,
+      effectivePriceQuote: {
+        listPrice: 1680,
+        effectivePrice: 1680,
+      },
+      source: "html-text",
+    });
+  });
+
   it("skips expired sale prices before current direct product prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -2548,6 +2569,29 @@ describe("replenishment domain logic", () => {
       effectivePriceQuote: {
         listPrice: 1500,
         effectivePrice: 1500,
+      },
+    });
+  });
+
+  it("skips RRP reference prices before sale totals in marketplace HTML", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/rrp-sale" title="RRP sale detergent">RRP sale detergent</a>
+          <span>RRP: 2,400 JPY</span>
+          <strong>Sale price 1,680 JPY</strong>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "RRP sale detergent",
+      price: 1680,
+      effectivePriceQuote: {
+        listPrice: 1680,
+        effectivePrice: 1680,
       },
     });
   });

@@ -1338,11 +1338,14 @@ function isReferencePriceContext(text: string, index: number, length: number) {
   const before = text.slice(Math.max(0, index - 22), index);
   const after = text.slice(index + length, index + length + 18);
   const labelPrefix = `${before.replace(/^.*[0-9０-９][^0-9０-９]*/, "")}${text.slice(index, index + length).replace(/[0-9０-９].*$/, "")}`;
-  const referenceWords = /(?:通常価格|参考価格|メーカー希望小売価格|定価|list price|regular price|was price|original price)\s*[:：-]?\s*$/i;
+  const referenceWords =
+    /(?:通常価格|参考価格|メーカー希望小売価格|定価|list price|regular price|was price|original price|msrp|rrp|manufacturer(?:'s)? suggested retail price)\s*[:：-]?\s*$/i;
   return (
     referenceWords.test(labelPrefix) ||
     referenceWords.test(before) ||
-    /^\s*(?:通常価格|参考価格|メーカー希望小売価格|定価|list price|regular price|was price|original price)/i.test(after)
+    /^\s*(?:通常価格|参考価格|メーカー希望小売価格|定価|list price|regular price|was price|original price|msrp|rrp|manufacturer(?:'s)? suggested retail price)/i.test(
+      after,
+    )
   );
 }
 

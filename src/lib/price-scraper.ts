@@ -1231,7 +1231,9 @@ function isCouponAppliedPriceContext(text: string, index: number, length: number
     /(?:クーポン(?:コード)?|プロモ(?:コード)?|割引コード|coupon(?:\s+code)?|promo(?:\s+code)?|promotion code|discount code).{0,20}(?:適用後|適用|入力後|利用後|after|applied|with)\s*(?:価格|price|deal)?\s*$/i;
   const couponAppliedAfter =
     /^\s*(?:の)?\s*(?:クーポン(?:コード)?|プロモ(?:コード)?|割引コード|coupon(?:\s+code)?|promo(?:\s+code)?|promotion code|discount code).{0,20}(?:適用後|適用|入力後|利用後|after|applied|with)\s*(?:価格|price|deal)?/i;
-  return couponAppliedBefore.test(beforeTail) || couponAppliedAfter.test(after);
+  const clippedDiscountBefore =
+    /(?:coupon|promo|promotion|discount).{0,32}(?:after|applied|clipped|clip|with|required)\s*(?:price|deal)?\s*$/i;
+  return couponAppliedBefore.test(beforeTail) || couponAppliedAfter.test(after) || clippedDiscountBefore.test(beforeTail);
 }
 
 function isRewardAmountContext(text: string, index: number, length: number) {

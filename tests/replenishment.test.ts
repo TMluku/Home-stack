@@ -958,6 +958,29 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["coupon condition requires retailer confirmation"]));
   });
 
+  it("does not use clipped discount prices as direct product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Clipped discount price product</title></head>
+        <body>
+          <span>discount after clip 1,300 JPY</span>
+          <strong>item price 2,000 JPY</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2000,
+      effectivePriceQuote: {
+        listPrice: 2000,
+        couponValue: 0,
+        effectivePrice: 2000,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["coupon condition requires retailer confirmation"]));
+  });
+
   it("does not use coupon threshold amounts as direct product prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>

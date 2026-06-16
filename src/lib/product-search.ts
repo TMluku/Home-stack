@@ -430,7 +430,8 @@ function inferPriceAdjustments(snippet: string, listPrice: number) {
   const purchaseConditionRequired = hasPurchaseConditionCopy(text);
   const shippingFee = extractShippingFeeFromText(text);
   const pointRewardLooksConditional = hasDateLikeRewardCopy(text, ["point", "points"]);
-  const couponRewardLooksConditional = hasDateLikeRewardCopy(text, ["coupon", "discount", "off"]) || hasCouponCodeConditionCopy(text);
+  const couponRewardLooksConditional =
+    hasDateLikeRewardCopy(text, ["coupon", "discount", "off"]) || hasCouponCodeConditionCopy(text) || hasConditionalDiscountPriceCopy(text);
   const pointValue = pointRewardLooksConditional ? undefined : extractPointValue(text, listPrice);
   const couponValue = couponRewardLooksConditional ? undefined : extractCouponValue(text, listPrice);
   const pointRewardAmountTooLarge = hasOversizedRewardAmount(text, ["point", "points"], listPrice, 0.35);
@@ -446,7 +447,8 @@ function inferPriceAdjustments(snippet: string, listPrice: number) {
     (hasAmbiguousRewardCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
       hasRewardThresholdCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
       hasDateLikeRewardCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
-      hasCouponCodeConditionCopy(text));
+      hasCouponCodeConditionCopy(text) ||
+      hasConditionalDiscountPriceCopy(text));
   pointConditionRequired = pointConditionRequired || (!pointValue && pointRewardAmountTooLarge);
   couponConditionRequired = couponConditionRequired || (!couponValue && couponRewardAmountTooLarge);
   const evidence = [
@@ -974,6 +976,12 @@ function hasCouponCodeConditionCopy(text: string) {
   );
 }
 
+function hasConditionalDiscountPriceCopy(text: string) {
+  return /(?:繧ｯ繝ｼ繝昴Φ|繝励Ο繝｢|蜑ｲ蠑怖coupon|promo|promotion|discount).{0,80}(?:驕ｩ逕ｨ蠕芸驕ｩ逕ｨ|蛻ｩ逕ｨ蠕芸蜿門ｾ怜ｾ芸蟇ｾ雎｡|譚｡莉ｶ|after|applied|clipped|clip|with|required)|(?:驕ｩ逕ｨ蠕芸驕ｩ逕ｨ|蛻ｩ逕ｨ蠕芸蜿門ｾ怜ｾ芸蟇ｾ雎｡|譚｡莉ｶ|after|applied|clipped|clip|with|required).{0,80}(?:繧ｯ繝ｼ繝昴Φ|繝励Ο繝｢|蜑ｲ蠑怖coupon|promo|promotion|discount)/i.test(
+    text,
+  );
+}
+
 function extractAmountAroundLabel(text: string, labels: string[]) {
   for (const label of labels) {
     const escaped = escapeRegExp(label);
@@ -1133,7 +1141,9 @@ function isCouponAppliedPriceContext(text: string, index: number, length: number
     /(?:クーポン(?:コード)?|プロモ(?:コード)?|割引コード|coupon(?:\s+code)?|promo(?:\s+code)?|promotion code|discount code).{0,20}(?:適用後|適用|入力後|利用後|after|applied|with)\s*(?:価格|price|deal)?\s*$/i;
   const couponAppliedAfter =
     /^\s*(?:の)?\s*(?:クーポン(?:コード)?|プロモ(?:コード)?|割引コード|coupon(?:\s+code)?|promo(?:\s+code)?|promotion code|discount code).{0,20}(?:適用後|適用|入力後|利用後|after|applied|with)\s*(?:価格|price|deal)?/i;
-  return couponAppliedBefore.test(beforeTail) || couponAppliedAfter.test(after);
+  const clippedDiscountBefore =
+    /(?:coupon|promo|promotion|discount).{0,32}(?:after|applied|clipped|clip|with|required)\s*(?:price|deal)?\s*$/i;
+  return couponAppliedBefore.test(beforeTail) || couponAppliedAfter.test(after) || clippedDiscountBefore.test(beforeTail);
 }
 
 function isRewardAmountContext(text: string, index: number, length: number) {

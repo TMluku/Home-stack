@@ -1113,6 +1113,77 @@ describe("API route contracts", () => {
     expect(payload.candidates.map((candidate: { price?: number }) => candidate.price)).not.toEqual(expect.arrayContaining([1700, 1750]));
   });
 
+  it("keeps clipped coupon marketplace HTML prices conditional instead of deducting them", async () => {
+    delete process.env.RAKUTEN_APPLICATION_ID;
+    delete process.env.YAHOO_SHOPPING_APP_ID;
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("search.rakuten.co.jp")) {
+        return new Response(
+          `
+            <html>
+              <body>
+                <li>
+                  <a href="https://rakuten.example.test/clipped-coupon">Detergent refill clipped coupon</a>
+                  <span>coupon applied price 1,250 JPY</span>
+                  <strong>item price 1,980 JPY</strong>
+                </li>
+              </body>
+            </html>
+          `,
+          { status: 200 },
+        );
+      }
+
+      return new Response(
+        `
+          <html>
+            <body>
+              <article>
+                <a href="https://shopping.example.test/discount-after-clip">Detergent refill clipped discount</a>
+                <span>discount after clip 1,300 JPY</span>
+                <strong>item price 2,080 JPY</strong>
+              </article>
+            </body>
+          </html>
+        `,
+        { status: 200 },
+      );
+    });
+
+    const response = await searchProducts(
+      new Request("http://localhost/api/product-search", {
+        method: "POST",
+        body: JSON.stringify({ query: "detergent refill clipped coupon" }),
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.candidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: "https://rakuten.example.test/clipped-coupon",
+          price: 1980,
+          evidence: expect.arrayContaining(["coupon condition requires retailer confirmation"]),
+          effectivePriceQuote: expect.objectContaining({
+            conditionRequired: true,
+          }),
+        }),
+        expect.objectContaining({
+          url: "https://shopping.example.test/discount-after-clip",
+          price: 2080,
+          evidence: expect.arrayContaining(["coupon condition requires retailer confirmation"]),
+          effectivePriceQuote: expect.objectContaining({
+            conditionRequired: true,
+          }),
+        }),
+      ]),
+    );
+    expect(payload.candidates.map((candidate: { price?: number }) => candidate.price)).not.toEqual(expect.arrayContaining([1250, 1300]));
+  });
+
   it("filters sold-out marketplace HTML offers before ranking prices", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
       const requestUrl = String(url);

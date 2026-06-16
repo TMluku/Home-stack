@@ -9,7 +9,7 @@ import { recordOutboundClick, recordQueueDecision } from "@/lib/metrics";
 import type { NotificationDispatchSummary, NotificationJobSummary, NotificationProviderReadiness } from "@/lib/notification-jobs";
 import { buildNotificationJobs, summarizeNotificationJobs } from "@/lib/notification-jobs";
 import { baseOffers } from "@/lib/offers";
-import type { ConditionAuditLogEntry, NotificationDraft, PriceFetchPlanStep, ServerSyncPayload } from "@/lib/post-mvp";
+import type { ConditionAuditLogEntry, EffectivePriceQuote, NotificationDraft, PriceFetchPlanStep, ServerSyncPayload } from "@/lib/post-mvp";
 import {
   buildConditionAuditLog,
   buildNotificationDrafts,
@@ -1476,6 +1476,8 @@ function EffectivePriceProof({
   proofId?: string;
   verificationUrl?: string;
 }) {
+  const [copyStatus, setCopyStatus] = useState("条件確認メモをコピーできます");
+
   if (!quote) return null;
 
   const rawProofEvidence = [...new Set([...(evidence ?? []), ...quote.evidence])].filter(Boolean);
@@ -1520,6 +1522,12 @@ function EffectivePriceProof({
     },
     { label: "戻し価格", detail: `条件外なら ${yenFormatter.format(recomparePrice)} で再比較` },
   ];
+
+  const conditionMemo = buildConditionCopyMemo(quote, proofEvidence, verificationUrl);
+  const handleCopyConditionMemo = async () => {
+    const copied = await copyText(conditionMemo);
+    setCopyStatus(copied ? "条件確認メモをコピーしました" : conditionMemo);
+  };
 
   return (
     <fieldset className={quote.conditionRequired ? "effective-proof effective-proof--conditional" : "effective-proof"} id={proofId}>
@@ -1597,6 +1605,16 @@ function EffectivePriceProof({
           条件不成立時は {yenFormatter.format(recomparePrice)} で再比較。送料条件が未確定なら販売ページの送料を優先します。
         </div>
       ) : null}
+      {quote.conditionRequired ? (
+        <div className="effective-proof__copy" data-memo-preview="Home Stack 条件確認メモ">
+          <button type="button" onClick={handleCopyConditionMemo}>
+            条件確認メモをコピー
+          </button>
+          <p className="effective-proof__copy-status" role="status">
+            {copyStatus}
+          </p>
+        </div>
+      ) : null}
       <p className={quote.conditionRequired ? "effective-proof__notice" : "effective-proof__notice effective-proof__notice--plain"}>
         {quote.conditionRequired
           ? "この実質価格は条件成立時の見込みです。購入前に販売ページで対象者・期間・併用可否を確認してください。"
@@ -1638,6 +1656,24 @@ function EffectivePriceProof({
       </details>
     </fieldset>
   );
+}
+
+function buildConditionCopyMemo(quote: EffectivePriceQuote, proofEvidence: string[], verificationUrl?: string) {
+  const recomparePrice = quote.listPrice + (quote.shippingFee ?? 0);
+  const lines = [
+    "Home Stack 条件確認メモ",
+    `条件価格: ${yenFormatter.format(quote.effectivePrice)}`,
+    `条件なし再比較: ${yenFormatter.format(recomparePrice)}`,
+    `表示価格: ${yenFormatter.format(quote.listPrice)}`,
+    `送料: ${yenFormatter.format(quote.shippingFee ?? 0)}`,
+    `ポイント控除: ${yenFormatter.format(quote.pointValue ?? 0)}`,
+    `クーポン控除: ${yenFormatter.format(quote.couponValue ?? 0)}`,
+    `条件: ${quote.conditionLabels.join(" / ") || "条件なし"}`,
+    verificationUrl ? `確認先: ${verificationUrl}` : "",
+    ...proofEvidence.slice(0, 4).map((entry) => `根拠: ${entry}`),
+    "外れた条件は控除せず、条件なし再比較価格で判断する。",
+  ];
+  return lines.filter(Boolean).join("\n");
 }
 
 function prioritizeConditionEvidence(entries: string[]) {

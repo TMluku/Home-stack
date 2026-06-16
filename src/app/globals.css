@@ -1307,6 +1307,38 @@ h3 {
   overflow-wrap: anywhere;
 }
 
+.effective-proof__copy {
+  align-items: center;
+  background: #f7fbff;
+  border: 1px solid #d4e7f7;
+  border-radius: 0.45rem;
+  display: grid;
+  gap: 0.45rem;
+  grid-column: 1 / -1;
+  grid-template-columns: max-content minmax(0, 1fr);
+  padding: 0.45rem 0.5rem;
+}
+
+.effective-proof__copy button {
+  background: #1f6e54;
+  border: 0;
+  border-radius: 0.45rem;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 950;
+  min-height: 2rem;
+  padding: 0.42rem 0.62rem;
+}
+
+.effective-proof__copy-status {
+  color: #20506d;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .effective-proof__notice {
   background: #fff7e8;
   border: 1px solid #ead39f;
@@ -2211,6 +2243,11 @@ h3 {
   }
 
   .effective-proof__guardrails {
+    grid-template-columns: 1fr;
+  }
+
+  .effective-proof__copy {
+    align-items: stretch;
     grid-template-columns: 1fr;
   }
 

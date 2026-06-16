@@ -17,6 +17,7 @@ const expectedAssertions = [
   "condition confirmation checklist states when deductions may apply",
   "condition evidence remains readable on mobile width",
   "condition fallback recompare price is visible",
+  "condition memo copy action is visible on mobile",
   "comparison card fallback recompare price is visible",
   "condition decision rows show confirm and reject guidance",
   "static URL scan condition banner jumps to proof details",
@@ -145,6 +146,9 @@ for (const file of jsonFiles) {
   if (!String(summary.recompareText ?? "").includes("条件不成立時") || !String(summary.recompareText ?? "").includes("再比較")) {
     failures.push(`${file}: missing condition fallback recompare price`);
   }
+  if (!String(summary.copyMemoPreview ?? "").includes("Home Stack")) failures.push(`${file}: missing condition memo copy preview`);
+  if (!String(summary.copyMemoButton ?? "").trim()) failures.push(`${file}: missing condition memo copy button`);
+  if (!String(summary.copyMemoStatus ?? "").trim()) failures.push(`${file}: missing condition memo copy status`);
   const comparisonSummary = payload.comparisonSummary ?? {};
   if (
     !String(comparisonSummary.recompareText ?? "").includes("条件外なら") ||

@@ -117,6 +117,10 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(conditionalProof.locator(".effective-proof__decision")).toContainText("クーポン");
   await expect(conditionalProof.locator(".effective-proof__decision")).toContainText("未取得・対象外なら控除しない");
   await expect(conditionalProof.locator(".effective-proof__details li")).toHaveCount(6);
+  await expect(conditionalProof.locator(".effective-proof__copy")).toHaveAttribute("data-memo-preview", /Home Stack/);
+  await expect(conditionalProof.locator(".effective-proof__copy button")).toBeVisible();
+  await conditionalProof.locator(".effective-proof__copy button").click();
+  await expect(conditionalProof.locator(".effective-proof__copy-status")).not.toBeEmpty();
   const conditionLink = conditionalProof.getByRole("link", { name: "販売ページで条件を見る" });
   await expect(conditionLink).toHaveAttribute("href", /^https?:\/\//);
   await expect(conditionLink).toHaveAttribute("target", "_blank");
@@ -267,6 +271,9 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
         laneItems: [...proof.querySelectorAll(".effective-proof__lanes div")].map((item) => item.textContent?.trim()).filter(Boolean),
         summaryItems: [...proof.querySelectorAll(".effective-proof__summary div")].map((item) => item.textContent?.trim()).filter(Boolean),
         recompareText: proof.querySelector(".effective-proof__recompare")?.textContent?.trim() ?? null,
+        copyMemoPreview: proof.querySelector(".effective-proof__copy")?.getAttribute("data-memo-preview") ?? null,
+        copyMemoButton: proof.querySelector(".effective-proof__copy button")?.textContent?.trim() ?? null,
+        copyMemoStatus: proof.querySelector(".effective-proof__copy-status")?.textContent?.trim() ?? null,
         decisionRows: [...proof.querySelectorAll(".effective-proof__decision div")].map((item) => item.textContent?.trim()).filter(Boolean),
         detailRows: [...proof.querySelectorAll(".effective-proof__details li")].map((item) => item.textContent?.trim()).filter(Boolean),
         detailsOpen: proof.querySelector(".effective-proof__details")?.hasAttribute("open") ?? false,
@@ -331,6 +338,7 @@ test("keeps the price condition proof usable on mobile width", async ({ page }, 
             "condition confirmation checklist states when deductions may apply",
             "condition evidence remains readable on mobile width",
             "condition fallback recompare price is visible",
+            "condition memo copy action is visible on mobile",
             "comparison card fallback recompare price is visible",
             "condition decision rows show confirm and reject guidance",
             "static URL scan condition banner jumps to proof details",

@@ -790,16 +790,20 @@ function inferPriceAdjustments(html: string, listPrice: number): PriceAdjustment
   const purchaseConditionRequired =
     hasPurchaseConditionCopy(text) || hasCartOnlyPriceCopy(text) || hasRestrictedPriceCopy(text);
   const shippingFee = extractShippingFeeFromText(text);
+  const pointRewardValueSignal = hasRewardValueSignal(text, ["point", "points", "ポイント"]);
+  const couponRewardValueSignal = hasRewardValueSignal(text, ["coupon", "discount", "off", "クーポン"]);
   const pointValue = extractPointValue(text, listPrice);
   const couponValue = extractCouponValue(text, listPrice);
   const pointRewardAmountTooLarge = hasOversizedRewardAmount(text, ["point", "points"], listPrice, 0.35);
-  const couponRewardAmountTooLarge = hasOversizedRewardAmount(text, ["coupon", "discount", "off"], listPrice, 0.6);
+  const couponRewardAmountTooLarge = hasOversizedRewardAmount(text, ["coupon", "discount", "off", "クーポン"], listPrice, 0.6);
   let pointConditionRequired =
+    pointRewardValueSignal &&
     !pointValue &&
     (hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"]) ||
       hasRewardMultiplierCopy(text, ["point", "points", "ポイント"]) ||
       hasRewardThresholdCopy(text, ["point", "points", "ポイント"]));
   let couponConditionRequired =
+    couponRewardValueSignal &&
     !couponValue &&
     (hasAmbiguousRewardCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
       hasRewardThresholdCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
@@ -860,7 +864,7 @@ function extractCouponValue(text: string, listPrice: number) {
 
 function hasOversizedRewardAmount(text: string, labels: string[], listPrice: number, maxRatio: number) {
   if (!listPrice) return false;
-  const explicit = extractAmountAroundLabel(text, labels);
+  const explicit = extractLargestRewardAmount(text, labels);
   return Boolean(explicit && explicit / listPrice > maxRatio);
 }
 
@@ -1133,6 +1137,51 @@ function hasRewardMultiplierCopy(text: string, labels: string[]) {
       new RegExp(`[0-9０-９]{1,2}\\s*(?:x|times|倍|倍率).{0,20}${escapedLabel}`, "i").test(text)
     );
   });
+}
+
+function hasRewardValueSignal(text: string, labels: string[]) {
+  return Boolean(extractLargestRewardAmount(text, labels) || labels.some((label) => extractRateAroundLabel(text, [label])));
+}
+
+function extractLargestRewardAmount(text: string, labels: string[]) {
+  const normalized = toHalfWidth(text);
+  let largest: number | undefined;
+
+  for (const label of labels) {
+    const escaped = escapeRegExp(label);
+    const patterns = [
+      new RegExp(`${escaped}[^0-9０-９]{0,24}(?:¥|￥|JPY)?\\s*([0-9０-９][0-9０-９,，]*)`, "ig"),
+      new RegExp(`(?:¥|￥|JPY)?\\s*([0-9０-９][0-9０-９,，]*)[^0-9０-９]{0,24}${escaped}`, "ig"),
+    ];
+
+    for (const pattern of patterns) {
+      for (const match of normalized.matchAll(pattern)) {
+        const raw = match[1];
+        if (!raw) continue;
+
+        const amount = parsePrice(raw);
+        if (!amount) continue;
+
+        const tokenStart = (match.index ?? 0) + match[0].indexOf(raw);
+        if (isLikelyDateAmount(raw, tokenStart, normalized)) continue;
+
+        largest = largest === undefined ? amount : Math.max(largest, amount);
+      }
+    }
+  }
+
+  return largest;
+}
+
+function isLikelyDateAmount(raw: string, tokenStart: number, normalized: string) {
+  if (!/^\d{4}$/.test(raw)) return false;
+
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 1900 || value > 3000) return false;
+
+  const next = normalized[tokenStart + raw.length];
+  const previous = normalized[tokenStart - 1];
+  return /[-/年月日]/.test(next) || /[-/年月日]/.test(previous);
 }
 
 function hasRewardThresholdCopy(text: string, labels: string[]) {

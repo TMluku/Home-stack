@@ -480,6 +480,8 @@ function inferPriceAdjustments(snippet: string, listPrice: number) {
   const purchaseConditionRequired =
     hasPurchaseConditionCopy(text) || hasCartOnlyPriceCopy(text) || hasRestrictedPriceCopy(text);
   const shippingFee = extractShippingFeeFromText(text);
+  const pointRewardValueSignal = hasRewardValueSignal(text, ["point", "points", "ポイント"]);
+  const couponRewardValueSignal = hasRewardValueSignal(text, ["coupon", "discount", "off", "クーポン"]);
   const pointRewardLooksConditional = hasDateLikeRewardCopy(text, ["point", "points"]);
   const couponRewardLooksConditional =
     hasDateLikeRewardCopy(text, ["coupon", "discount", "off"]) || hasCouponCodeConditionCopy(text) || hasConditionalDiscountPriceCopy(text);
@@ -489,17 +491,19 @@ function inferPriceAdjustments(snippet: string, listPrice: number) {
   const couponRewardAmountTooLarge = hasOversizedRewardAmount(text, ["coupon", "discount", "off"], listPrice, 0.6);
   let pointConditionRequired =
     !pointValue &&
-    (hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"]) ||
-      hasRewardMultiplierCopy(text, ["point", "points", "ポイント"]) ||
-      hasDateLikeRewardCopy(text, ["point", "points", "ポイント"]) ||
-      hasRewardThresholdCopy(text, ["point", "points", "ポイント"]));
+    (hasDateLikeRewardCopy(text, ["point", "points", "ポイント"]) ||
+      (pointRewardValueSignal &&
+        (hasAmbiguousRewardCopy(text, ["point", "points", "ポイント"]) ||
+          hasRewardMultiplierCopy(text, ["point", "points", "ポイント"]) ||
+          hasRewardThresholdCopy(text, ["point", "points", "ポイント"]))));
   let couponConditionRequired =
     !couponValue &&
-    (hasAmbiguousRewardCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
-      hasRewardThresholdCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
-      hasDateLikeRewardCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
-      hasCouponCodeConditionCopy(text) ||
-      hasConditionalDiscountPriceCopy(text));
+    (hasDateLikeRewardCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
+      (couponRewardValueSignal &&
+        (hasAmbiguousRewardCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
+          hasRewardThresholdCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
+          hasCouponCodeConditionCopy(text) ||
+          hasConditionalDiscountPriceCopy(text))));
   pointConditionRequired = pointConditionRequired || (!pointValue && pointRewardAmountTooLarge);
   couponConditionRequired = couponConditionRequired || (!couponValue && couponRewardAmountTooLarge);
   const evidence = [
@@ -537,19 +541,23 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   const shippingConditionRequired = hasConditionalShippingCopy(officialText);
   const shippingFee = shippingConditionRequired ? undefined : extractOfficialShippingFee(record, source);
   const purchaseConditionRequired = hasPurchaseConditionCopy(officialText) || hasRestrictedPriceCopy(officialText);
+  const pointRewardValueSignal = hasRewardValueSignal(officialText, ["point", "points", "ポイント"]);
+  const couponRewardValueSignal = hasRewardValueSignal(officialText, ["coupon", "discount", "off", "クーポン"]);
   const pointHasConditionalText =
     purchaseConditionRequired ||
-    hasAmbiguousRewardCopy(officialText, ["point", "points", "ポイント"]) ||
-    hasRewardMultiplierCopy(officialText, ["point", "points", "ポイント"]) ||
-    hasRewardThresholdCopy(officialText, ["point", "points", "ポイント"]) ||
+    pointRewardValueSignal &&
+    (hasAmbiguousRewardCopy(officialText, ["point", "points", "ポイント"]) ||
+      hasRewardMultiplierCopy(officialText, ["point", "points", "ポイント"]) ||
+      hasRewardThresholdCopy(officialText, ["point", "points", "ポイント"])) ||
     hasDateLikeRewardCopy(officialText, ["point", "points", "ポイント"]);
   const couponHasConditionalText =
     purchaseConditionRequired ||
-    hasAmbiguousRewardCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
-    hasRewardThresholdCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
-    hasDateLikeRewardCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
-    hasCouponCodeConditionCopy(officialText) ||
-    hasConditionalDiscountPriceCopy(officialText);
+    (couponRewardValueSignal &&
+      (hasAmbiguousRewardCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
+        hasRewardThresholdCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
+        hasCouponCodeConditionCopy(officialText) ||
+        hasConditionalDiscountPriceCopy(officialText))) ||
+    hasDateLikeRewardCopy(officialText, ["coupon", "discount", "off", "クーポン"]);
   const pointAmountPaths = ["point.amount", "pointValue", "pointAmount", "points", "rewardPoint"];
   const pointRatePaths = ["pointRate", "point.rate", "pointRateValue"];
   const pointAmountRateOutOfRange = hasOutOfRangeRewardRate(record, pointAmountPaths, ["point", "points", "ポイント"], {
@@ -838,7 +846,7 @@ function extractCouponValue(text: string, listPrice: number) {
 
 function hasOversizedRewardAmount(text: string, labels: string[], listPrice: number, maxRatio: number) {
   if (!listPrice) return false;
-  const explicit = extractAmountAroundLabel(text, labels);
+  const explicit = extractLargestRewardAmount(text, labels);
   return Boolean(explicit && explicit / listPrice > maxRatio);
 }
 
@@ -1104,6 +1112,51 @@ function hasRewardMultiplierCopy(text: string, labels: string[]) {
       new RegExp(`[0-9０-９]{1,2}\\s*(?:x|times|倍|倍率).{0,20}${escapedLabel}`, "i").test(text)
     );
   });
+}
+
+function hasRewardValueSignal(text: string, labels: string[]) {
+  return Boolean(extractLargestRewardAmount(text, labels) || labels.some((label) => extractRateAroundLabel(text, [label])));
+}
+
+function extractLargestRewardAmount(text: string, labels: string[]) {
+  const normalized = toHalfWidth(text);
+  let largest: number | undefined;
+
+  for (const label of labels) {
+    const escaped = escapeRegExp(label);
+    const patterns = [
+      new RegExp(`${escaped}[^0-9０-９]{0,24}(?:¥|￥|JPY)?\\s*([0-9０-９][0-9０-９,，]*)`, "ig"),
+      new RegExp(`(?:¥|￥|JPY)?\\s*([0-9０-９][0-9０-９,，]*)[^0-9０-９]{0,24}${escaped}`, "ig"),
+    ];
+
+    for (const pattern of patterns) {
+      for (const match of normalized.matchAll(pattern)) {
+        const raw = match[1];
+        if (!raw) continue;
+
+        const amount = parsePrice(raw);
+        if (!amount) continue;
+
+        const tokenStart = (match.index ?? 0) + match[0].indexOf(raw);
+        if (isLikelyDateAmount(raw, tokenStart, normalized)) continue;
+
+        largest = largest === undefined ? amount : Math.max(largest, amount);
+      }
+    }
+  }
+
+  return largest;
+}
+
+function isLikelyDateAmount(raw: string, tokenStart: number, normalized: string) {
+  if (!/^\d{4}$/.test(raw)) return false;
+
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 1900 || value > 3000) return false;
+
+  const next = normalized[tokenStart + raw.length];
+  const previous = normalized[tokenStart - 1];
+  return /[-/年月日]/.test(next) || /[-/年月日]/.test(previous);
 }
 
 function hasRewardThresholdCopy(text: string, labels: string[]) {

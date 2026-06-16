@@ -1506,6 +1506,13 @@ function EffectivePriceProof({
     { label: "控除合計", value: `-${yenFormatter.format(deductionTotal)}`, tone: deductionTotal > 0 ? "subtract" : "plain" },
     { label: "判定", value: quote.conditionRequired ? "要確認" : "条件なし", tone: quote.conditionRequired ? "warning" : "plain" },
   ];
+  const riskStripItems = quote.conditionRequired
+    ? [
+        { label: "採用判定", value: "販売ページ確認後に採用" },
+        { label: "確認漏れ時", value: `${yenFormatter.format(recomparePrice)}で見る` },
+        { label: "控除候補", value: deductionTotal > 0 ? `${yenFormatter.format(deductionTotal)}を戻して再比較` : "控除なし" },
+      ]
+    : [];
   const guardrailItems = quote.conditionRequired
     ? [
         { label: "確認先", value: verificationUrl ? "販売ページ" : "証拠行" },
@@ -1551,6 +1558,16 @@ function EffectivePriceProof({
           </div>
         ))}
       </dl>
+      {riskStripItems.length > 0 ? (
+        <dl className="effective-proof__risk-strip" aria-label="条件価格の採用判定">
+          {riskStripItems.map((item) => (
+            <div key={item.label}>
+              <dt>{item.label}</dt>
+              <dd>{item.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
       <ul className="effective-proof__breakdown" aria-label="実質価格の計算内訳">
         {breakdownItems.map((item) => (
           <li className={`effective-proof__breakdown-item effective-proof__breakdown-item--${item.type}`} key={item.label}>

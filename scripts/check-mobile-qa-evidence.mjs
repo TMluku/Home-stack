@@ -13,6 +13,7 @@ const expectedAssertions = [
   "real-device QA checklist is present on the hero",
   "effective price proof details are visible",
   "condition price quick-read remains visible",
+  "condition adoption risk strip is visible",
   "condition guardrails show verification target and fallback price",
   "condition action note explains seller-page checks",
   "condition confirmation checklist states when deductions may apply",
@@ -116,6 +117,16 @@ for (const file of jsonFiles) {
   }
   if (!quickReadText.includes("控除合計") || !quickReadText.includes("要確認")) {
     failures.push(`${file}: missing condition-price quick-read deduction or decision labels`);
+  }
+  if (!Array.isArray(summary.riskItems) || summary.riskItems.length !== 3) {
+    failures.push(`${file}: expected three condition adoption risk items`);
+  }
+  const riskText = Array.isArray(summary.riskItems) ? summary.riskItems.join(" ") : "";
+  if (!riskText.includes("採用判定") || !riskText.includes("販売ページ確認後に採用")) {
+    failures.push(`${file}: missing condition adoption decision text`);
+  }
+  if (!riskText.includes("確認漏れ時") || !riskText.includes("控除候補")) {
+    failures.push(`${file}: missing condition adoption fallback or deduction text`);
   }
   if (!Array.isArray(summary.guardrailItems) || summary.guardrailItems.length !== 3) {
     failures.push(`${file}: expected three condition guardrail items`);

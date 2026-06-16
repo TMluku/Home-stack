@@ -71,6 +71,7 @@ export function extractSearchCandidatesFromHtml(html: string, source: Marketplac
     const title = extractTitle(snippet);
     if (!url || !title || !price) return null;
     if (hasUsedConditionCopy(title)) return null;
+    if (hasUnavailableOfferCopy(snippet)) return null;
     const adjustments = inferPriceAdjustments(snippet, price);
 
     return {
@@ -1177,6 +1178,18 @@ function hasUsedConditionCopy(text: string) {
   return /(?:中古|中古品|訳あり|アウトレット|開封済み|展示品|再生品|箱潰れ|箱つぶれ|used|pre-owned|preowned|open box|open-box|outlet|refurbished|renewed|damaged box|UsedCondition|RefurbishedCondition|DamagedCondition)/i.test(
     text,
   );
+}
+
+function hasUnavailableOfferCopy(text: string) {
+  const cleaned = cleanText(text) ?? text;
+  const unavailable =
+    /(?:在庫なし|売り切れ|売切れ|完売|販売終了|品切れ|入荷待ち|入荷予定|予約販売|予約受付|発売前|販売前|sold out|out of stock|unavailable|discontinued|pre-?order|coming soon|not yet available)/i.test(
+      cleaned,
+    );
+  const available = /(?:販売中|販売価格|通常販売価格|在庫あり|購入可能|available|in stock|item price|one-time purchase price)/i.test(
+    cleaned,
+  );
+  return unavailable && !available;
 }
 
 function isUnavailablePriceContext(text: string, index: number, length: number) {

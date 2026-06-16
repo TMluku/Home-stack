@@ -1216,8 +1216,9 @@ function isRangeLowerBoundPriceContext(text: string, index: number, length: numb
   const before = text.slice(Math.max(0, index - 28), index);
   const after = text.slice(index + length, index + length + 28);
   return (
-    /(?:から|より|from|as low as|starting at|starts? from|バリエーション|variant)\s*$/i.test(before) ||
-    /^\s*(?:〜|～|から|より|and up|\+|or more|以上|バリエーション|variant)/i.test(after)
+    /(?:から|より|from|as low as|starting at|starts? from|lowest(?:\s+price)?|minimum(?:\s+price)?|バリエーション|variant)\s*$/i.test(
+      before,
+    ) || /^\s*(?:〜|～|から|より|and up|\+|or more|以上|バリエーション|variant)/i.test(after)
   );
 }
 

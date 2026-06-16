@@ -744,6 +744,27 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips lowest-price range labels before exact direct product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Lowest range product</title></head>
+        <body>
+          <span>Lowest price 980 JPY among variants</span>
+          <strong>Current price 1,500 JPY</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1500,
+      effectivePriceQuote: {
+        listPrice: 1500,
+        effectivePrice: 1500,
+      },
+      source: "html-text",
+    });
+  });
+
   it("skips installment amounts before direct product prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -2611,6 +2632,29 @@ describe("replenishment domain logic", () => {
 
     expect(candidates[0]).toMatchObject({
       title: "Range lower bound detergent",
+      price: 1500,
+      effectivePriceQuote: {
+        listPrice: 1500,
+        effectivePrice: 1500,
+      },
+    });
+  });
+
+  it("skips lowest-price range labels before exact marketplace item prices", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/lowest" title="Lowest range detergent">Lowest range detergent</a>
+          <span>Lowest price 980 JPY among variants</span>
+          <strong>Current price 1,500 JPY</strong>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Lowest range detergent",
       price: 1500,
       effectivePriceQuote: {
         listPrice: 1500,

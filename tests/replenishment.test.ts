@@ -2919,6 +2919,30 @@ describe("replenishment domain logic", () => {
     expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["purchase condition requires retailer confirmation"]));
   });
 
+  it("skips marketplace installment and fee amounts before item prices", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/installment-fee" title="Installment fee detergent">Installment fee detergent</a>
+          <span>monthly 500 JPY installment</span>
+          <span>handling fee 330 JPY</span>
+          <strong>item price 1,980 JPY</strong>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/detergent/",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      price: 1980,
+      effectivePriceQuote: {
+        listPrice: 1980,
+        effectivePrice: 1980,
+      },
+    });
+    expect(candidates.map((candidate) => candidate.price)).not.toEqual(expect.arrayContaining([500, 330]));
+  });
+
   it("keeps marketplace free-shipping thresholds out of effective-price shipping deductions", () => {
     const candidates = extractSearchCandidatesFromHtml(
       `

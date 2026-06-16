@@ -38,7 +38,7 @@ Run `pnpm.cmd run check:mobile-qa-evidence` after `pnpm.cmd run test:e2e:browser
 
 Automated evidence is not a substitute for the real-device rows below. Treat the objective as incomplete until at least one physical phone/browser pass is recorded with the published URL.
 
-After a physical phone pass is recorded, run `pnpm.cmd run check:real-device-qa`. It fails while the matrix only contains placeholder rows, and passes when at least one non-placeholder `Pass` row includes the tested Pages URL plus screenshot or `mobile-qa-evidence` notes.
+After a physical phone pass is recorded, run `pnpm.cmd run check:real-device-qa`. It fails while the matrix only contains placeholder rows, and passes when at least one non-placeholder `Pass` row includes the tested Pages URL, `mobile-qa-evidence` notes, and a real-phone screenshot note.
 
 ## Real Device Matrix
 
@@ -48,7 +48,7 @@ Record each real-device pass here.
 |---|---|---|---|---|---|
 | YYYY-MM-DD | iPhone / Android model | Safari / Chrome | Wi-Fi / 5G | Pass / Fail |  |
 
-The published app hero includes `QA記録をコピー`. Use it on the tested phone to copy a matrix row, paste it here, then replace the device, browser, network, result, and evidence placeholders with the real values. The copied memo includes the published URL, the Browser E2E workflow URL, the `mobile-qa-evidence` artifact name, and the expected `mobile-price-condition-proof.png` / `mobile-price-condition-proof.json` evidence filenames.
+The published app hero includes `QA記録をコピー`. Use it on the tested phone to copy a matrix row, paste it here, then replace the device, browser, network, result, and evidence placeholders with the real values. The copied memo includes the published URL, the Browser E2E workflow URL, the `mobile-qa-evidence` artifact name, and the expected `mobile-price-condition-proof.png` / `mobile-price-condition-proof.json` evidence filenames. Add a phone screenshot note such as `実機スクリーンショット: phone-price-proof.png`; automated evidence alone does not satisfy the release gate.
 
 Current status: automated mobile Chromium coverage is available from GitHub Actions, but no physical phone pass is recorded in this file yet.
 

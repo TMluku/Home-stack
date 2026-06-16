@@ -83,7 +83,7 @@ pnpm.cmd run check:real-device-qa
 pnpm.cmd exec playwright install chromium
 ```
 
-`check:real-device-qa` is a manual release gate. It intentionally fails until `docs/mobile-qa.md` contains a non-placeholder real-phone `Pass` row with the tested Pages URL and screenshot or `mobile-qa-evidence` notes.
+`check:real-device-qa` is a manual release gate. It intentionally fails until `docs/mobile-qa.md` contains a non-placeholder real-phone `Pass` row with the tested Pages URL, `mobile-qa-evidence` notes, and a real-phone screenshot note.
 
 Manual smartphone QA for Pages:
 

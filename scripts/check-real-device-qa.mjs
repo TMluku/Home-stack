@@ -20,15 +20,19 @@ const passes = qaRows.filter(([date, device, browser, network, result, notes]) =
   );
   const hasPass = /^pass$/i.test(result);
   const hasPublishedUrl = /https:\/\/tmluku\.github\.io\/Home-stack\//.test(notes);
-  const hasEvidence = /mobile-qa-evidence|mobile-price-condition-proof|screenshot|スクリーンショット/i.test(notes);
-  return Boolean(date) && !hasPlaceholders && hasPass && hasPublishedUrl && hasEvidence;
+  const hasAutomatedEvidence = /mobile-qa-evidence|mobile-price-condition-proof/i.test(notes);
+  const hasRealDeviceScreenshot =
+    /(?:phone|real[- ]?device|実機|スマホ|端末).{0,40}(?:screenshot|screen shot|スクリーンショット|画面)|(?:screenshot|screen shot|スクリーンショット|画面).{0,40}(?:phone|real[- ]?device|実機|スマホ|端末)/i.test(
+      notes,
+    );
+  return Boolean(date) && !hasPlaceholders && hasPass && hasPublishedUrl && hasAutomatedEvidence && hasRealDeviceScreenshot;
 });
 
 if (passes.length === 0) {
   console.error(
     [
       `FAIL ${qaFile}: no real-device GitHub Pages QA pass is recorded.`,
-      "Add a non-placeholder matrix row with Result `Pass`, the tested published URL, and screenshot or `mobile-qa-evidence` notes.",
+      "Add a non-placeholder matrix row with Result `Pass`, the tested published URL, `mobile-qa-evidence` notes, and a real-phone screenshot note.",
     ].join("\n"),
   );
   process.exit(1);

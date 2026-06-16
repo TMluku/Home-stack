@@ -1019,6 +1019,11 @@ function hasAmbiguousRewardCopy(text: string, labels: string[]) {
     "up to",
     "max",
     "maximum",
+    "cap",
+    "capped",
+    "limit",
+    "limited to",
+    "upper limit",
     "campaign",
     "limited time",
     "bonus",
@@ -1296,6 +1301,14 @@ function isRewardAmountContext(text: string, index: number, length: number) {
 function isConditionThresholdAmountContext(text: string, index: number, length: number) {
   const before = text.slice(Math.max(0, index - 24), index);
   const after = text.slice(index + length, index + length + 48);
+  const cappedBefore =
+    /(?:point|points|reward|coupon|discount|savings).{0,40}(?:up to|max(?:imum)?|cap(?:ped)?|limit(?:ed to)?|upper limit).{0,12}$/i.test(
+      before,
+    );
+  const cappedAfter = /^\s*(?:max(?:imum)?|cap(?:ped)?|limit(?:ed to)?|upper limit)\b/i.test(after);
+  if ((cappedBefore || cappedAfter) && /(?:point|points|reward|coupon|discount|savings)/i.test(`${before}${after}`)) {
+    return true;
+  }
   const thresholdAfter = /^\s*(?:以上|未満|から|より|or more|and up|minimum|over|above|\+)/i.test(after);
   const conditionNearby = /(?:クーポン|coupon|割引|discount|off|送料無料|free shipping|送料|対象|条件|購入|注文|order|eligible)/i.test(
     `${before}${after}`,

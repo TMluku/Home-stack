@@ -528,6 +528,54 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["購入条件あり"]));
   });
 
+  it("keeps capped point amounts out of effective prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Point cap product</title></head>
+        <body>
+          <span>Points capped at 1,000 JPY during campaign</span>
+          <strong>Current price 5,000 JPY</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 5000,
+      source: "html-text",
+      effectivePriceQuote: {
+        listPrice: 5000,
+        effectivePrice: 5000,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.pointValue).toBe(0);
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["point condition requires retailer confirmation"]));
+  });
+
+  it("keeps capped coupon amounts out of effective prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Coupon cap product</title></head>
+        <body>
+          <span>Coupon savings cap 500 JPY for selected sellers</span>
+          <strong>Current price 2,000 JPY</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2000,
+      source: "html-text",
+      effectivePriceQuote: {
+        listPrice: 2000,
+        effectivePrice: 2000,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.couponValue).toBe(0);
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["coupon condition requires retailer confirmation"]));
+  });
+
   it("skips tax-excluded prices before tax-included totals on direct product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>

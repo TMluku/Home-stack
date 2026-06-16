@@ -1503,6 +1503,8 @@ function EffectivePriceProof({
 
   if (!quote) return null;
 
+  const hasExplicitConditionEvidence = hasPriceConditionEvidence(quote.conditionLabels);
+  const showConditionProof = quote.conditionRequired && hasExplicitConditionEvidence;
   const rawProofEvidence = [...new Set([...(evidence ?? []), ...quote.evidence])].filter(Boolean);
   const proofEvidence = prioritizeConditionEvidence([...new Set(rawProofEvidence.map(formatPriceEvidence))]).slice(0, 6);
   const proofCount = rawProofEvidence.length;
@@ -1526,26 +1528,26 @@ function EffectivePriceProof({
     { label: "条件価格", value: yenFormatter.format(quote.effectivePrice), tone: "primary" },
     { label: "条件なし", value: yenFormatter.format(recomparePrice), tone: "plain" },
     { label: "控除合計", value: `-${yenFormatter.format(deductionTotal)}`, tone: deductionTotal > 0 ? "subtract" : "plain" },
-    { label: "判定", value: quote.conditionRequired ? "要確認" : "条件なし", tone: quote.conditionRequired ? "warning" : "plain" },
+    { label: "判定", value: showConditionProof ? "要確認" : "条件なし", tone: showConditionProof ? "warning" : "plain" },
   ];
-  const riskStripItems = quote.conditionRequired
+  const riskStripItems = showConditionProof
     ? [
         { label: "採用判定", value: "販売ページ確認後に採用" },
         { label: "確認漏れ時", value: `${yenFormatter.format(recomparePrice)}で見る` },
         { label: "控除候補", value: deductionTotal > 0 ? `${yenFormatter.format(deductionTotal)}を戻して再比較` : "控除なし" },
       ]
     : [];
-  const guardrailItems = quote.conditionRequired
+  const guardrailItems = showConditionProof
     ? [
         { label: "確認先", value: verificationUrl ? "販売ページ" : "証拠行" },
         { label: "根拠", value: `${proofCount}件` },
         { label: "未成立時", value: yenFormatter.format(recomparePrice) },
       ]
     : [];
-  const confirmationItems = quote.conditionRequired
+  const confirmationItems = showConditionProof
     ? ["販売ページの金額・送料と一致", "対象者・期間・併用可否を満たす", "満たさない控除は戻し価格で再比較"]
     : [];
-  const conditionAuditItems = quote.conditionRequired
+  const conditionAuditItems = showConditionProof
     ? [
         { label: "金額", value: "商品価格・送料・控除額が販売ページと一致" },
         { label: "対象", value: "会員/アプリ/初回/支払い方法の対象条件を確認" },
@@ -1570,7 +1572,7 @@ function EffectivePriceProof({
   };
 
   return (
-    <fieldset className={quote.conditionRequired ? "effective-proof effective-proof--conditional" : "effective-proof"} id={proofId}>
+    <fieldset className={showConditionProof ? "effective-proof effective-proof--conditional" : "effective-proof"} id={proofId}>
       <legend className="visually-hidden">実質価格の内訳</legend>
       <dl className="effective-proof__quick-read" aria-label="条件価格の要点">
         {quickReadItems.map((item) => (
@@ -1632,7 +1634,7 @@ function EffectivePriceProof({
           ))}
         </dl>
       ) : null}
-      {quote.conditionRequired ? (
+      {showConditionProof ? (
         <div className="effective-proof__action-note" role="note" aria-label="条件確認メモ">
           販売ページで対象者・期間・併用可否・送料を確認。外れた条件は控除せず、条件なし価格で再比較します。
         </div>
@@ -1673,12 +1675,12 @@ function EffectivePriceProof({
           </div>
         ))}
       </dl>
-      {quote.conditionRequired ? (
+      {showConditionProof ? (
         <div className="effective-proof__recompare" role="note" aria-label="条件不成立時の再比較価格">
           条件不成立時は {yenFormatter.format(recomparePrice)} で再比較。送料条件が未確定なら販売ページの送料を優先します。
         </div>
       ) : null}
-      {quote.conditionRequired ? (
+      {showConditionProof ? (
         <div className="effective-proof__copy" data-memo-preview="Home Stack 条件確認メモ">
           <button type="button" onClick={handleCopyConditionMemo}>
             条件確認メモをコピー
@@ -1688,8 +1690,8 @@ function EffectivePriceProof({
           </p>
         </div>
       ) : null}
-      <p className={quote.conditionRequired ? "effective-proof__notice" : "effective-proof__notice effective-proof__notice--plain"}>
-        {quote.conditionRequired
+      <p className={showConditionProof ? "effective-proof__notice" : "effective-proof__notice effective-proof__notice--plain"}>
+        {showConditionProof
           ? "この実質価格は条件成立時の見込みです。購入前に販売ページで対象者・期間・併用可否を確認してください。"
           : "この候補は検出できた範囲ではクーポン・ポイント控除条件なしで比較しています。"}
       </p>
@@ -1714,8 +1716,8 @@ function EffectivePriceProof({
         </dl>
       ) : null}
       <small>根拠 {proofCount}件 / 条件は購入前に販売サイトで再確認</small>
-      <details className="effective-proof__details" open={quote.conditionRequired}>
-        <summary>{quote.conditionRequired ? "価格条件を確認" : "価格根拠を確認"}</summary>
+      <details className="effective-proof__details" open={showConditionProof}>
+        <summary>{showConditionProof ? "価格条件を確認" : "価格根拠を確認"}</summary>
         <ul>
           {proofEvidence.map((entry) => (
             <li key={entry}>{entry}</li>
@@ -1747,6 +1749,12 @@ function buildConditionCopyMemo(quote: EffectivePriceQuote, proofEvidence: strin
     "外れた条件は控除せず、条件なし再比較価格で判断する。",
   ];
   return lines.filter(Boolean).join("\n");
+}
+
+function hasPriceConditionEvidence(labels: string[]) {
+  return labels.some((label) =>
+    /(?:購入条件あり|送料条件あり|ポイント条件あり|クーポン条件あり|ポイント期間あり|クーポン期間あり|条件あり|条件|期間)/.test(label),
+  );
 }
 
 function buildConditionImpactItems(quote: EffectivePriceQuote) {
@@ -1990,9 +1998,13 @@ function ProductSearchPanel({
             ))}
           </div>
 
-          <div className="market-candidates">
-            {sortedCandidates.map((candidate) => (
-              <article className="market-card" key={candidate.id}>
+        <div className="market-candidates">
+            {sortedCandidates.map((candidate) => {
+              const hasConditionEvidence = candidate.effectivePriceQuote
+                ? hasPriceConditionEvidence(candidate.effectivePriceQuote.conditionLabels)
+                : false;
+              return (
+                <article className="market-card" key={candidate.id}>
                 <div>
                   <span className="source-tag">{candidate.sourceLabel}</span>
                   <strong>
@@ -2004,10 +2016,10 @@ function ProductSearchPanel({
                   </strong>
                 </div>
                 <h4>{candidate.title}</h4>
-                <p>
-                  一致度 {candidate.matchScore}% / {candidate.confidence} / {candidate.shipping ?? "送料条件は要確認"}
-                </p>
-                {candidate.effectivePriceQuote?.conditionLabels.length ? (
+                  <p>
+                    一致度 {candidate.matchScore}% / {candidate.confidence} / {candidate.shipping ?? "送料条件は要確認"}
+                  </p>
+                {hasConditionEvidence ? (
                   <a
                     className="condition-banner"
                     href={`#candidate-conditions-${candidate.id}`}
@@ -2027,7 +2039,8 @@ function ProductSearchPanel({
                   商品ページを見る
                 </a>
               </article>
-            ))}
+              );
+            })}
           </div>
         </div>
       ) : null}
@@ -2214,17 +2227,21 @@ function LivePriceScanner({
       </p>
       {results.length > 0 ? (
         <div className="live-price-results">
-          {results.map((result, index) => (
-            <article className={result.ok ? "live-price-card is-ok" : "live-price-card"} key={result.url}>
-              <span>{result.source}</span>
-              <strong>
-                {result.effectivePriceQuote?.effectivePrice
-                  ? yenFormatter.format(result.effectivePriceQuote.effectivePrice)
-                  : result.price
+          {results.map((result, index) => {
+            const hasConditionEvidence = result.effectivePriceQuote
+              ? hasPriceConditionEvidence(result.effectivePriceQuote.conditionLabels)
+              : false;
+            return (
+              <article className={result.ok ? "live-price-card is-ok" : "live-price-card"} key={result.url}>
+                <span>{result.source}</span>
+                <strong>
+                  {result.effectivePriceQuote?.effectivePrice
+                    ? yenFormatter.format(result.effectivePriceQuote.effectivePrice)
+                    : result.price
                     ? yenFormatter.format(result.price)
                     : "取得不可"}
-              </strong>
-              {result.effectivePriceQuote?.conditionLabels.length ? (
+                </strong>
+              {hasConditionEvidence ? (
                 <a
                   className="condition-banner"
                   href={`#live-conditions-${index}`}
@@ -2233,13 +2250,14 @@ function LivePriceScanner({
                   条件あり: {result.effectivePriceQuote.conditionLabels.join(" / ")}
                 </a>
               ) : null}
-              <EffectivePriceProof quote={result.effectivePriceQuote} proofId={`live-conditions-${index}`} verificationUrl={result.url} />
-              <p>{result.title ?? result.url}</p>
-              <small>
-                {new Date(result.fetchedAt).toLocaleString("ja-JP")} / {result.error ?? result.url}
-              </small>
-            </article>
-          ))}
+                <EffectivePriceProof quote={result.effectivePriceQuote} proofId={`live-conditions-${index}`} verificationUrl={result.url} />
+                <p>{result.title ?? result.url}</p>
+                <small>
+                  {new Date(result.fetchedAt).toLocaleString("ja-JP")} / {result.error ?? result.url}
+                </small>
+              </article>
+            );
+          })}
         </div>
       ) : null}
     </section>

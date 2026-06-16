@@ -85,6 +85,25 @@ pnpm.cmd exec playwright install chromium
 
 `check:real-device-qa` is a manual release gate. It intentionally fails until `docs/mobile-qa.md` contains a non-placeholder real-phone `Pass` row with the tested Pages URL, `mobile-qa-evidence` notes, `条件確認メモ`, `condition audit grid`, `条件別の戻し額`, and a real-phone screenshot note.
 
+## Public URL Operations
+
+- Published app URL: `https://tmluku.github.io/Home-stack/`
+- Confirm this URL responds after publish before sharing, and keep it as the single reference for `test:e2e`, `check:mobile-qa-evidence`, and `check:real-device-qa`.
+- Before updating release notes, always run:
+
+  1. `pnpm.cmd run check:pages`
+  2. `pnpm.cmd run test:e2e`
+  3. `pnpm.cmd run test:e2e:browser`
+  4. `pnpm.cmd run check:mobile-qa-evidence`
+
+- For each Pages deployment, verify in GitHub:
+  - `Publish GitHub Pages Branch` workflow success
+  - `Browser E2E` workflow success
+  - `pages-build-deployment` page published for the latest commit
+  - `https://tmluku.github.io/Home-stack/` opens on mobile and desktop
+
+- If the page is not public yet, complete GitHub repository privacy settings first; private repositories cannot reliably host external QA links.
+
 When the real-device gate fails, it prints row-level missing evidence such as the published URL, Browser E2E workflow/run URL, mobile evidence filenames, condition-action note, or real-phone screenshot note.
 
 Manual smartphone QA for Pages:

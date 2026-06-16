@@ -383,6 +383,17 @@ export function HomeStackApp() {
     queueExternalOpen(offer.url);
   }
 
+  function openOfferConditionDetails(event: MouseEvent<HTMLElement>, offerId: string) {
+    event.preventDefault();
+    flushSync(() => {
+      setActiveOfferId(offerId);
+    });
+    const detailsElement = document.getElementById(`conditions-${offerId}`);
+    if (detailsElement) {
+      detailsElement.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
   function openComparisonLink(event: MouseEvent<HTMLElement>, offer: Offer, competitor: Offer["competitors"][number]) {
     event.preventDefault();
     flushSync(() => clickComparisonCandidate(offer, competitor));
@@ -1145,7 +1156,12 @@ export function HomeStackApp() {
                   {offer.linkText}
                 </button>
                 {offer.conditions.length > 0 ? (
-                  <a className="condition-link" href={`#conditions-${offer.id}`} onClick={() => setActiveOfferId(offer.id)}>
+                  <a
+                    className="condition-link"
+                    href={`#conditions-${offer.id}`}
+                    aria-label={`${offer.title}の条件詳細`}
+                    onClick={(event) => openOfferConditionDetails(event, offer.id)}
+                  >
                     条件を見る
                   </a>
                 ) : null}
@@ -1153,7 +1169,11 @@ export function HomeStackApp() {
             ))}
           </div>
 
-          <PriceComparisonPanel offer={activeOffer} onOutboundClick={openComparisonLink} />
+          <PriceComparisonPanel
+            offer={activeOffer}
+            onOutboundClick={openComparisonLink}
+            onConditionDetailsClick={openOfferConditionDetails}
+          />
 
           <section className="analytics-card">
             <div>
@@ -2005,9 +2025,11 @@ function ProductSearchPanel({
 function PriceComparisonPanel({
   offer,
   onOutboundClick,
+  onConditionDetailsClick,
 }: {
   offer: Offer;
   onOutboundClick: (event: MouseEvent<HTMLElement>, offer: Offer, competitor: Offer["competitors"][number]) => void;
+  onConditionDetailsClick: (event: MouseEvent<HTMLElement>, offerId: string) => void;
 }) {
   const competitors = [...offer.competitors].sort((a, b) => a.effectivePrice - b.effectivePrice || a.listPrice - b.listPrice);
   const bestCompetitor = competitors[0];
@@ -2054,6 +2076,7 @@ function PriceComparisonPanel({
                   className="condition-banner"
                   href={`#conditions-${offer.id}`}
                   aria-label={`条件ありの詳細を開く: ${competitor.retailer}`}
+                  onClick={(event) => onConditionDetailsClick(event, offer.id)}
                 >
                   条件あり
                 </a>

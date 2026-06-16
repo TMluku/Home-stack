@@ -49,6 +49,33 @@ describe("replenishment domain logic", () => {
     expect(offers.some((offer) => offer.conditions.length > 0)).toBe(true);
   });
 
+  it("interleaves conditional offers with normal offers by effective price", () => {
+    const state = createDefaultState();
+    state.activeFilter = "all";
+
+    const mixedOffers = [
+      {
+        ...baseOffers[0],
+        id: "conditional-cheap",
+        effectivePrice: 600,
+        listPrice: 780,
+        conditions: [{ label: "クーポン適用", detail: "条件付きクーポンがある場合のみ有効" }],
+      },
+      {
+        ...baseOffers[1],
+        id: "plain-expensive",
+        effectivePrice: 950,
+        conditions: [],
+      },
+    ];
+
+    const offers = getRecommendedOffers(state, mixedOffers);
+
+    expect(offers).toHaveLength(2);
+    expect(offers[0]?.id).toBe("conditional-cheap");
+    expect(offers[1]?.id).toBe("plain-expensive");
+  });
+
   it("builds queue entries with estimated revenue and pending decision defaults", () => {
     const state = createDefaultState();
     const queue = buildReplenishmentQueue(state, baseOffers);

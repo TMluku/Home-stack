@@ -107,10 +107,16 @@ for (const file of jsonFiles) {
   if (!Array.isArray(candidateConditionSummary.badges) || candidateConditionSummary.badges.length === 0) {
     failures.push(`${file}: missing candidate condition badges`);
   }
+  if (!candidateConditionSummary.badges?.some((badge) => String(badge).includes("広告掲載あり"))) {
+    failures.push(`${file}: missing candidate sponsored placement badge`);
+  }
   if (candidateConditionSummary.detailsOpen !== true) failures.push(`${file}: candidate condition details were not open`);
   if (!isHttpUrl(candidateConditionSummary.sellerLink)) failures.push(`${file}: missing candidate seller/search link`);
 
   if (!Array.isArray(summary.badges) || summary.badges.length === 0) failures.push(`${file}: missing condition badges`);
+  if (!summary.badges?.some((badge) => String(badge).includes("広告掲載あり"))) {
+    failures.push(`${file}: missing sponsored placement condition badge`);
+  }
   if (!Array.isArray(summary.quickReadItems) || summary.quickReadItems.length !== 4) {
     failures.push(`${file}: expected four condition-price quick-read items`);
   }
@@ -190,6 +196,10 @@ for (const file of jsonFiles) {
   }
   if (!summary.summaryItems?.some((item) => String(item).includes("見る")))
     failures.push(`${file}: missing actionable condition summary text`);
+  const summaryText = Array.isArray(summary.summaryItems) ? summary.summaryItems.join(" ") : "";
+  if (!summaryText.includes("広告") || !summaryText.includes("PR枠")) {
+    failures.push(`${file}: missing sponsored placement condition summary`);
+  }
   if (!String(summary.recompareText ?? "").includes("条件不成立時") || !String(summary.recompareText ?? "").includes("再比較")) {
     failures.push(`${file}: missing condition fallback recompare price`);
   }
@@ -214,6 +224,9 @@ for (const file of jsonFiles) {
   }
   if (!summary.decisionRows?.some((item) => String(item).includes("控除しない") || String(item).includes("再比較"))) {
     failures.push(`${file}: missing condition reject guidance`);
+  }
+  if (!summary.decisionRows?.some((item) => String(item).includes("広告掲載") && String(item).includes("販売ページ価格を優先"))) {
+    failures.push(`${file}: missing sponsored placement decision guidance`);
   }
   if (!Array.isArray(summary.detailRows) || summary.detailRows.length === 0) failures.push(`${file}: missing condition detail rows`);
   if (summary.detailsOpen !== true) failures.push(`${file}: condition details were not open`);

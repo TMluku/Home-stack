@@ -1942,6 +1942,50 @@ describe("replenishment domain logic", () => {
     );
   });
 
+  it("keeps numeric JSON-LD rewards conditional when the offer has purchase conditions", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Structured subscription reward product</title>
+          <script type="application/ld+json">
+            {
+              "@type": "Product",
+              "name": "Structured subscription reward product",
+              "offers": {
+                "@type": "Offer",
+                "price": "2,000",
+                "priceCurrency": "JPY",
+                "description": "Subscribe & Save first order offer",
+                "additionalProperty": [
+                  { "name": "points", "value": 150 },
+                  { "name": "coupon", "value": 300 }
+                ]
+              }
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2000,
+      source: "json-ld",
+      effectivePriceQuote: {
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 2000,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(
+      expect.arrayContaining(["point value from JSON-LD: 150 JPY", "coupon value from JSON-LD: 300 JPY"]),
+    );
+  });
+
   it("keeps structured rebate rewards conditional when claim text is in the same record", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -2280,6 +2324,50 @@ describe("replenishment domain logic", () => {
                     "currency": "JPY",
                     "points": { "amount": 120, "description": "レビュー投稿後に付与" },
                     "coupon": { "amount": 200, "eligibility": "payment method selected sellers only" }
+                  }
+                }
+              }
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2400,
+      source: "embedded-json",
+      effectivePriceQuote: {
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 2400,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(
+      expect.arrayContaining(["point value from embedded JSON: 120 JPY", "coupon value from embedded JSON: 200 JPY"]),
+    );
+  });
+
+  it("keeps numeric embedded JSON rewards conditional when the product has purchase conditions", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Embedded subscription reward product</title>
+          <script id="__NEXT_DATA__" type="application/json">
+            {
+              "props": {
+                "pageProps": {
+                  "product": {
+                    "productName": "Embedded subscription detergent",
+                    "currentPrice": "2,400",
+                    "currency": "JPY",
+                    "purchaseNote": "定期おトク便 初回限定 offer",
+                    "points": { "amount": 120 },
+                    "coupon": { "amount": 200 }
                   }
                 }
               }
@@ -4289,6 +4377,99 @@ describe("replenishment domain logic", () => {
         url: "https://example.com/yahoo-regular",
         price: 2200,
       });
+    } finally {
+      if (previousRakutenId === undefined) delete process.env.RAKUTEN_APPLICATION_ID;
+      else process.env.RAKUTEN_APPLICATION_ID = previousRakutenId;
+      if (previousYahooId === undefined) delete process.env.YAHOO_SHOPPING_APP_ID;
+      else process.env.YAHOO_SHOPPING_APP_ID = previousYahooId;
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("does not deduct official API rewards attached to purchase-condition offers", async () => {
+    const previousRakutenId = process.env.RAKUTEN_APPLICATION_ID;
+    const previousYahooId = process.env.YAHOO_SHOPPING_APP_ID;
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "Subscribe save official detergent",
+                  itemPrice: 2000,
+                  itemUrl: "https://example.com/rakuten-subscription-reward",
+                  postageFlag: 0,
+                  pointRate: 10,
+                  couponAmount: 300,
+                  description: "Subscribe & Save first order only",
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (requestUrl.includes("shopping.yahooapis.jp")) {
+        return new Response(
+          JSON.stringify({
+            hits: [
+              {
+                name: "First order Yahoo detergent",
+                price: 2200,
+                url: "https://example.com/yahoo-first-order-reward",
+                shipping: { code: 1, name: "free shipping" },
+                point: { amount: 180 },
+                couponAmount: 250,
+                offerNote: "first order subscription discount",
+              },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response("not found", { status: 404 });
+    });
+
+    try {
+      const result = await searchProductPrices("official detergent");
+      const rakuten = result.candidates.find((entry) => entry.url === "https://example.com/rakuten-subscription-reward");
+      const yahoo = result.candidates.find((entry) => entry.url === "https://example.com/yahoo-first-order-reward");
+
+      expect(rakuten).toMatchObject({
+        price: 2000,
+        effectivePriceQuote: {
+          listPrice: 2000,
+          shippingFee: 0,
+          pointValue: 0,
+          couponValue: 0,
+          effectivePrice: 2000,
+          conditionRequired: true,
+        },
+      });
+      expect(yahoo).toMatchObject({
+        price: 2200,
+        effectivePriceQuote: {
+          listPrice: 2200,
+          shippingFee: 0,
+          pointValue: 0,
+          couponValue: 0,
+          effectivePrice: 2200,
+          conditionRequired: true,
+        },
+      });
+      expect(rakuten?.effectivePriceQuote?.conditionLabels).toEqual(
+        expect.arrayContaining(["購入条件あり", "ポイント条件あり", "クーポン条件あり"]),
+      );
+      expect(yahoo?.effectivePriceQuote?.conditionLabels).toEqual(
+        expect.arrayContaining(["購入条件あり", "ポイント条件あり", "クーポン条件あり"]),
+      );
+      expect(rakuten?.evidence).not.toEqual(expect.arrayContaining(["official point value: 200 JPY", "official coupon value: 300 JPY"]));
+      expect(yahoo?.evidence).not.toEqual(expect.arrayContaining(["official point value: 180 JPY", "official coupon value: 250 JPY"]));
     } finally {
       if (previousRakutenId === undefined) delete process.env.RAKUTEN_APPLICATION_ID;
       else process.env.RAKUTEN_APPLICATION_ID = previousRakutenId;

@@ -505,17 +505,18 @@ function extractJsonLdAmount(value: unknown, keys: string[]): number | undefined
 
 function extractAdditionalPropertyReward(record: Record<string, unknown>, labels: string[]): RewardSignal {
   const properties = [record.additionalProperty, record.additionalProperties, record.priceSpecification].filter(Boolean);
+  const parentDescriptor = stringifyRewardPayload(record);
   for (const property of properties) {
-    const found = findNamedReward(property, labels);
+    const found = findNamedReward(property, labels, parentDescriptor);
     if (found.value || found.conditionRequired) return found;
   }
   return {};
 }
 
-function findNamedReward(value: unknown, labels: string[]): RewardSignal {
+function findNamedReward(value: unknown, labels: string[], context = ""): RewardSignal {
   if (Array.isArray(value)) {
     for (const item of value) {
-      const found = findNamedReward(item, labels);
+      const found = findNamedReward(item, labels, context);
       if (found.value || found.conditionRequired) return found;
     }
     return {};
@@ -526,7 +527,7 @@ function findNamedReward(value: unknown, labels: string[]): RewardSignal {
   const name = String(record.name ?? record.propertyID ?? record["@type"] ?? "");
   if (labels.some((label) => name.toLowerCase().includes(label.toLowerCase()))) {
     const rawValue = record.value ?? record.price ?? record.amount;
-    const descriptor = `${name} ${stringifyRewardPayload(record)}`;
+    const descriptor = `${context} ${name} ${stringifyRewardPayload(record)}`;
     const windowState = getRewardWindowState(record);
     if (windowState === "inactive") return { conditionRequired: true };
     if (hasStructuredRewardConditionCopy(descriptor, labels)) return { conditionRequired: true };
@@ -536,7 +537,7 @@ function findNamedReward(value: unknown, labels: string[]): RewardSignal {
   }
 
   for (const nested of Object.values(record)) {
-    const found = findNamedReward(nested, labels);
+    const found = findNamedReward(nested, labels, `${context} ${stringifyRewardPayload(record)}`);
     if (found.value || found.conditionRequired) return found;
   }
   return {};
@@ -1104,6 +1105,7 @@ function hasRewardConditionCopy(text: string, labels: string[]) {
 
 function hasStructuredRewardConditionCopy(text: string, labels: string[]) {
   if (hasRewardConditionCopy(text, labels)) return true;
+  if (hasPurchaseConditionCopy(text)) return true;
   if (/(?:rebate|mail-in rebate|rebate form|claim required|manual claim|after approval|after checkout|post-purchase)/i.test(text)) {
     return true;
   }

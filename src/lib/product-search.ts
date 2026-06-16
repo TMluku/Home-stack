@@ -491,11 +491,13 @@ function buildOfficialPriceSignals(record: OfficialApiRecord, listPrice: number,
   const shippingFee = shippingConditionRequired ? undefined : extractOfficialShippingFee(record, source);
   const purchaseConditionRequired = hasPurchaseConditionCopy(officialText);
   const pointHasConditionalText =
+    purchaseConditionRequired ||
     hasAmbiguousRewardCopy(officialText, ["point", "points", "ポイント"]) ||
     hasRewardMultiplierCopy(officialText, ["point", "points", "ポイント"]) ||
     hasRewardThresholdCopy(officialText, ["point", "points", "ポイント"]) ||
     hasDateLikeRewardCopy(officialText, ["point", "points", "ポイント"]);
   const couponHasConditionalText =
+    purchaseConditionRequired ||
     hasAmbiguousRewardCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
     hasRewardThresholdCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||
     hasDateLikeRewardCopy(officialText, ["coupon", "discount", "off", "クーポン"]) ||

@@ -986,8 +986,9 @@ function isInstallmentAmountContext(text: string, index: number, length: number)
 function isNonProductFeeAmountContext(text: string, index: number, length: number) {
   const before = text.slice(Math.max(0, index - 30), index);
   const after = text.slice(index + length, index + length + 26);
-  const feeWords = /(?:代引|決済|支払|支払い|事務|取扱|取扱い|手数料|fee|fees|handling|processing|payment|cod|cash on delivery)\s*$/i;
-  const feeAfter = /^\s*(?:の)?\s*(?:手数料|fee|fees|handling|processing)/i;
+  const feeWords =
+    /(?:代引|決済|支払|支払い|事務|取扱|取扱い|手数料|保証金|預り金|預かり金|デポジット|deposit|security deposit|fee|fees|handling|processing|payment|cod|cash on delivery)\s*$/i;
+  const feeAfter = /^\s*(?:の)?\s*(?:手数料|保証金|預り金|預かり金|デポジット|deposit|security deposit|fee|fees|handling|processing)/i;
   return feeWords.test(before) || feeAfter.test(after);
 }
 
@@ -1010,8 +1011,11 @@ function isRewardAmountContext(text: string, index: number, length: number) {
   const after = text.slice(index + length, index + length + 28);
   const nearestBeforeToken = before.trimEnd().match(/(?:^|\s)(\S{0,28})$/)?.[1] ?? "";
   const labelPrefix = `${nearestBeforeToken}${text.slice(index, index + length).replace(/[0-9０-９].*$/, "")}`;
-  const words = /(?:ポイント|還元|付与|獲得|PayPay|楽天ポイント|point|points|reward|cashback)/i;
-  return words.test(labelPrefix) || /^\s*(?:分|相当|pt|pts)(?:\b|$)/i.test(after);
+  const words =
+    /(?:ポイント|還元|付与|獲得|PayPay|楽天ポイント|ギフト券|商品券|ストアクレジット|次回使える|次回購入|point|points|reward|cashback|gift card|gift certificate|voucher|store credit|next order|next purchase)/i;
+  const rewardLabelBefore =
+    /(?:ポイント|還元|付与|獲得|PayPay|楽天ポイント|ギフト券|商品券|ストアクレジット|次回使える|次回購入|point|points|reward|cashback|gift card|gift certificate|voucher|store credit|next order|next purchase)\s*$/i;
+  return words.test(labelPrefix) || rewardLabelBefore.test(before) || /^\s*(?:分|相当|pt|pts)(?:\b|$)/i.test(after);
 }
 
 function isConditionThresholdAmountContext(text: string, index: number, length: number) {

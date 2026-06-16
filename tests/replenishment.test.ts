@@ -716,6 +716,29 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips deposit and future-credit amounts before direct product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Future credit product</title></head>
+        <body>
+          <span>ボトル保証金 500円</span>
+          <span>次回使えるギフト券 700円分</span>
+          <span>store credit 300 JPY for next order</span>
+          <strong>販売価格 1,980円</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1980,
+      effectivePriceQuote: {
+        listPrice: 1980,
+        effectivePrice: 1980,
+      },
+      source: "html-text",
+    });
+  });
+
   it("skips unavailable prices before available totals on direct product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -2235,6 +2258,31 @@ describe("replenishment domain logic", () => {
 
     expect(candidates[0]).toMatchObject({
       title: "Fee copy detergent",
+      price: 1980,
+      effectivePriceQuote: {
+        listPrice: 1980,
+        effectivePrice: 1980,
+      },
+    });
+  });
+
+  it("skips marketplace deposit and future-credit amounts before item prices", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/future-credit" title="Future credit detergent">Future credit detergent</a>
+          <span>デポジット 500円</span>
+          <span>gift card 700 JPY for next purchase</span>
+          <span>ストアクレジット 300円分</span>
+          <strong>販売価格 1,980円</strong>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Future credit detergent",
       price: 1980,
       effectivePriceQuote: {
         listPrice: 1980,

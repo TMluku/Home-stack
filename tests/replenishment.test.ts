@@ -879,6 +879,55 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.evidence).not.toEqual(expect.arrayContaining(["coupon value from page text: 300 JPY"]));
   });
 
+  it("does not use coupon-code applied prices as direct product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Coupon applied price product</title></head>
+        <body>
+          <span>クーポンコード適用後価格 1,700円</span>
+          <strong>通常販売価格 2,000円</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2000,
+      effectivePriceQuote: {
+        listPrice: 2000,
+        couponValue: 0,
+        effectivePrice: 2000,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["クーポン条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["coupon condition requires retailer confirmation"]));
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(expect.arrayContaining(["coupon value from page text: 300 JPY"]));
+  });
+
+  it("does not use promo-code applied prices as direct product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Promo applied price product</title></head>
+        <body>
+          <span>promo code applied price 1,700 JPY</span>
+          <strong>item price 2,000 JPY</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2000,
+      effectivePriceQuote: {
+        listPrice: 2000,
+        couponValue: 0,
+        effectivePrice: 2000,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["クーポン条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["coupon condition requires retailer confirmation"]));
+  });
+
   it("does not use coupon threshold amounts as direct product prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>

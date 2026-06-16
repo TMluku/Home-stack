@@ -83,14 +83,14 @@ pnpm.cmd run check:real-device-qa
 pnpm.cmd exec playwright install chromium
 ```
 
-`check:real-device-qa` is a manual release gate. It intentionally fails until `docs/mobile-qa.md` contains a non-placeholder real-phone `Pass` row with the tested Pages URL, `mobile-qa-evidence` notes, and a real-phone screenshot note.
+`check:real-device-qa` is a manual release gate. It intentionally fails until `docs/mobile-qa.md` contains a non-placeholder real-phone `Pass` row with the tested Pages URL, `mobile-qa-evidence` notes, `条件確認メモ`, and a real-phone screenshot note.
 
 Manual smartphone QA for Pages:
 
 - Open `https://tmluku.github.io/Home-stack/` on a real phone.
 - Or scan the hero QR code from another device to open the published Pages URL.
 - On the hero, use `公開URLをコピー` or `URLを共有` to send the Pages URL to the device/browser used for real-device QA.
-- Tap `QA記録をコピー` on the hero and paste the generated row into the real-device matrix in `docs/mobile-qa.md`; the copied memo includes the public URL, Browser E2E workflow URL, `mobile-qa-evidence` artifact name, expected evidence filenames, and a real-phone screenshot filename placeholder.
+- Tap `QA記録をコピー` on the hero and paste the generated row into the real-device matrix in `docs/mobile-qa.md`; the copied memo includes the public URL, Browser E2E workflow URL, `mobile-qa-evidence` artifact name, expected evidence filenames, `条件確認メモ`, and a real-phone screenshot filename placeholder.
 - Confirm the price-search visual loads.
 - Tap an inventory chip and confirm candidates appear in price order.
 - Confirm condition-required cards show `条件価格の要点`, `価格条件の確認先`, `条件確認メモ`, `価格成立条件の要約`, concrete condition badges such as `購入条件あり` or `クーポン条件あり`, the fallback recompare price when conditions do not apply, the condition decision rows for what to confirm/reject on the seller page, evidence rows, and a link to the seller page without horizontal scrolling.

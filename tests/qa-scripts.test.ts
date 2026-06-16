@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 const scriptPath = join(process.cwd(), "scripts", "check-real-device-qa.mjs");
 const mobileEvidenceScriptPath = join(process.cwd(), "scripts", "check-mobile-qa-evidence.mjs");
 const browserE2eWorkflowUrl = "https://github.com/TMluku/Home-stack/actions/workflows/e2e.yml";
+const browserE2eWorkflowWithConditionNote = `${browserE2eWorkflowUrl} / 条件確認メモ`;
 
 async function withQaFile(markdown: string, run: (filePath: string) => void) {
   const dir = await mkdtemp(join(tmpdir(), "home-stack-real-device-qa-"));
@@ -74,7 +75,7 @@ describe("real-device QA gate", () => {
       [
         "| Date | Device | Browser | Network | Result | Notes |",
         "|---|---|---|---|---|---|",
-        `| 2026-06-16 | Pixel 8 | Chrome | 5G | Pass | https://tmluku.github.io/Home-stack/ / Browser E2E: ${browserE2eWorkflowUrl} / mobile-qa-evidence / mobile-price-condition-proof.png / mobile-price-condition-proof.json / 実機スクリーンショット: phone-price-proof.png |`,
+        `| 2026-06-16 | Pixel 8 | Chrome | 5G | Pass | https://tmluku.github.io/Home-stack/ / Browser E2E: ${browserE2eWorkflowWithConditionNote} / mobile-qa-evidence / mobile-price-condition-proof.png / mobile-price-condition-proof.json / 実機スクリーンショット: phone-price-proof.png |`,
       ].join("\n"),
       (filePath) => {
         const result = spawnSync(process.execPath, [scriptPath, filePath], { encoding: "utf8" });
@@ -89,7 +90,7 @@ describe("real-device QA gate", () => {
       [
         "| Date | Device | Browser | Network | Result | Notes |",
         "|---|---|---|---|---|---|",
-        "| 2026-06-16 | iPhone 15 | Safari | Wi-Fi | Pass | https://tmluku.github.io/Home-stack/ / Browser E2E: https://github.com/TMluku/Home-stack/actions/runs/27592318017 / mobile-qa-evidence / mobile-price-condition-proof.png / mobile-price-condition-proof.json / real-device screenshot: iphone-price-proof.png |",
+        "| 2026-06-16 | iPhone 15 | Safari | Wi-Fi | Pass | https://tmluku.github.io/Home-stack/ / Browser E2E: https://github.com/TMluku/Home-stack/actions/runs/27592318017 / mobile-qa-evidence / mobile-price-condition-proof.png / mobile-price-condition-proof.json / condition action note / real-device screenshot: iphone-price-proof.png |",
       ].join("\n"),
       (filePath) => {
         const result = spawnSync(process.execPath, [scriptPath, filePath], { encoding: "utf8" });
@@ -110,6 +111,21 @@ describe("real-device QA gate", () => {
         const result = spawnSync(process.execPath, [scriptPath, filePath], { encoding: "utf8" });
         expect(result.status).toBe(1);
         expect(result.stderr).toContain("Browser E2E workflow or run URL");
+      },
+    );
+  });
+
+  it("rejects real-device rows without the condition action note check", async () => {
+    await withQaFile(
+      [
+        "| Date | Device | Browser | Network | Result | Notes |",
+        "|---|---|---|---|---|---|",
+        "| 2026-06-16 | Pixel 8 | Chrome | 5G | Pass | https://tmluku.github.io/Home-stack/ / Browser E2E: https://github.com/TMluku/Home-stack/actions/workflows/e2e.yml / mobile-qa-evidence / mobile-price-condition-proof.png / mobile-price-condition-proof.json / real-device screenshot: phone-price-proof.png |",
+      ].join("\n"),
+      (filePath) => {
+        const result = spawnSync(process.execPath, [scriptPath, filePath], { encoding: "utf8" });
+        expect(result.status).toBe(1);
+        expect(result.stderr).toContain("条件確認メモ");
       },
     );
   });

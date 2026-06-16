@@ -1427,6 +1427,36 @@ describe("replenishment domain logic", () => {
     );
   });
 
+  it("does not use survey or referral rewards as direct product prices or guaranteed discounts", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Referral reward product</title></head>
+        <body>
+          <span>500 JPY referral coupon after inviting a friend</span>
+          <span>survey reward points 200 JPY after questionnaire</span>
+          <strong>item price 2,400 JPY</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2400,
+      effectivePriceQuote: {
+        listPrice: 2400,
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 2400,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(
+      expect.arrayContaining(["point value from page text: 200 JPY", "coupon value from page text: 500 JPY"]),
+    );
+  });
+
   it("marks subscription and first-order direct prices as purchase conditions", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -3457,6 +3487,40 @@ describe("replenishment domain logic", () => {
     );
     expect(candidates[0]?.evidence).not.toEqual(
       expect.arrayContaining(["point value inferred: 150 JPY", "coupon value inferred: 300 JPY"]),
+    );
+  });
+
+  it("does not use marketplace survey or referral rewards as item prices or guaranteed discounts", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/referral-reward" title="Referral reward detergent">Referral reward detergent</a>
+          <span>500 JPY referral coupon after inviting a friend</span>
+          <span>survey reward points 200 JPY after questionnaire</span>
+          <strong>item price 2,400 JPY</strong>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/detergent/",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Referral reward detergent",
+      price: 2400,
+      effectivePriceQuote: {
+        listPrice: 2400,
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 2400,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(candidates.map((candidate) => candidate.price)).not.toEqual(expect.arrayContaining([200, 500]));
+    expect(candidates[0]?.evidence).not.toEqual(
+      expect.arrayContaining(["point value inferred: 200 JPY", "coupon value inferred: 500 JPY"]),
     );
   });
 

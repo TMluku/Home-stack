@@ -942,6 +942,12 @@ function hasAmbiguousRewardCopy(text: string, labels: string[]) {
     "card required",
     "review required",
     "write a review",
+    "survey",
+    "questionnaire",
+    "referral",
+    "refer a friend",
+    "invite friend",
+    "friend referral",
     "lottery",
     "limited quantity",
     "while supplies last",
@@ -1266,6 +1272,13 @@ function isRewardAmountContext(text: string, index: number, length: number) {
   const after = text.slice(index + length, index + length + 28);
   const nearestBeforeToken = before.trimEnd().match(/(?:^|\s)(\S{0,28})$/)?.[1] ?? "";
   const labelPrefix = `${nearestBeforeToken}${text.slice(index, index + length).replace(/[0-9０-９].*$/, "")}`;
+  if (
+    /(?:survey|questionnaire|referral|refer a friend|invite friend|friend referral)\s*$/i.test(before) ||
+    /(?:survey|questionnaire|referral|refer a friend|invite friend|friend referral)/i.test(labelPrefix) ||
+    /^\s*(?:survey|questionnaire|referral|refer a friend|invite friend|friend referral)(?:\b|$)/i.test(after)
+  ) {
+    return true;
+  }
   const words =
     /(?:ポイント|還元|付与|獲得|PayPay|楽天ポイント|ギフト券|商品券|ストアクレジット|次回使える|次回購入|point|points|reward|cashback|gift card|gift certificate|voucher|store credit|next order|next purchase)/i;
   const rewardLabelBefore =

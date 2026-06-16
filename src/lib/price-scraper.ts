@@ -317,6 +317,7 @@ function isAmazonSuppressedPriceContext(html: string, index: number, length: num
     hasPurchaseConditionCopy(context) ||
     hasConditionalDiscountPriceCopy(context) ||
     hasUsedConditionCopy(context) ||
+    hasRestrictedAmazonOfferPriceCopy(context) ||
     hasUnavailableConditionCopy(context) ||
     isUnavailablePriceContext(context, Math.min(900, context.length), 0)
   );
@@ -958,6 +959,12 @@ function hasRestrictedPriceCopy(text: string) {
   return /(?:会員(?:限定)?|メンバー(?:限定)?|アプリ(?:限定)?|LINE(?:限定)?|ログイン(?:限定)?|プレミアム(?:会員)?|カード会員|prime|member|members only|member-only|app only|app-only|login required|premium member|card member|eligible only)\s*(?:価格|特価|限定価格|割引価格|price|deal)?|(?:価格|特価|限定価格|割引価格|price|deal)\s*(?:会員(?:限定)?|メンバー(?:限定)?|アプリ(?:限定)?|LINE(?:限定)?|ログイン(?:限定)?|プレミアム(?:会員)?|カード会員|prime|member|members only|member-only|app only|app-only|login required|premium member|card member|eligible only)/i.test(
     text,
   );
+}
+
+function hasRestrictedAmazonOfferPriceCopy(text: string) {
+  const normalized = text.replace(/\s+/g, " ");
+  if (!hasRestrictedPriceCopy(normalized)) return false;
+  return !/(?:free shipping|shipping|postage|delivery)\s+(?:with|for)?\s*(?:prime|member|membership)/i.test(normalized);
 }
 
 function hasAmbiguousRewardCopy(text: string, labels: string[]) {

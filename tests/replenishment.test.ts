@@ -2070,6 +2070,35 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["price from Amazon a-offscreen"]));
   });
 
+  it("skips Amazon member-only prices before one-time prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Amazon member detergent</title></head>
+        <body>
+          <section>
+            <span>Prime member-only price</span>
+            <span class="a-price">
+              <span class="a-offscreen">・･1,180</span>
+            </span>
+          </section>
+          <section>${".".repeat(260)}
+            <span>One-time purchase price</span>
+            <span class="a-price">
+              <span class="a-offscreen">・･1,580</span>
+            </span>
+          </section>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      title: "Amazon member detergent",
+      price: 1580,
+      source: "html-text",
+    });
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["price from Amazon a-offscreen"]));
+  });
+
   it("skips Amazon used offer prices before new split prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>

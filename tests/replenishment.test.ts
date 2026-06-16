@@ -346,6 +346,52 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips date-like JSON-LD price strings before exact product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Date-like structured price product</title>
+          <meta property="product:price:amount" content="2,400" />
+          <script type="application/ld+json">
+            {
+              "@type": "Product",
+              "name": "Date-like structured price product",
+              "offers": {
+                "@type": "Offer",
+                "price": "2026-06-20",
+                "priceCurrency": "JPY"
+              }
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2400,
+      source: "meta",
+    });
+  });
+
+  it("skips date-like meta price strings before direct product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Date-like meta price product</title>
+          <meta property="product:price:amount" content="valid through 2026-06-20" />
+        </head>
+        <body>
+          <strong>item price 2,400 JPY</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2400,
+      source: "html-text",
+    });
+  });
+
   it("skips used embedded JSON prices before new product prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>

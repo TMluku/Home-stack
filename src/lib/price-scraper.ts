@@ -1283,11 +1283,19 @@ function matchContent(html: string, pattern: RegExp) {
 function parsePrice(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) return Math.round(value);
   if (typeof value !== "string") return undefined;
+  if (isDateLikePriceValue(value)) return undefined;
   const normalized = toHalfWidth(value)
     .replace(/[,，]/g, "")
     .match(/[0-9]+(?:\.[0-9]+)?/)?.[0];
   const price = normalized ? Number(normalized) : NaN;
   return Number.isFinite(price) ? Math.round(price) : undefined;
+}
+
+function isDateLikePriceValue(value: string) {
+  const normalized = toHalfWidth(value).trim();
+  return /(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}(?:\b|\s|$)|\d{4}[-/]\d{1,2}(?:\b|\s|$))/.test(
+    normalized,
+  );
 }
 
 function isUnitPriceContext(text: string, index: number, length: number) {

@@ -254,7 +254,7 @@ export function HomeStackApp() {
   async function copyMobileQaTemplate() {
     const today = new Date().toISOString().slice(0, 10);
     const template = [
-      `| ${today} | 端末名を記入 | ブラウザ名を記入 | Wi-Fi / 5G | Pass / Fail | Tested URL: ${publicPagesUrl} / Browser E2E: ${browserE2eWorkflowUrl} / mobile-qa-evidence / mobile-price-condition-proof.png / mobile-price-condition-proof.json / 実機スクリーンショット: 実ファイル名を記入 / 条件確認メモ / condition audit grid / GitHub Pages実機QA: 横スクロール、価格条件、URLスキャン、共有導線を確認 |`,
+      `| ${today} | 端末名を記入 | ブラウザ名を記入 | Wi-Fi / 5G | Pass / Fail | Tested URL: ${publicPagesUrl} / Browser E2E: ${browserE2eWorkflowUrl} / mobile-qa-evidence / mobile-price-condition-proof.png / mobile-price-condition-proof.json / 実機スクリーンショット: 実ファイル名を記入 / 条件確認メモ / condition audit grid / 条件別の戻し額 / GitHub Pages実機QA: 横スクロール、価格条件、URLスキャン、共有導線を確認 |`,
       "",
       "- Tested URL: https://tmluku.github.io/Home-stack/",
       "- Browser E2E workflow: https://github.com/TMluku/Home-stack/actions/workflows/e2e.yml",
@@ -262,6 +262,7 @@ export function HomeStackApp() {
       "- Browser E2E artifact: mobile-qa-evidence",
       "- Automated evidence files: mobile-price-condition-proof.png / mobile-price-condition-proof.json",
       "- Condition audit grid: amount / target / deadline / stacking / fallback",
+      "- Per-condition fallback rows: 条件別の戻し額",
     ].join("\n");
 
     try {
@@ -915,7 +916,7 @@ export function HomeStackApp() {
               </p>
               <p>
                 公開URLは <code>{publicPagesUrl}</code>、証跡ファイルは <code>mobile-price-condition-proof.png</code> と{" "}
-                <code>mobile-price-condition-proof.json</code>、<code>condition audit grid</code>{" "}
+                <code>mobile-price-condition-proof.json</code>、<code>condition audit grid</code>、<code>条件別の戻し額</code>{" "}
                 を確認します。実機スクリーンショットのファイル名も記録します。
               </p>
             </details>

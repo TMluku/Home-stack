@@ -44,6 +44,7 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(page.locator(".hero__qa-template")).toContainText(expectedPagesUrl);
   await expect(page.locator(".hero__qa-template")).toContainText("実機スクリーンショット");
   await expect(page.locator(".hero__qa-template")).toContainText("condition audit grid");
+  await expect(page.locator(".hero__qa-template")).toContainText("条件別の戻し額");
   await page.locator(".hero__qa-template summary").click();
   await expect(page.locator(".hero__qa-template").getByRole("link", { name: "Browser E2E" })).toHaveAttribute(
     "href",

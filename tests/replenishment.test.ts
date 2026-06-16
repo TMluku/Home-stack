@@ -3667,6 +3667,71 @@ describe("replenishment domain logic", () => {
     }
   });
 
+  it("does not deduct capped official API rewards as guaranteed discounts", async () => {
+    const previousRakutenId = process.env.RAKUTEN_APPLICATION_ID;
+    const previousYahooId = process.env.YAHOO_SHOPPING_APP_ID;
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "Capped campaign detergent",
+                  itemPrice: 3000,
+                  itemUrl: "https://example.com/rakuten-capped",
+                  postageFlag: 0,
+                  point: { amount: 300, note: "maximum point cap during campaign" },
+                  couponAmount: 500,
+                  couponNote: "coupon savings cap for selected sellers",
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (requestUrl.includes("shopping.yahooapis.jp")) {
+        return new Response(JSON.stringify({ hits: [] }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response("not found", { status: 404 });
+    });
+
+    try {
+      const result = await searchProductPrices("detergent");
+      const candidate = result.candidates.find((entry) => entry.url === "https://example.com/rakuten-capped");
+
+      expect(candidate).toMatchObject({
+        price: 3000,
+        effectivePriceQuote: {
+          listPrice: 3000,
+          shippingFee: 0,
+          pointValue: 0,
+          couponValue: 0,
+          effectivePrice: 3000,
+          conditionRequired: true,
+        },
+      });
+      expect(candidate?.evidence).toEqual(
+        expect.arrayContaining([
+          "official point condition requires retailer confirmation",
+          "official coupon condition requires retailer confirmation",
+        ]),
+      );
+      expect(candidate?.evidence).not.toEqual(expect.arrayContaining(["official point value: 300 JPY", "official coupon value: 500 JPY"]));
+    } finally {
+      if (previousRakutenId === undefined) delete process.env.RAKUTEN_APPLICATION_ID;
+      else process.env.RAKUTEN_APPLICATION_ID = previousRakutenId;
+      if (previousYahooId === undefined) delete process.env.YAHOO_SHOPPING_APP_ID;
+      else process.env.YAHOO_SHOPPING_APP_ID = previousYahooId;
+      vi.restoreAllMocks();
+    }
+  });
+
   it("does not deduct future official API campaign rewards before they start", async () => {
     const previousRakutenId = process.env.RAKUTEN_APPLICATION_ID;
     const previousYahooId = process.env.YAHOO_SHOPPING_APP_ID;

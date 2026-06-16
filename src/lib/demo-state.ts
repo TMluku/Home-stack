@@ -96,8 +96,7 @@ export function normalizeState(savedState: unknown): AppState {
   const savedHousehold = saved.household as Partial<AppState["household"]> | undefined;
   const savedAutopilot = saved.autopilot as Partial<AppState["autopilot"]> | undefined;
   const savedMetrics = saved.metrics as Partial<AppState["metrics"]> | undefined;
-
-  const savedActiveFilter = saved.activeFilter as AppState["activeFilter"] | "lowest" | "sponsored" | undefined;
+  const savedActiveFilter = saved.activeFilter;
 
   return {
     ...fallback,
@@ -124,7 +123,11 @@ export function normalizeState(savedState: unknown): AppState {
         savedMetrics?.conditionalClicks ?? (savedMetrics as { sponsoredClicks?: number } | undefined)?.sponsoredClicks ?? 0,
     },
     activeFilter:
-      savedActiveFilter === "lowest" || savedActiveFilter === "sponsored" ? "all" : (savedActiveFilter ?? fallback.activeFilter),
+      savedActiveFilter === "all" || savedActiveFilter === "conditions" || savedActiveFilter === "no-conditions"
+        ? savedActiveFilter
+        : savedActiveFilter === "lowest" || savedActiveFilter === "sponsored"
+          ? "all"
+          : fallback.activeFilter,
     queueDecisions: { ...fallback.queueDecisions, ...saved.queueDecisions },
   };
 }

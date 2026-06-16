@@ -1475,6 +1475,37 @@ describe("replenishment domain logic", () => {
     );
   });
 
+  it("does not deduct mail-in rebate rewards from direct product pages", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Mail-in rebate product</title></head>
+        <body>
+          <span>price 2,400 JPY</span>
+          <span>points 200 JPY mail-in rebate claim required after checkout</span>
+          <span>coupon 300 JPY rebate form after approval</span>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2400,
+      source: "html-text",
+      effectivePriceQuote: {
+        listPrice: 2400,
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 2400,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(
+      expect.arrayContaining(["point value from page text: 200 JPY", "coupon value from page text: 300 JPY"]),
+    );
+  });
+
   it("does not deduct next-purchase rewards from direct product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -1812,6 +1843,48 @@ describe("replenishment domain logic", () => {
     );
     expect(extracted.effectivePriceQuote?.evidence).not.toEqual(
       expect.arrayContaining(["point value from JSON-LD: 150 JPY", "coupon value from JSON-LD: 300 JPY"]),
+    );
+  });
+
+  it("keeps structured rebate rewards conditional when claim text is in the same record", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Structured rebate product</title>
+          <script type="application/ld+json">
+            {
+              "@type": "Product",
+              "name": "Structured rebate product",
+              "offers": {
+                "@type": "Offer",
+                "price": "2,400",
+                "priceCurrency": "JPY",
+                "additionalProperty": [
+                  { "name": "points", "value": 200, "description": "mail-in rebate claim required after checkout" },
+                  { "name": "coupon", "value": 300, "description": "rebate form after approval" }
+                ]
+              }
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2400,
+      source: "json-ld",
+      effectivePriceQuote: {
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 2400,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(
+      expect.arrayContaining(["point value from JSON-LD: 200 JPY", "coupon value from JSON-LD: 300 JPY"]),
     );
   });
 
@@ -4154,6 +4227,71 @@ describe("replenishment domain logic", () => {
         ]),
       );
       expect(candidate?.evidence).not.toEqual(expect.arrayContaining(["official point value: 300 JPY", "official coupon value: 500 JPY"]));
+    } finally {
+      if (previousRakutenId === undefined) delete process.env.RAKUTEN_APPLICATION_ID;
+      else process.env.RAKUTEN_APPLICATION_ID = previousRakutenId;
+      if (previousYahooId === undefined) delete process.env.YAHOO_SHOPPING_APP_ID;
+      else process.env.YAHOO_SHOPPING_APP_ID = previousYahooId;
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("does not deduct official API rebate rewards that require a claim", async () => {
+    const previousRakutenId = process.env.RAKUTEN_APPLICATION_ID;
+    const previousYahooId = process.env.YAHOO_SHOPPING_APP_ID;
+    process.env.RAKUTEN_APPLICATION_ID = "rakuten-app";
+    process.env.YAHOO_SHOPPING_APP_ID = "yahoo-app";
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("app.rakuten.co.jp")) {
+        return new Response(
+          JSON.stringify({
+            Items: [
+              {
+                Item: {
+                  itemName: "Official rebate detergent",
+                  itemPrice: 2400,
+                  itemUrl: "https://example.com/rakuten-rebate",
+                  postageFlag: 0,
+                  point: { amount: 200, note: "mail-in rebate claim required after checkout" },
+                  couponAmount: 300,
+                  couponNote: "rebate form after approval",
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (requestUrl.includes("shopping.yahooapis.jp")) {
+        return new Response(JSON.stringify({ hits: [] }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response("not found", { status: 404 });
+    });
+
+    try {
+      const result = await searchProductPrices("detergent");
+      const candidate = result.candidates.find((entry) => entry.url === "https://example.com/rakuten-rebate");
+
+      expect(candidate).toMatchObject({
+        price: 2400,
+        effectivePriceQuote: {
+          listPrice: 2400,
+          shippingFee: 0,
+          pointValue: 0,
+          couponValue: 0,
+          effectivePrice: 2400,
+          conditionRequired: true,
+        },
+      });
+      expect(candidate?.evidence).toEqual(
+        expect.arrayContaining([
+          "official point condition requires retailer confirmation",
+          "official coupon condition requires retailer confirmation",
+        ]),
+      );
+      expect(candidate?.evidence).not.toEqual(expect.arrayContaining(["official point value: 200 JPY", "official coupon value: 300 JPY"]));
     } finally {
       if (previousRakutenId === undefined) delete process.env.RAKUTEN_APPLICATION_ID;
       else process.env.RAKUTEN_APPLICATION_ID = previousRakutenId;

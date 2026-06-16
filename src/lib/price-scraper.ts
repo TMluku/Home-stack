@@ -1031,6 +1031,14 @@ function hasAmbiguousRewardCopy(text: string, labels: string[]) {
     "campaign",
     "limited time",
     "bonus",
+    "rebate",
+    "mail-in rebate",
+    "rebate form",
+    "claim required",
+    "manual claim",
+    "after approval",
+    "after checkout",
+    "post-purchase",
     "cashback pending",
     "login",
     "app only",
@@ -1087,6 +1095,9 @@ function hasRewardConditionCopy(text: string, labels: string[]) {
 
 function hasStructuredRewardConditionCopy(text: string, labels: string[]) {
   if (hasRewardConditionCopy(text, labels)) return true;
+  if (/(?:rebate|mail-in rebate|rebate form|claim required|manual claim|after approval|after checkout|post-purchase)/i.test(text)) {
+    return true;
+  }
   return /(?:対象商品|対象店舗|対象ストア|対象者限定|要エントリー|エントリー|ログイン|会員限定|アプリ限定|LINE限定|カード会員|指定カード|支払い方法|決済|レビュー投稿|レビュー|先着|一部|数量限定|eligible only|selected items|selected sellers|participating stores|participating sellers|payment method|card required|review required|write a review|lottery|limited quantity|while supplies last)/i.test(
     text,
   );

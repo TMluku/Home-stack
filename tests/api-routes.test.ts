@@ -1039,6 +1039,60 @@ describe("API route contracts", () => {
     expect(payload.candidates.map((candidate: { price?: number }) => candidate.price)).not.toEqual(expect.arrayContaining([980, 990]));
   });
 
+  it("ignores expired sale prices when parsing marketplace HTML results", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("search.rakuten.co.jp")) {
+        return new Response(
+          `
+            <html>
+              <body>
+                <li>
+                  <a href="https://rakuten.example.test/expired-sale">Detergent refill ended sale</a>
+                  <span>タイムセール終了 980円</span>
+                  <strong>現在価格 1,980円</strong>
+                </li>
+              </body>
+            </html>
+          `,
+          { status: 200 },
+        );
+      }
+
+      return new Response(
+        `
+          <html>
+            <body>
+              <article>
+                <a href="https://shopping.example.test/deal-ended">Detergent refill deal ended</a>
+                <span>deal ended ¥990</span>
+                <strong>item price ¥2,080</strong>
+              </article>
+            </body>
+          </html>
+        `,
+        { status: 200 },
+      );
+    });
+
+    const response = await searchProducts(
+      new Request("http://localhost/api/product-search", {
+        method: "POST",
+        body: JSON.stringify({ query: "detergent refill ended sale" }),
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.candidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ url: "https://rakuten.example.test/expired-sale", price: 1980 }),
+        expect.objectContaining({ url: "https://shopping.example.test/deal-ended", price: 2080 }),
+      ]),
+    );
+    expect(payload.candidates.map((candidate: { price?: number }) => candidate.price)).not.toEqual(expect.arrayContaining([980, 990]));
+  });
+
   it("normalizes external photo detection responses into inventory candidates", async () => {
     process.env.HOME_STACK_IMAGE_RECOGNITION_URL = "https://vision.example.test/detect";
     process.env.HOME_STACK_IMAGE_RECOGNITION_TOKEN = "vision-token";

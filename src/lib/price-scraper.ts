@@ -298,6 +298,7 @@ function isAmazonSuppressedPriceContext(html: string, index: number, length: num
   const context = extractPlainText(html.slice(Math.max(0, index - 220), index + length + 220));
   return (
     hasPurchaseConditionCopy(context) ||
+    hasConditionalDiscountPriceCopy(context) ||
     hasUsedConditionCopy(context) ||
     hasUnavailableConditionCopy(context) ||
     isUnavailablePriceContext(context, Math.min(900, context.length), 0)
@@ -772,7 +773,8 @@ function inferPriceAdjustments(html: string, listPrice: number): PriceAdjustment
     !couponValue &&
     (hasAmbiguousRewardCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
       hasRewardThresholdCopy(text, ["coupon", "discount", "off", "クーポン"]) ||
-      hasCouponCodeConditionCopy(text));
+      hasCouponCodeConditionCopy(text) ||
+      hasConditionalDiscountPriceCopy(text));
   pointConditionRequired = pointConditionRequired || (!pointValue && pointRewardAmountTooLarge);
   couponConditionRequired = couponConditionRequired || (!couponValue && couponRewardAmountTooLarge);
   return {
@@ -1094,6 +1096,12 @@ function hasRewardThresholdCopy(text: string, labels: string[]) {
 
 function hasCouponCodeConditionCopy(text: string) {
   return /(?:クーポン(?:コード)?|プロモ(?:コード)?|割引コード|coupon\s+code|promo\s+code|promotion\s+code|discount\s+code).{0,40}(?:適用|入力|利用|取得|対象|条件|required|apply|applied|enter|with)|(?:適用|入力|利用|取得|対象|条件|required|apply|applied|enter|with).{0,40}(?:クーポン(?:コード)?|プロモ(?:コード)?|割引コード|coupon\s+code|promo\s+code|promotion\s+code|discount\s+code)/i.test(
+    text,
+  );
+}
+
+function hasConditionalDiscountPriceCopy(text: string) {
+  return /(?:クーポン|プロモ|割引|coupon|promo|promotion|discount).{0,80}(?:適用後|適用|利用後|取得後|対象|条件|after|applied|clipped|clip|with|required)|(?:適用後|適用|利用後|取得後|対象|条件|after|applied|clipped|clip|with|required).{0,80}(?:クーポン|プロモ|割引|coupon|promo|promotion|discount)/i.test(
     text,
   );
 }

@@ -1944,6 +1944,42 @@ describe("replenishment domain logic", () => {
     expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["price from Amazon a-offscreen"]));
   });
 
+  it("skips Amazon coupon-applied prices before one-time prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Amazon coupon detergent</title></head>
+        <body>
+          <section>
+            <span>Coupon applied price with clipped coupon</span>
+            <span class="a-price">
+              <span class="a-offscreen">￥1,180</span>
+            </span>
+          </section>
+          <section>${".".repeat(260)}
+            <span>One-time purchase price</span>
+            <span class="a-price">
+              <span class="a-offscreen">￥1,580</span>
+            </span>
+          </section>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      title: "Amazon coupon detergent",
+      price: 1580,
+      source: "html-text",
+      effectivePriceQuote: {
+        listPrice: 1580,
+        couponValue: 0,
+        effectivePrice: 1580,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["coupon condition requires retailer confirmation"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["price from Amazon a-offscreen"]));
+  });
+
   it("skips Amazon used offer prices before new split prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>

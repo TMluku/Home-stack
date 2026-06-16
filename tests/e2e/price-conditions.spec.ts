@@ -59,6 +59,13 @@ test("shows ranked price candidates with condition evidence and visual asset", a
   await expect(page.locator(".market-summary")).toContainText("実質価格1位");
   await expect(page.locator(".market-summary")).not.toContainText("最安候補");
   const firstCardPrice = await page.locator(".market-card strong").first().innerText();
+  const marketPrices = await page
+    .locator(".market-card strong")
+    .evaluateAll((nodes) =>
+      nodes.map((node) => Number((node.textContent ?? "").replace(/[^\d]/g, "")).valueOf()).filter((price) => Number.isFinite(price)),
+    );
+  expect(marketPrices.length).toBeGreaterThan(1);
+  expect(marketPrices).toEqual([...marketPrices].sort((a, b) => a - b));
   await expect(page.locator(".market-summary div").filter({ hasText: "実質価格1位" })).toContainText(firstCardPrice);
   await expect(page.locator(".effective-proof")).toHaveCount(2);
 

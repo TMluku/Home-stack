@@ -1875,6 +1875,19 @@ function ProductSearchPanel({
 }) {
   const bestCandidate = result?.candidates[0];
   const bestCandidatePrice = bestCandidate?.effectivePriceQuote?.effectivePrice ?? bestCandidate?.price;
+  const sortedCandidates = (result?.candidates ?? [])
+    .slice()
+    .sort((a, b) => {
+      const aPrice = a.effectivePriceQuote?.effectivePrice ?? a.price ?? Number.MAX_SAFE_INTEGER;
+      const bPrice = b.effectivePriceQuote?.effectivePrice ?? b.price ?? Number.MAX_SAFE_INTEGER;
+      const priceDelta = aPrice - bPrice;
+      if (priceDelta !== 0) return priceDelta;
+      const aListPrice = a.effectivePriceQuote?.listPrice ?? a.price ?? Number.MAX_SAFE_INTEGER;
+      const bListPrice = b.effectivePriceQuote?.listPrice ?? b.price ?? Number.MAX_SAFE_INTEGER;
+      const listDelta = aListPrice - bListPrice;
+      if (listDelta !== 0) return listDelta;
+      return b.matchScore - a.matchScore;
+    });
 
   return (
     <section className="product-search-panel" aria-label="商品価格横断検索">
@@ -1978,7 +1991,7 @@ function ProductSearchPanel({
           </div>
 
           <div className="market-candidates">
-            {result.candidates.map((candidate) => (
+            {sortedCandidates.map((candidate) => (
               <article className="market-card" key={candidate.id}>
                 <div>
                   <span className="source-tag">{candidate.sourceLabel}</span>

@@ -1374,6 +1374,49 @@ describe("replenishment domain logic", () => {
     );
   });
 
+  it("does not treat JSON-LD reward date strings as coupon or point values", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Structured reward date product</title>
+          <script type="application/ld+json">
+            {
+              "@type": "Product",
+              "name": "Structured reward date product",
+              "offers": {
+                "@type": "Offer",
+                "price": "2,000",
+                "priceCurrency": "JPY",
+                "additionalProperty": [
+                  { "name": "points", "value": "valid through 2026-06-20" },
+                  { "name": "coupon", "value": "expires 2026-06-20" }
+                ]
+              }
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2000,
+      source: "json-ld",
+      effectivePriceQuote: {
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 2000,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(
+      expect.arrayContaining(["point value from JSON-LD: 2026 JPY", "coupon value from JSON-LD: 2026 JPY"]),
+    );
+  });
+
   it("deducts active JSON-LD campaign rewards while keeping period conditions visible", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -1652,6 +1695,49 @@ describe("replenishment domain logic", () => {
     );
     expect(extracted.effectivePriceQuote?.evidence).not.toEqual(
       expect.arrayContaining(["point value from embedded JSON: 120 JPY", "coupon value from embedded JSON: 200 JPY"]),
+    );
+  });
+
+  it("does not treat embedded reward date strings as coupon or point values", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Embedded reward date product</title>
+          <script id="__NEXT_DATA__" type="application/json">
+            {
+              "props": {
+                "pageProps": {
+                  "product": {
+                    "productName": "Embedded reward date detergent",
+                    "currentPrice": "2,400",
+                    "currency": "JPY",
+                    "points": { "amount": "valid through 2026-06-20" },
+                    "coupon": { "amount": "expires 2026-06-20" }
+                  }
+                }
+              }
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2400,
+      source: "embedded-json",
+      effectivePriceQuote: {
+        pointValue: 0,
+        couponValue: 0,
+        effectivePrice: 2400,
+        conditionRequired: true,
+      },
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["ポイント条件あり", "クーポン条件あり"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(
+      expect.arrayContaining(["point condition requires retailer confirmation", "coupon condition requires retailer confirmation"]),
+    );
+    expect(extracted.effectivePriceQuote?.evidence).not.toEqual(
+      expect.arrayContaining(["point value from embedded JSON: 2026 JPY", "coupon value from embedded JSON: 2026 JPY"]),
     );
   });
 

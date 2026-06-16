@@ -506,7 +506,8 @@ function findNamedReward(value: unknown, labels: string[]): RewardSignal {
     const windowState = getRewardWindowState(record);
     if (windowState === "inactive") return { conditionRequired: true };
     if (hasStructuredRewardConditionCopy(descriptor, labels)) return { conditionRequired: true };
-    const amount = parsePrice(rawValue);
+    if (hasDateLikeRewardValue(rawValue)) return { conditionRequired: true };
+    const amount = parseRewardAmount(rawValue);
     if (amount) return { value: amount, conditionRequired: windowState === "active" };
   }
 
@@ -586,7 +587,8 @@ function extractFirstRewardForKeys(value: unknown, keys: string[], labels: strin
       const windowState = getRewardWindowState(record);
       if (windowState === "inactive") return { conditionRequired: true };
       if (hasStructuredRewardConditionCopy(descriptor, labels)) return { conditionRequired: true };
-      const amount = parseAmountPayload(rawValue);
+      if (hasDateLikeRewardValue(rawValue)) return { conditionRequired: true };
+      const amount = parseRewardAmountPayload(rawValue);
       if (amount) return { value: amount, conditionRequired: windowState === "active" };
     }
   }
@@ -604,6 +606,32 @@ function parseAmountPayload(value: unknown) {
   if (!value || typeof value !== "object") return undefined;
   const record = value as Record<string, unknown>;
   return parsePrice(record.amount ?? record.value ?? record.price);
+}
+
+function parseRewardAmountPayload(value: unknown) {
+  const direct = parseRewardAmount(value);
+  if (direct) return direct;
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  return parseRewardAmount(record.amount ?? record.value ?? record.price);
+}
+
+function hasDateLikeRewardValue(value: unknown) {
+  if (typeof value === "string") return isDateLikeRewardText(value);
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  return [record.amount, record.value, record.price].some((nested) => typeof nested === "string" && isDateLikeRewardText(nested));
+}
+
+function parseRewardAmount(value: unknown) {
+  if (typeof value === "string" && isDateLikeRewardText(value)) return undefined;
+  return parsePrice(value);
+}
+
+function isDateLikeRewardText(value: string) {
+  return /(?:valid|expires?|through|until|期限|有効|終了|開始|期間).{0,24}[12][0-9]{3}[-/年][0-9]{1,2}[-/月][0-9]{1,2}|[12][0-9]{3}[-/年][0-9]{1,2}[-/月][0-9]{1,2}.{0,24}(?:valid|expires?|through|until|期限|有効|終了|開始|期間)/i.test(
+    toHalfWidth(value),
+  );
 }
 
 function collectStructuredText(value: unknown): string {

@@ -243,6 +243,35 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("does not use JSON-LD aggregate range prices as direct product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head>
+          <title>Aggregate range product</title>
+          <meta property="product:price:amount" content="1,980" />
+          <script type="application/ld+json">
+            {
+              "@type": "Product",
+              "name": "Aggregate range product",
+              "offers": {
+                "@type": "AggregateOffer",
+                "lowPrice": "900",
+                "highPrice": "1,980",
+                "priceCurrency": "JPY",
+                "offerCount": 4
+              }
+            }
+          </script>
+        </head>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1980,
+      source: "meta",
+    });
+  });
+
   it("skips used embedded JSON prices before new product prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>

@@ -142,7 +142,7 @@ function findPriceInJsonLd(value: unknown): ExtractedPrice {
     if (found.price) return found;
   }
 
-  const rawPrice = record.price ?? record.lowPrice ?? record.highPrice;
+  const rawPrice = record.price;
   const price = parsePrice(rawPrice);
   if (price && !hasUsedConditionCopy(collectStructuredText(record))) {
     const adjustments = extractStructuredAdjustments(record);

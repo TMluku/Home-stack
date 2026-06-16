@@ -963,6 +963,29 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips rental, repair, and restocking service amounts before direct product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Service fee product</title></head>
+        <body>
+          <span>rental fee 800 JPY</span>
+          <span>repair service 700 JPY</span>
+          <span>restocking fee 400 JPY</span>
+          <strong>item price 2,480 JPY</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 2480,
+      effectivePriceQuote: {
+        listPrice: 2480,
+        effectivePrice: 2480,
+      },
+      source: "html-text",
+    });
+  });
+
   it("skips unavailable prices before available totals on direct product pages", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -2939,6 +2962,32 @@ describe("replenishment domain logic", () => {
       },
     });
     expect(candidates.map((candidate) => candidate.price)).not.toEqual(expect.arrayContaining([300, 500]));
+  });
+
+  it("skips marketplace rental, repair, and restocking service amounts before item prices", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/service-fee" title="Service fee detergent">Service fee detergent</a>
+          <span>rental fee 800 JPY</span>
+          <span>repair service 700 JPY</span>
+          <span>restocking fee 400 JPY</span>
+          <strong>item price 2,480 JPY</strong>
+        </article>
+      `,
+      "rakuten",
+      "https://search.rakuten.co.jp/search/mall/detergent/",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Service fee detergent",
+      price: 2480,
+      effectivePriceQuote: {
+        listPrice: 2480,
+        effectivePrice: 2480,
+      },
+    });
+    expect(candidates.map((candidate) => candidate.price)).not.toEqual(expect.arrayContaining([400, 700, 800]));
   });
 
   it("skips unavailable prices before available totals in marketplace HTML", () => {

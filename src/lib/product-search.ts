@@ -395,6 +395,7 @@ function extractPrice(snippet: string) {
     if (isPackComponentPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isAdditionalItemPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isRestrictedAudiencePriceContext(text, match.index ?? 0, match[0].length)) continue;
+    if (isSubscriptionPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isRangeLowerBoundPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isEffectivePriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isInstallmentAmountContext(text, match.index ?? 0, match[0].length)) continue;
@@ -1000,6 +1001,17 @@ function isRestrictedAudiencePriceContext(text: string, index: number, length: n
   const restrictedAfter =
     /^\s*(?:の)?\s*(?:会員(?:限定)?|メンバー(?:限定)?|アプリ(?:限定)?|LINE(?:限定)?|ログイン(?:限定)?|プレミアム(?:会員)?|カード会員|prime|member|members only|member-only|app only|app-only|login required|premium member|card member)\s*(?:価格|特価|限定価格|割引価格|price|deal)?/i;
   return restrictedBefore.test(beforeTail) || restrictedAfter.test(after);
+}
+
+function isSubscriptionPriceContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 36), index);
+  const after = text.slice(index + length, index + length + 40);
+  const beforeTail = before.slice(-32);
+  const subscriptionBefore =
+    /(?:定期(?:購入)?|定期おトク便|おトク便|サブスク|subscribe\s*&\s*save|subscribe(?:\s+and\s+save)?|subscription)\s*(?:価格|特価|割引価格|price|deal)?\s*$/i;
+  const subscriptionAfter =
+    /^\s*(?:の)?\s*(?:定期(?:購入)?|定期おトク便|おトク便|サブスク|subscribe\s*&\s*save|subscribe(?:\s+and\s+save)?|subscription)\s*(?:価格|特価|割引価格|price|deal)?/i;
+  return subscriptionBefore.test(beforeTail) || subscriptionAfter.test(after);
 }
 
 function isRangeLowerBoundPriceContext(text: string, index: number, length: number) {

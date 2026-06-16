@@ -837,6 +837,74 @@ describe("API route contracts", () => {
     expect(payload.candidates.map((candidate: { price?: number }) => candidate.price)).not.toEqual(expect.arrayContaining([1800, 1900]));
   });
 
+  it("ignores subscription-only prices when parsing marketplace HTML results", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("search.rakuten.co.jp")) {
+        return new Response(
+          `
+            <html>
+              <body>
+                <li>
+                  <a href="https://rakuten.example.test/subscription-price">Detergent refill subscription deal</a>
+                  <span>定期購入価格 1,760円</span>
+                  <strong>通常購入価格 1,980円</strong>
+                </li>
+              </body>
+            </html>
+          `,
+          { status: 200 },
+        );
+      }
+
+      return new Response(
+        `
+          <html>
+            <body>
+              <article>
+                <a href="https://shopping.example.test/subscribe-save">Detergent refill Subscribe and Save</a>
+                <span>Subscribe & Save price ¥1,820</span>
+                <strong>one-time purchase price ¥2,080</strong>
+              </article>
+            </body>
+          </html>
+        `,
+        { status: 200 },
+      );
+    });
+
+    const response = await searchProducts(
+      new Request("http://localhost/api/product-search", {
+        method: "POST",
+        body: JSON.stringify({ query: "detergent refill subscription deal" }),
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.candidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: "https://rakuten.example.test/subscription-price",
+          price: 1980,
+          effectivePriceQuote: expect.objectContaining({
+            conditionLabels: expect.arrayContaining(["購入条件あり"]),
+            conditionRequired: true,
+          }),
+        }),
+        expect.objectContaining({
+          url: "https://shopping.example.test/subscribe-save",
+          price: 2080,
+          effectivePriceQuote: expect.objectContaining({
+            conditionLabels: expect.arrayContaining(["購入条件あり"]),
+            conditionRequired: true,
+          }),
+        }),
+      ]),
+    );
+    expect(payload.candidates.map((candidate: { price?: number }) => candidate.price)).not.toEqual(expect.arrayContaining([1760, 1820]));
+  });
+
   it("normalizes external photo detection responses into inventory candidates", async () => {
     process.env.HOME_STACK_IMAGE_RECOGNITION_URL = "https://vision.example.test/detect";
     process.env.HOME_STACK_IMAGE_RECOGNITION_TOKEN = "vision-token";

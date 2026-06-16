@@ -194,7 +194,7 @@ Price-condition operation notes:
 - Direct URL meta price extraction should ignore reward, coupon, shipping, gift-card, or store-credit amounts in meta tags such as `twitter:data1`, then fall back to the next product-price source.
 - Direct URL data-attribute price extraction should skip used, app-only, subscription, purchase-condition, coupon-applied, shipping-condition, or payment-fee contexts before accepting an attribute price.
 - Direct URL and Amazon-style price scans should ignore unavailable machine states such as `out_of_stock`, `soldout`, preorder, or discontinued before falling back to the next current offer price.
-- Direct URL scans and marketplace HTML parsing should skip payment/COD/cash-on-delivery, warranty, gift-wrap, rental, lease, repair, restocking, and return-shipping fee amounts as item prices, even when the fee label appears after the amount.
+- Direct URL scans and marketplace HTML parsing should skip payment/COD/cash-on-delivery, standalone shipping/postage/delivery charges, warranty, gift-wrap, rental, lease, repair, restocking, and return-shipping fee amounts as item prices, even when the fee label appears after the amount.
 - Amazon-style price scans and marketplace HTML parsing should skip `coupon applied`, `discount after clip`, clipped-coupon, promo, discount-applied, member-only, app-only, login-required, or cart-only price blocks as the base item price, then preserve condition evidence for seller-page confirmation.
 - Official marketplace API reward records with `coupon applied`, clipped-coupon, promo, or discount-applied copy should keep coupon amounts as conditions instead of guaranteed deductions.
 

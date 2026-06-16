@@ -1234,6 +1234,30 @@ describe("replenishment domain logic", () => {
     });
   });
 
+  it("skips standalone shipping charge amounts before direct product prices", () => {
+    const extracted = extractPriceFromHtml(`
+      <html>
+        <head><title>Shipping charge product</title></head>
+        <body>
+          <span>delivery charge 330 JPY</span>
+          <strong>item price 1,980 JPY</strong>
+        </body>
+      </html>
+    `);
+
+    expect(extracted).toMatchObject({
+      price: 1980,
+      effectivePriceQuote: {
+        listPrice: 1980,
+        shippingFee: 330,
+        effectivePrice: 2310,
+      },
+      source: "html-text",
+    });
+    expect(extracted.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["送料加算"]));
+    expect(extracted.effectivePriceQuote?.evidence).toEqual(expect.arrayContaining(["shipping fee from page text: 330 JPY"]));
+  });
+
   it("skips deposit and future-credit amounts before direct product prices", () => {
     const extracted = extractPriceFromHtml(`
       <html>
@@ -3752,6 +3776,34 @@ describe("replenishment domain logic", () => {
         listPrice: 1200,
         shippingFee: 330,
         effectivePrice: 1530,
+        conditionRequired: true,
+      },
+    });
+    expect(candidates[0]?.effectivePriceQuote?.conditionLabels).toEqual(expect.arrayContaining(["送料加算"]));
+    expect(candidates[0]?.evidence).toEqual(expect.arrayContaining(["shipping fee inferred: 330 JPY"]));
+  });
+
+  it("skips standalone marketplace shipping charge amounts before item prices", () => {
+    const candidates = extractSearchCandidatesFromHtml(
+      `
+        <article>
+          <a href="/item/shipping-charge" title="Shipping charge detergent">Shipping charge detergent</a>
+          <span>delivery charge 330 JPY</span>
+          <span>item price 1,980 JPY</span>
+        </article>
+      `,
+      "yahoo-shopping",
+      "https://shopping.yahoo.co.jp/search?p=detergent",
+    );
+
+    expect(candidates[0]).toMatchObject({
+      title: "Shipping charge detergent",
+      price: 1980,
+      shipping: "送料 330円込みで再計算",
+      effectivePriceQuote: {
+        listPrice: 1980,
+        shippingFee: 330,
+        effectivePrice: 2310,
         conditionRequired: true,
       },
     });

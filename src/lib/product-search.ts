@@ -454,6 +454,7 @@ function extractPrice(snippet: string) {
     if (isEffectivePriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isCartOnlyPriceContext(text, match.index ?? 0, match[0].length)) continue;
     if (isInstallmentAmountContext(text, match.index ?? 0, match[0].length)) continue;
+    if (isStandaloneShippingFeeAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isNonProductFeeAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isRewardAmountContext(text, match.index ?? 0, match[0].length)) continue;
     if (isConditionThresholdAmountContext(text, match.index ?? 0, match[0].length)) continue;
@@ -1508,6 +1509,16 @@ function isFreeShippingProgressAmountContext(text: string, index: number, length
   const progressBefore = /(?:あと|残り|不足|追加|もう|add|remaining|short by)\s*$/i.test(before);
   const freeShippingAfter = /^\s*(?:で|追加で|more for|to|until)?\s*(?:送料無料|free shipping)/i.test(after);
   return progressBefore && freeShippingAfter;
+}
+
+function isStandaloneShippingFeeAmountContext(text: string, index: number, length: number) {
+  const before = text.slice(Math.max(0, index - 44), index);
+  const after = text.slice(index + length, index + length + 36);
+  const shippingFeeBefore =
+    /(?:送料|配送料|配送(?:料)?|発送(?:料)?|shipping|postage|delivery|freight).{0,18}(?:fee|fees|charge|charges|cost|costs|amount|別|別途|有料)?\s*$/i;
+  const shippingFeeAfter =
+    /^\s*(?:の)?\s*(?:送料|配送料|配送(?:料)?|発送(?:料)?|shipping|postage|delivery|freight).{0,18}(?:fee|fees|charge|charges|cost|costs|amount)?/i;
+  return shippingFeeBefore.test(before) || shippingFeeAfter.test(after);
 }
 
 function isShippingConditionAmountContext(text: string, index: number, length: number) {
